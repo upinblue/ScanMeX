@@ -360,7 +360,7 @@
   <data name="RunInBackground" xml:space="preserve">
     <value>הרצה ברקע</value>
   </data>
-  <data name="Naps2" xml:space="preserve">
+  <data name="ScanMe" xml:space="preserve">
     <value>לא עוד סתם סורק 2</value>
   </data>
   <data name="Naps2TitleFormat" xml:space="preserve">

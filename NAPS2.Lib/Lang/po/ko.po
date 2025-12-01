@@ -867,7 +867,7 @@ msgstr ""
 
 #: UiStrings.resx$LoadIn$Message
 msgid "Load images into NAPS2"
-msgstr "NAPS2 에 이미지 불러오기"
+msgstr "ScanMe 에 이미지 불러오기"
 
 #: UiStrings.resx$MakePdfsSearchable$Message
 msgid "Make PDFs searchable using OCR"
@@ -929,15 +929,15 @@ msgstr "여러장 스캔하기 (매 장마다 팝업 표시)"
 #: MiscResources.resx$NAPS2$Message
 #: SdkResources.resx$NAPS2$Message
 #: UiStrings.resx$Naps2$Message
-msgid "NAPS2"
-msgstr "NAPS2"
+msgid "ScanMe"
+msgstr "ScanMe"
 
 #: UiStrings.resx$Naps2TitleFormat$Message
-msgid "NAPS2 - {0}"
-msgstr "NAPS2 - {0}"
+msgid "ScanMe - {0}"
+msgstr "ScanMe - {0}"
 
 #: MiscResources.resx$DonatePrompt$Message
-msgid "NAPS2 is completely free. Consider making a donation."
+msgid "ScanMe is completely free. Consider making a donation."
 msgstr "NAPS2는 완전 무료로 제공됩니다. 기부를 고려해 보십시오."
 
 #: UiStrings.resx$NameOptional$Message

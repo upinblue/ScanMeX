@@ -929,16 +929,16 @@ msgstr "ריבוי סריקות (הצגת בקשה בין הסריקות)"
 #: MiscResources.resx$NAPS2$Message
 #: SdkResources.resx$NAPS2$Message
 #: UiStrings.resx$Naps2$Message
-msgid "NAPS2"
+msgid "ScanMe"
 msgstr "לא עוד סתם סורק 2"
 
 #: UiStrings.resx$Naps2TitleFormat$Message
-msgid "NAPS2 - {0}"
+msgid "ScanMe - {0}"
 msgstr "לא עוד סתם סורק 2 - {0}"
 
 #: MiscResources.resx$DonatePrompt$Message
-msgid "NAPS2 is completely free. Consider making a donation."
-msgstr "NAPS2 הוא לגמרי בחינם. נא לשקול לתרום לנו."
+msgid "ScanMe is completely free. Consider making a donation."
+msgstr "ScanMe הוא לגמרי בחינם. נא לשקול לתרום לנו."
 
 #: UiStrings.resx$NameOptional$Message
 msgid "Name (optional)"

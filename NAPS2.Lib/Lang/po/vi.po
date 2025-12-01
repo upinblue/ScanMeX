@@ -929,16 +929,16 @@ msgstr "Quét nhiều (nhắc giữa quét)"
 #: MiscResources.resx$NAPS2$Message
 #: SdkResources.resx$NAPS2$Message
 #: UiStrings.resx$Naps2$Message
-msgid "NAPS2"
+msgid "ScanMe"
 msgstr ""
 
 #: UiStrings.resx$Naps2TitleFormat$Message
-msgid "NAPS2 - {0}"
+msgid "ScanMe - {0}"
 msgstr ""
 
 #: MiscResources.resx$DonatePrompt$Message
-msgid "NAPS2 is completely free. Consider making a donation."
-msgstr "NAPS2 miễn phí hoàn toàn. Bạn có thể ủng hộ tùy ý.."
+msgid "ScanMe is completely free. Consider making a donation."
+msgstr "ScanMe miễn phí hoàn toàn. Bạn có thể ủng hộ tùy ý.."
 
 #: UiStrings.resx$NameOptional$Message
 msgid "Name (optional)"

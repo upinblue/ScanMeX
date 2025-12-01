@@ -465,7 +465,7 @@
   <data name="RunInBackground" xml:space="preserve">
     <value>Run in Background</value>
   </data>
-  <data name="Naps2" xml:space="preserve">
+  <data name="ScanMe" xml:space="preserve">
     <value>NAPS2</value>
   </data>
   <data name="Naps2TitleFormat" xml:space="preserve">

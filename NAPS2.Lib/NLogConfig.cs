@@ -41,7 +41,7 @@ public static class NLogConfig
         debugRule.Filters.Add(new WhenMethodFilter(_ => enableDebugLogging() ? FilterResult.Log : FilterResult.Ignore));
         config.LoggingRules.Add(debugRule);
         LogManager.Configuration = config;
-        return new NLogLoggerFactory().CreateLogger("NAPS2");
+        return new NLogLoggerFactory().CreateLogger("ScanMe");
     }
 
     /// <summary>

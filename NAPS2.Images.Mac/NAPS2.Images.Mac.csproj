@@ -7,10 +7,10 @@
         <CheckEolTargetFramework>false</CheckEolTargetFramework>
         <RootNamespace>NAPS2.Images.Mac</RootNamespace>
 
-        <Title>NAPS2.Images.Mac</Title>
-        <Product>NAPS2.Images.Mac</Product>
-        <Description>Images based on AppKit.NSImage for NAPS2.Sdk.</Description>
-        <PackageTags>naps2</PackageTags>
+        <Title>ScanMe.Images.Mac</Title>
+        <Product>ScanMe.Images.Mac</Product>
+        <Description>Images based on AppKit.NSImage for ScanMe.</Description>
+        <PackageTags>scanme</PackageTags>
     </PropertyGroup>
 
     <Import Project="..\NAPS2.Setup\targets\SdkPackageTargets.targets" />

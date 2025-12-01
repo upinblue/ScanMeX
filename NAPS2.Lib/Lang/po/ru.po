@@ -929,16 +929,16 @@ msgstr "Многостраничное сканирование (запрос п
 #: MiscResources.resx$NAPS2$Message
 #: SdkResources.resx$NAPS2$Message
 #: UiStrings.resx$Naps2$Message
-msgid "NAPS2"
-msgstr "NAPS2"
+msgid "ScanMe"
+msgstr "ScanMe"
 
 #: UiStrings.resx$Naps2TitleFormat$Message
-msgid "NAPS2 - {0}"
-msgstr "NAPS2 - {0}"
+msgid "ScanMe - {0}"
+msgstr "ScanMe - {0}"
 
 #: MiscResources.resx$DonatePrompt$Message
-msgid "NAPS2 is completely free. Consider making a donation."
-msgstr "NAPS2 - бесплатная программа, однако Вы можете пожертвовать деньги на развитие проекта."
+msgid "ScanMe is completely free. Consider making a donation."
+msgstr "ScanMe - бесплатная программа, однако Вы можете пожертвовать деньги на развитие проекта."
 
 #: UiStrings.resx$NameOptional$Message
 msgid "Name (optional)"

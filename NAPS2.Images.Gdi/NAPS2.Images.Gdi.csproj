@@ -7,10 +7,10 @@
         <CheckEolTargetFramework>false</CheckEolTargetFramework>
         <RootNamespace>NAPS2.Images.Gdi</RootNamespace>
 
-        <Title>NAPS2.Images.Gdi</Title>
-        <Product>NAPS2.Images.Gdi</Product>
-        <Description>Images based on System.Drawing.Bitmap for NAPS2.Sdk.</Description>
-        <PackageTags>naps2</PackageTags>
+        <Title>ScanMe.Images.Gdi</Title>
+        <Product>ScanMe.Images.Gdi</Product>
+        <Description>Images based on System.Drawing.Bitmap for ScanMe.</Description>
+        <PackageTags>scanme</PackageTags>
     </PropertyGroup>
 
     <Import Project="..\NAPS2.Setup\targets\SdkPackageTargets.targets" />

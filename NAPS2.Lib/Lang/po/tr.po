@@ -929,16 +929,16 @@ msgstr "Çoklu tarama (taramalar arası komut istemi)"
 #: MiscResources.resx$NAPS2$Message
 #: SdkResources.resx$NAPS2$Message
 #: UiStrings.resx$Naps2$Message
-msgid "NAPS2"
-msgstr "NAPS2"
+msgid "ScanMe"
+msgstr "ScanMe"
 
 #: UiStrings.resx$Naps2TitleFormat$Message
-msgid "NAPS2 - {0}"
-msgstr "NAPS2 - {0}"
+msgid "ScanMe - {0}"
+msgstr "ScanMe - {0}"
 
 #: MiscResources.resx$DonatePrompt$Message
-msgid "NAPS2 is completely free. Consider making a donation."
-msgstr "NAPS2 tümüyle ücretsizdir. Bağış yapmayı düşünün."
+msgid "ScanMe is completely free. Consider making a donation."
+msgstr "ScanMe tümüyle ücretsizdir. Bağış yapmayı düşünün."
 
 #: UiStrings.resx$NameOptional$Message
 msgid "Name (optional)"
@@ -1470,7 +1470,7 @@ msgstr "Paylaş"
 
 #: UiStrings.resx$ShareAsService$Message
 msgid "Share even when NAPS2 is closed"
-msgstr "NAPS2 kapalıyken de paylaş"
+msgstr "ScanMe kapalıyken de paylaş"
 
 #: UiStrings.resx$SharedDeviceFormTitle$Message
 msgid "Shared Scanner Settings"

@@ -223,8 +223,8 @@ public class CommandLineIntegrationTests : ContextualTests
             Image1);
         PdfAsserts.AssertMetadata(new PdfMetadata
         {
-            Author = "NAPS2",
-            Creator = "NAPS2",
+            Author = "ScanMe",
+            Creator = "ScanMe",
             Keywords = "",
             Subject = "Scanned Image",
             Title = "Scanned Image"
@@ -284,7 +284,7 @@ public class CommandLineIntegrationTests : ContextualTests
         PdfAsserts.AssertMetadata(new PdfMetadata
         {
             Author = "author1",
-            Creator = "NAPS2",
+            Creator = "ScanMe",
             Keywords = "keywords1",
             Subject = "subject1",
             Title = "title1"

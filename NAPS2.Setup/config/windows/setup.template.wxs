@@ -2,10 +2,10 @@
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
   <Product
       Id="*"
-      Name="NAPS2"
+      Name="ScanMe"
       Language="1033"
       Version="{{ !version }}"
-      Manufacturer="NAPS2 Software"
+      Manufacturer="ScanMe Software"
       UpgradeCode="FEB82971-B3E6-4F19-9684-1D543E644D73">
     <!-- TODO: Files aren't updated if the version isn't bumped. How to fix? I guess it doesn't matter for verification if we delete the folder preemptively... -->
     <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" />
@@ -20,7 +20,7 @@
     <UIRef Id="WixUI_InstallDir" />
     <WixVariable Id="WixUILicenseRtf" Value="NAPS2.Setup\license.rtf" />
 
-    <Feature Id="MainApplication" Title="NAPS2" Level="1">
+    <Feature Id="MainApplication" Title="ScanMe" Level="1">
       <ComponentRef Id="Exec" />
       <ComponentRef Id="Deps" />
       <ComponentRef Id="DepsWin32" />
@@ -36,13 +36,13 @@
       </DirectorySearch>
     </Property>
 
-    <Condition Message="NAPS2 has already been installed using the EXE installer and can't be upgraded using the MSI installer. Either use the EXE installer to upgrade, or uninstall NAPS2 then re-install with the MSI.">
+    <Condition Message="ScanMe has already been installed using the EXE installer and can't be upgraded using the MSI installer. Either use the EXE installer to upgrade, or uninstall NAPS2 then re-install with the MSI.">
         <![CDATA[INNOINSTALLATION="NOTEXIST"]]>
     </Condition>
 
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="ProgramFiles64Folder">
-        <Directory Id="INSTALLFOLDER" Name="NAPS2">
+        <Directory Id="INSTALLFOLDER" Name="ScanMe">
           <Directory Id="LIBFOLDER" Name="lib">
             <Directory Id="LIBWIN32FOLDER" Name="_win32" />
             <Directory Id="LIBWIN64FOLDER" Name="_win64" />
@@ -50,7 +50,7 @@
         </Directory>
       </Directory>
       <Directory Id="ProgramMenuFolder">
-        <Directory Id="ProgramMenuDir" Name="NAPS2" />
+        <Directory Id="ProgramMenuDir" Name="ScanMe" />
       </Directory>
       <Directory Id="SystemFolder" />
 
@@ -61,40 +61,40 @@
           <RegistryValue Type="string" Name="CLSID" Value="WIACLSID" />
           <RegistryValue Type="string" Name="DefaultIcon" Value="sti.dll,0" />
           <RegistryValue Type="string" Name="InitCmdLine" Value="/WiaCmd;[INSTALLFOLDER]NAPS2.exe /StiDevice:%1 /StiEvent:%2;" />
-          <RegistryValue Type="string" Name="Provider" Value="NAPS2" />
+          <RegistryValue Type="string" Name="Provider" Value="ScanMe" />
         </RegistryKey>
         <RegistryKey Root="HKLM" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\StillImage\Registered Applications">
-          <RegistryValue Type="string" Name="NAPS2" Value="[INSTALLFOLDER]NAPS2.exe" />
+          <RegistryValue Type="string" Name="ScanMe" Value="[INSTALLFOLDER]NAPS2.exe" />
         </RegistryKey>
         <RegistryKey Root="HKLM" Key="SYSTEM\CurrentControlSet\Control\StillImage\Events\STIProxyEvent\{1c3a7177-f3a7-439e-be47-e304a185f932}">
           <RegistryValue Type="string" Name="Cmdline" Value="[INSTALLFOLDER]NAPS2.exe /StiDevice:%1 /StiEvent:%2" />
           <RegistryValue Type="string" Name="Desc" Value="Scan with NAPS2" />
           <RegistryValue Type="string" Name="Icon" Value="[INSTALLFOLDER]NAPS2.exe,0" />
-          <RegistryValue Type="string" Name="Name" Value="NAPS2" />
+          <RegistryValue Type="string" Name="Name" Value="ScanMe" />
         </RegistryKey>
         <RegistryKey Root="HKCR" Key=".pdf\OpenWithProgids">
-          <RegistryValue Type="string" Name="NAPS2" Value="" />
+          <RegistryValue Type="string" Name="ScanMe" Value="" />
         </RegistryKey>
         <RegistryKey Root="HKCR" Key=".jpg\OpenWithProgids">
-          <RegistryValue Type="string" Name="NAPS2" Value="" />
+          <RegistryValue Type="string" Name="ScanMe" Value="" />
         </RegistryKey>
         <RegistryKey Root="HKCR" Key=".jpeg\OpenWithProgids">
-          <RegistryValue Type="string" Name="NAPS2" Value="" />
+          <RegistryValue Type="string" Name="ScanMe" Value="" />
         </RegistryKey>
         <RegistryKey Root="HKCR" Key=".png\OpenWithProgids">
-          <RegistryValue Type="string" Name="NAPS2" Value="" />
+          <RegistryValue Type="string" Name="ScanMe" Value="" />
         </RegistryKey>
         <RegistryKey Root="HKCR" Key=".tiff\OpenWithProgids">
-          <RegistryValue Type="string" Name="NAPS2" Value="" />
+          <RegistryValue Type="string" Name="ScanMe" Value="" />
         </RegistryKey>
         <RegistryKey Root="HKCR" Key=".tif\OpenWithProgids">
-          <RegistryValue Type="string" Name="NAPS2" Value="" />
+          <RegistryValue Type="string" Name="ScanMe" Value="" />
         </RegistryKey>
         <RegistryKey Root="HKCR" Key=".bmp\OpenWithProgids">
-          <RegistryValue Type="string" Name="NAPS2" Value="" />
+          <RegistryValue Type="string" Name="ScanMe" Value="" />
         </RegistryKey>
-        <RegistryKey Root="HKCR" Key="NAPS2">
-          <RegistryValue Type="string" Value="NAPS2" />
+        <RegistryKey Root="HKCR" Key="ScanMe">
+          <RegistryValue Type="string" Value="ScanMe" />
         </RegistryKey>
         <RegistryKey Root="HKCR" Key="NAPS2\DefaultIcon">
           <RegistryValue Type="string" Value="[INSTALLFOLDER]NAPS2.exe,0" />
@@ -132,7 +132,7 @@
     <DirectoryRef Id="ProgramMenuDir">
       <Component Id="ApplicationShortcut" Guid="F5122C0C-7DCA-4D0A-AF70-C87C972267AB">
         <Shortcut Id="ApplicationStartMenuShortcut"
-                  Name="NAPS2"
+                  Name="ScanMe"
                   Description="Not Another PDF Scanner"
                   Target="[INSTALLFOLDER]NAPS2.exe"
                   WorkingDirectory="INSTALLFOLDER" />

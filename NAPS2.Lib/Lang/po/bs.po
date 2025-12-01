@@ -929,16 +929,16 @@ msgstr "Višestruko skeniranje (prompt između skeniranja)"
 #: MiscResources.resx$NAPS2$Message
 #: SdkResources.resx$NAPS2$Message
 #: UiStrings.resx$Naps2$Message
-msgid "NAPS2"
-msgstr "NAPS2"
+msgid "ScanMe"
+msgstr "ScanMe"
 
 #: UiStrings.resx$Naps2TitleFormat$Message
-msgid "NAPS2 - {0}"
-msgstr "NAPS2 - {0}"
+msgid "ScanMe - {0}"
+msgstr "ScanMe - {0}"
 
 #: MiscResources.resx$DonatePrompt$Message
-msgid "NAPS2 is completely free. Consider making a donation."
-msgstr "NAPS2 je potpuno besplatan. Razmotrite donaciju kao podršku."
+msgid "ScanMe is completely free. Consider making a donation."
+msgstr "ScanMe je potpuno besplatan. Razmotrite donaciju kao podršku."
 
 #: UiStrings.resx$NameOptional$Message
 msgid "Name (optional)"

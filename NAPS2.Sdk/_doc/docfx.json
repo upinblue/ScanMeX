@@ -53,8 +53,8 @@
   ],
   "build": {
     "globalMetadata": {
-      "_appName": "NAPS2 SDK",
-      "_appTitle": "NAPS2 SDK",
+      "_appName": "ScanMe SDK",
+      "_appTitle": "ScanMe SDK",
       "_appLogoPath": "scanner-48-rev2.png",
       "_appFaviconPath": "favicon.ico",
       "_enableSearch": true,

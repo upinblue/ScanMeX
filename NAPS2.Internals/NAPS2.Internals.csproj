@@ -5,10 +5,10 @@
         <Nullable>enable</Nullable>
         <RootNamespace>NAPS2</RootNamespace>
 
-        <Title>NAPS2.Internals</Title>
-        <Product>NAPS2.Internals</Product>
-        <Description>Internal code for NAPS2.Sdk. Don't reference this project directly.</Description>
-        <PackageTags>naps2</PackageTags>
+        <Title>ScanMe.Internals</Title>
+        <Product>ScanMe.Internals</Product>
+        <Description>Internal code for ScanMe. Don't reference this project directly.</Description>
+        <PackageTags>scanme</PackageTags>
     </PropertyGroup>
 
     <Import Project="..\NAPS2.Setup\targets\SdkPackageTargets.targets" />

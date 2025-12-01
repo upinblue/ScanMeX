@@ -54,19 +54,19 @@ public class StillImage
             key1.SetValue("CLSID", "WIACLSID");
             key1.SetValue("DefaultIcon", "sti.dll,0");
             key1.SetValue("InitCmdLine", $"/WiaCmd;{exe} /StiDevice:%1 /StiEvent:%2;");
-            key1.SetValue("Provider", "NAPS2");
+            key1.SetValue("Provider", "ScanMe");
         }
 
         using (var key2 = Registry.LocalMachine.CreateSubKey(REGKEY_STI_APP))
         {
-            key2.SetValue("NAPS2", exe);
+            key2.SetValue("ScanMe", exe);
         }
 
         using var key3 = Registry.LocalMachine.CreateSubKey(REGKEY_STI_EVENT_NAPS2);
         key3.SetValue("Cmdline", $"{exe} /StiDevice:%1 /StiEvent:%2");
         key3.SetValue("Desc", "Scan with NAPS2");
         key3.SetValue("Icon", $"{exe},0");
-        key3.SetValue("Name", "NAPS2");
+        key3.SetValue("Name", "ScanMe");
     }
 
     [System.Runtime.Versioning.SupportedOSPlatform("windows7.0")]
@@ -75,7 +75,7 @@ public class StillImage
         Registry.LocalMachine.DeleteSubKey(REGKEY_AUTOPLAY_HANDLER_NAPS2, false);
         using (var key2 = Registry.LocalMachine.OpenSubKey(REGKEY_STI_APP, true))
         {
-            key2?.DeleteValue("NAPS2", false);
+            key2?.DeleteValue("ScanMe", false);
         }
         Registry.LocalMachine.DeleteSubKey(REGKEY_STI_EVENT_NAPS2, false);
 

@@ -23,7 +23,7 @@ internal class EditWithForm : EtoDialogBase
         LayoutController.DefaultSpacing = 0;
         LayoutController.Content = L.Column(
             _openWith.GetEntries(".jpg")
-                .Where(entry => !entry.Name.StartsWith("NAPS2"))
+                .Where(entry => !entry.Name.StartsWith("ScanMe"))
                 .Select(entry => C.Button(new ActionCommand(() =>
                     {
                         Result = entry;

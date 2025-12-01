@@ -145,7 +145,7 @@ namespace NAPS2.Lang.Resources {
         /// </summary>
         internal static string NAPS2 {
             get {
-                return ResourceManager.GetString("NAPS2", resourceCulture);
+                return ResourceManager.GetString("ScanMe", resourceCulture);
             }
         }
         

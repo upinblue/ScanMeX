@@ -28,7 +28,7 @@ public static class ExeSetupVerifier
         public UpgradeTest(Platform platform)
         {
             _platform = platform;
-            _install32 = Path.Combine(Environment.ExpandEnvironmentVariables("%PROGRAMFILES(X86)%"), "NAPS2");
+            _install32 = Path.Combine(Environment.ExpandEnvironmentVariables("%PROGRAMFILES(X86)%"), "ScanMe");
             _testFilePath = Path.Combine(_install32, "_verify_testfile.exe");
             Directory.CreateDirectory(_install32);
             File.WriteAllText(_testFilePath, "");

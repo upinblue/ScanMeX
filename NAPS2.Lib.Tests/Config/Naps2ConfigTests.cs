@@ -10,7 +10,7 @@ public class Naps2ConfigTests
     public void StartsWithInternalDefaults()
     {
         Assert.Equal("en", _config.Get(c => c.Culture));
-        Assert.Equal("NAPS2", _config.Get(c => c.PdfSettings.Metadata.Creator));
+        Assert.Equal("ScanMe", _config.Get(c => c.PdfSettings.Metadata.Creator));
     }
 
     [Fact]
@@ -53,14 +53,14 @@ public class Naps2ConfigTests
         Assert.Equal("b", metadata.Title);
         Assert.Null(metadata.Keywords);
         Assert.Equal("c", metadata.Subject);
-        Assert.Equal("NAPS2", metadata.Creator);
+        Assert.Equal("ScanMe", metadata.Creator);
 
         var pdfSettings = _config.Get(c => c.PdfSettings);
         Assert.Equal("a", pdfSettings.Metadata.Author);
         Assert.Equal("b", pdfSettings.Metadata.Title);
         Assert.Null(pdfSettings.Metadata.Keywords);
         Assert.Equal("c", pdfSettings.Metadata.Subject);
-        Assert.Equal("NAPS2", pdfSettings.Metadata.Creator);
+        Assert.Equal("ScanMe", pdfSettings.Metadata.Creator);
         Assert.Null(pdfSettings.DefaultFileName);
 
         var commonConfig = _config.Get(c => c);
@@ -68,7 +68,7 @@ public class Naps2ConfigTests
         Assert.Equal("b", commonConfig.PdfSettings.Metadata.Title);
         Assert.Null(commonConfig.PdfSettings.Metadata.Keywords);
         Assert.Equal("c", commonConfig.PdfSettings.Metadata.Subject);
-        Assert.Equal("NAPS2", commonConfig.PdfSettings.Metadata.Creator);
+        Assert.Equal("ScanMe", commonConfig.PdfSettings.Metadata.Creator);
         Assert.Null(commonConfig.PdfSettings.DefaultFileName);
         Assert.Equal(42, commonConfig.ThumbnailSize);
     }

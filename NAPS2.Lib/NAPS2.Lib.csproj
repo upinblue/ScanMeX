@@ -9,8 +9,8 @@
     <GenerateResourceUsePreserializedResources>true</GenerateResourceUsePreserializedResources>
     <RootNamespace>NAPS2</RootNamespace>
 
-    <Title>NAPS2 - Not Another PDF Scanner</Title>
-    <Product>NAPS2 - Not Another PDF Scanner</Product>
+    <Title>ScanMe</Title>
+    <Product>ScanMe</Product>
     <Configurations>Debug;Release;DebugLang;Release-Msi;Release-Zip</Configurations>
   </PropertyGroup>
 

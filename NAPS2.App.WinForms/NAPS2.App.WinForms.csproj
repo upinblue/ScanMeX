@@ -15,8 +15,9 @@
     <TrimMode>none</TrimMode>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
 
-    <Title>NAPS2 - Not Another PDF Scanner</Title>
-    <Product>NAPS2 - Not Another PDF Scanner</Product>
+    <!-- Updated user-visible branding -->
+    <Title>ScanMe</Title>
+    <Product>ScanMe</Product>
   </PropertyGroup>
 
   <Import Project="..\NAPS2.Setup\targets\CommonTargets.targets" />

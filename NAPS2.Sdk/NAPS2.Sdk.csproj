@@ -11,10 +11,10 @@
 
     <Configurations>Debug;Release;DebugLang;DebugNoMac</Configurations>
 
-    <Title>NAPS2.Sdk</Title>
-    <Product>NAPS2.Sdk</Product>
-    <Description>NAPS2.Sdk is a fully-featured scanning library, supporting WIA, TWAIN, SANE, and ESCL scanners on Windows, Mac, and Linux.</Description>
-    <PackageTags>naps2 sdk scanner wia twain sane escl</PackageTags>
+    <Title>ScanMe.Sdk</Title>
+    <Product>ScanMe.Sdk</Product>
+    <Description>ScanMe.Sdk is a fully-featured scanning library, supporting WIA, TWAIN, SANE, and ESCL scanners on Windows, Mac, and Linux.</Description>
+    <PackageTags>scanme sdk scanner wia twain sane escl</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 

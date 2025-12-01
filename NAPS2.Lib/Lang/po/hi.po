@@ -867,7 +867,7 @@ msgstr ""
 
 #: UiStrings.resx$LoadIn$Message
 msgid "Load images into NAPS2"
-msgstr "NAPS2 में छवियाँ लोड करें"
+msgstr "ScanMe में छवियाँ लोड करें"
 
 #: UiStrings.resx$MakePdfsSearchable$Message
 msgid "Make PDFs searchable using OCR"
@@ -929,16 +929,16 @@ msgstr "एकाधिक स्कैन (स्कैन के बीच स
 #: MiscResources.resx$NAPS2$Message
 #: SdkResources.resx$NAPS2$Message
 #: UiStrings.resx$Naps2$Message
-msgid "NAPS2"
-msgstr "NAPS2"
+msgid "ScanMe"
+msgstr "ScanMe"
 
 #: UiStrings.resx$Naps2TitleFormat$Message
-msgid "NAPS2 - {0}"
-msgstr "NAPS2 - {0}"
+msgid "ScanMe - {0}"
+msgstr "ScanMe - {0}"
 
 #: MiscResources.resx$DonatePrompt$Message
-msgid "NAPS2 is completely free. Consider making a donation."
-msgstr "NAPS2 पूरी तरह से मुफ़्त है। दान देने पर विचार करें।"
+msgid "ScanMe is completely free. Consider making a donation."
+msgstr "ScanMe पूरी तरह से मुफ़्त है। दान देने पर विचार करें।"
 
 #: UiStrings.resx$NameOptional$Message
 msgid "Name (optional)"

@@ -66,7 +66,7 @@ public static class RpmPackager
         // Create symlinks
         var binDir = Path.Combine(filesDir, "usr/bin");
         Directory.CreateDirectory(binDir);
-        Cli.Run("ln", $"-s /usr/lib/naps2/naps2 {Path.Combine(binDir, "naps2")}");
+        Cli.Run("ln", $"-s /usr/lib/naps2/naps2 {Path.Combine(binDir, "ScanMe")}");
 
         // Compress files
         Cli.Run("tar", $"-zcvf {workingDir}/SOURCES/naps2-{pkgInfo.VersionNumber}.tar.gz {Path.GetFileName(filesDir)}",

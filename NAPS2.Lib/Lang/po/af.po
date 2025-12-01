@@ -929,16 +929,16 @@ msgstr "Veelvuldige skanderings (vinnige tussen skanderings)"
 #: MiscResources.resx$NAPS2$Message
 #: SdkResources.resx$NAPS2$Message
 #: UiStrings.resx$Naps2$Message
-msgid "NAPS2"
-msgstr "NAPS2"
+msgid "ScanMe"
+msgstr "ScanMe"
 
 #: UiStrings.resx$Naps2TitleFormat$Message
-msgid "NAPS2 - {0}"
-msgstr "NAPS2 - {0}"
+msgid "ScanMe - {0}"
+msgstr "ScanMe - {0}"
 
 #: MiscResources.resx$DonatePrompt$Message
-msgid "NAPS2 is completely free. Consider making a donation."
-msgstr "NAPS2 is heeltemal gratis. Oorweeg dit om 'n skenking te maak."
+msgid "ScanMe is completely free. Consider making a donation."
+msgstr "ScanMe is heeltemal gratis. Oorweeg dit om 'n skenking te maak."
 
 #: UiStrings.resx$NameOptional$Message
 msgid "Name (optional)"

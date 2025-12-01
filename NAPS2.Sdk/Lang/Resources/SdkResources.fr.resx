@@ -21,7 +21,7 @@
   <data name="DeviceCommunicationFailure" xml:space="preserve">
     <value>La communication avec le périphérique de numérisation a été interrompue.</value>
   </data>
-  <data name="NAPS2" xml:space="preserve">
+  <data name="ScanMe" xml:space="preserve">
     <value>NAPS2</value>
   </data>
   <data name="NoDeviceSelected" xml:space="preserve">

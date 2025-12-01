@@ -6,10 +6,10 @@
         <Nullable>enable</Nullable>
         <LangVersion>12</LangVersion>
 
-        <Title>NAPS2.Escl</Title>
-        <Product>NAPS2.Escl</Product>
-        <Description>ESCL client for NAPS2.Sdk.</Description>
-        <PackageTags>naps2 escl</PackageTags>
+        <Title>ScanMe.Escl</Title>
+        <Product>ScanMe.Escl</Product>
+        <Description>ESCL client for ScanMe.</Description>
+        <PackageTags>scanme escl</PackageTags>
     </PropertyGroup>
 
     <Import Project="..\NAPS2.Setup\targets\SdkPackageTargets.targets" />

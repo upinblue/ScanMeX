@@ -9,7 +9,7 @@ using NAPS2.Scan;
 namespace NAPS2.EntryPoints;
 
 /// <summary>
-/// The entry point for NAPS2.Console.exe (on Windows) and "naps2 cli" (on Mac/Linux), the NAPS2 CLI.
+/// The entry point for NAPS2.Console.exe (on Windows) and "ScanMe cli" (on Mac/Linux), the NAPS2 CLI.
 /// </summary>
 public static class ConsoleEntryPoint
 {

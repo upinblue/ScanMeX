@@ -9,8 +9,8 @@
 
         <PlatformTarget>x86</PlatformTarget>
 
-        <Title>NAPS2.Sdk.Worker</Title>
-        <Product>NAPS2.Sdk.Worker</Product>
+        <Title>ScanMe.Sdk.Worker</Title>
+        <Product>ScanMe.Sdk.Worker</Product>
         
         <SelfContained>true</SelfContained>
         <PublishSingleFile>true</PublishSingleFile>

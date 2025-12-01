@@ -240,7 +240,7 @@ public class PdfExporterTests : ContextualTests
 
         await _exporter.Export(filePath, [image], new PdfExportParams { Metadata = metadata });
 
-        PdfAsserts.AssertMetadata(metadata with { Creator = "NAPS2" }, filePath, "world");
+        PdfAsserts.AssertMetadata(metadata with { Creator = "ScanMe" }, filePath, "world");
         // TODO: We should also test embedded dates etc. somewhere, no tests for that yet 
     }
 
@@ -262,7 +262,7 @@ public class PdfExporterTests : ContextualTests
 
         await _exporter.Export(filePath, [image], new PdfExportParams { Metadata = metadata });
 
-        PdfAsserts.AssertMetadata(metadata with { Creator = "NAPS2" }, filePath, "world");
+        PdfAsserts.AssertMetadata(metadata with { Creator = "ScanMe" }, filePath, "world");
         // TODO: We should also test embedded dates etc. somewhere, no tests for that yet 
     }
 
@@ -330,7 +330,7 @@ public class PdfExporterTests : ContextualTests
         });
 
         PdfAsserts.AssertEncrypted(filePath, "hello", "world");
-        PdfAsserts.AssertMetadata(metadata with { Creator = "NAPS2" }, filePath, "world");
+        PdfAsserts.AssertMetadata(metadata with { Creator = "ScanMe" }, filePath, "world");
     }
 
     [Theory]
@@ -361,7 +361,7 @@ public class PdfExporterTests : ContextualTests
         });
 
         PdfAsserts.AssertEncrypted(filePath, "hello", "world");
-        PdfAsserts.AssertMetadata(metadata with { Creator = "NAPS2" }, filePath, "world");
+        PdfAsserts.AssertMetadata(metadata with { Creator = "ScanMe" }, filePath, "world");
     }
 
     [Theory]

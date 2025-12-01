@@ -15,7 +15,7 @@ public static class Paths
 #else
         var userAppData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
 #if NET6_0_OR_GREATER
-        var subfolder = OperatingSystem.IsWindows() ? "NAPS2" : "naps2";
+        var subfolder = OperatingSystem.IsWindows() ? "ScanMe" : "ScanMe";
         if (string.IsNullOrEmpty(userAppData) && OperatingSystem.IsMacOS())
         {
             // Not sure if this is necessary but older macOS (10.15) didn't seem to get the appdata path
@@ -30,7 +30,7 @@ public static class Paths
             userAppData = Environment.ExpandEnvironmentVariables("%HOME%/.config");
         }
 #else
-        var subfolder = "NAPS2";
+        var subfolder = "ScanMe";
 #endif
         AppDataPath = Path.Combine(userAppData, subfolder);
 #endif
@@ -78,7 +78,7 @@ public static class Paths
             if (!Directory.Exists(TempPath)) return;
 
             var otherNaps2Processes = Process.GetProcesses().Where(x =>
-                x.ProcessName.IndexOf("NAPS2", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                x.ProcessName.IndexOf("ScanMe", StringComparison.OrdinalIgnoreCase) >= 0 &&
                 x.Id != Process.GetCurrentProcess().Id);
             if (!otherNaps2Processes.Any())
             {

@@ -52,7 +52,7 @@ public static class MacPackager
         if (!string.IsNullOrEmpty(applicationIdentity))
         {
             SignBundleContents(bundlePath, applicationIdentity);
-            var mainExe = Path.Combine(bundlePath, "Contents", "MacOS", "NAPS2");
+            var mainExe = Path.Combine(bundlePath, "Contents", "MacOS", "ScanMe");
             var entitlements = Path.Combine(Paths.SolutionRoot, "NAPS2.App.Mac", "Entitlements.plist");
             Cli.Run("codesign",
                 $"-s \"{applicationIdentity}\" \"{mainExe}\" -f --options runtime --entitlements \"{entitlements}\"");

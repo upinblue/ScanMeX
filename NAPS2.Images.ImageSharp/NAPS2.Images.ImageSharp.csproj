@@ -6,10 +6,10 @@
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <RootNamespace>NAPS2.Images.ImageSharp</RootNamespace>
 
-        <Title>NAPS2.Images.ImageSharp</Title>
-        <Product>NAPS2.Images.ImageSharp</Product>
-        <Description>Images based on ImageSharp for NAPS2.Sdk.</Description>
-        <PackageTags>naps2</PackageTags>
+        <Title>ScanMe.Images.ImageSharp</Title>
+        <Product>ScanMe.Images.ImageSharp</Product>
+        <Description>Images based on ImageSharp for ScanMe.</Description>
+        <PackageTags>scanme</PackageTags>
     </PropertyGroup>
 
     <Import Project="..\NAPS2.Setup\targets\SdkPackageTargets.targets" />

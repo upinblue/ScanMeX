@@ -72,7 +72,7 @@ public static class ProjectHelper
     {
         var pfVar = "%PROGRAMFILES%";
         var pfPath = Environment.ExpandEnvironmentVariables(pfVar);
-        return Path.Combine(pfPath, "NAPS2");
+        return Path.Combine(pfPath, "ScanMe");
     }
 
     public static void DeleteInstallationFolder(Platform platform)
@@ -97,7 +97,7 @@ public static class ProjectHelper
     {
         for (int i = 0; i < 20; i++)
         {
-            var proc = Process.GetProcessesByName("NAPS2")
+            var proc = Process.GetProcessesByName("ScanMe")
                 .Where(x => x.StartTime > DateTime.Now - TimeSpan.FromSeconds(2))
                 .OrderBy(x => x.StartTime)
                 .FirstOrDefault();

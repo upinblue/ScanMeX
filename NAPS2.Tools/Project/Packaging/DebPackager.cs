@@ -61,7 +61,7 @@ public static class DebPackager
         // Create symlinks
         var binDir = Path.Combine(workingDir, "usr/bin");
         Directory.CreateDirectory(binDir);
-        Cli.Run("ln", $"-s /usr/lib/naps2/naps2 {Path.Combine(binDir, "naps2")}");
+        Cli.Run("ln", $"-s /usr/lib/naps2/naps2 {Path.Combine(binDir, "ScanMe")}");
 
         // Fix permissions
         var nativeLibsFolder = pkgInfo.Platform == Platform.LinuxArm ? "_linuxarm" : "_linux";

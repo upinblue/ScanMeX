@@ -202,7 +202,7 @@ public class PdfExporter
     {
         var document = new PdfDocument();
         var creator = exportParams.Metadata.Creator;
-        document.Info.Creator = string.IsNullOrEmpty(creator) ? "NAPS2" : creator;
+        document.Info.Creator = string.IsNullOrEmpty(creator) ? "ScanMe" : creator;
         document.Info.Author = exportParams.Metadata.Author;
         document.Info.Keywords = exportParams.Metadata.Keywords;
         document.Info.Subject = exportParams.Metadata.Subject;

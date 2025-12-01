@@ -8,10 +8,10 @@
         <UseWpf>true</UseWpf>
         <EnableWindowsTargeting>true</EnableWindowsTargeting>
 
-        <Title>NAPS2.Images.Wpf</Title>
-        <Product>NAPS2.Images.Wpf</Product>
-        <Description>Images based on WPF for NAPS2.Sdk.</Description>
-        <PackageTags>naps2</PackageTags>
+        <Title>ScanMe.Images.Wpf</Title>
+        <Product>ScanMe.Images.Wpf</Product>
+        <Description>Images based on WPF for ScanMe.</Description>
+        <PackageTags>scanme</PackageTags>
     </PropertyGroup>
 
     <Import Project="..\NAPS2.Setup\targets\SdkPackageTargets.targets" />
