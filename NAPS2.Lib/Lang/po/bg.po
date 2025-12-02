@@ -441,7 +441,7 @@ msgstr "Копиране..."
 
 #: UiStrings.resx$CopyrightFormat$Message
 msgid "Copyright {0} NAPS2 Contributors"
-msgstr "Авторско право {0} на сътрудници на NAPS2"
+msgstr "Авторско право {0} на сътрудници на ScanMe"
 
 #: UiStrings.resx$CoverageThreshold$Message
 msgid "Coverage Threshold"
@@ -866,8 +866,8 @@ msgid "Like NAPS2?"
 msgstr ""
 
 #: UiStrings.resx$LoadIn$Message
-msgid "Load images into NAPS2"
-msgstr "Внасяне на изображения в NAPS2"
+msgid "Load images into ScanMe"
+msgstr "Внасяне на изображения в ScanMe"
 
 #: UiStrings.resx$MakePdfsSearchable$Message
 msgid "Make PDFs searchable using OCR"
@@ -1061,7 +1061,7 @@ msgstr "Един или няколко файла не могат да бъда�
 
 #: UiStrings.resx$SingleInstanceDesc$Message
 msgid "Only allow a single NAPS2 instance"
-msgstr "Позволяване на само един екземпляр на NAPS2"
+msgstr "Позволяване на само един екземпляр на ScanMe"
 
 #: UiStrings.resx$OpenFolder$Message
 msgid "Open Folder"

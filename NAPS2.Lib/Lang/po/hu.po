@@ -866,7 +866,7 @@ msgid "Like NAPS2?"
 msgstr "Kedveli a NAPS2-t?"
 
 #: UiStrings.resx$LoadIn$Message
-msgid "Load images into NAPS2"
+msgid "Load images into ScanMe"
 msgstr "Képek betöltése a NAPS2-be"
 
 #: UiStrings.resx$MakePdfsSearchable$Message

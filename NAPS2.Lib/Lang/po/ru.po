@@ -441,7 +441,7 @@ msgstr "Копирование..."
 
 #: UiStrings.resx$CopyrightFormat$Message
 msgid "Copyright {0} NAPS2 Contributors"
-msgstr "Авторские права защищены {0} Контрибьюторы NAPS2"
+msgstr "Авторские права защищены {0} Контрибьюторы ScanMe"
 
 #: UiStrings.resx$CoverageThreshold$Message
 msgid "Coverage Threshold"
@@ -866,8 +866,8 @@ msgid "Like NAPS2?"
 msgstr "Нравится NAPS2?"
 
 #: UiStrings.resx$LoadIn$Message
-msgid "Load images into NAPS2"
-msgstr "Загрузить изображения в NAPS2"
+msgid "Load images into ScanMe"
+msgstr "Загрузить изображения в ScanMe"
 
 #: UiStrings.resx$MakePdfsSearchable$Message
 msgid "Make PDFs searchable using OCR"
@@ -1061,7 +1061,7 @@ msgstr "Не удалось загрузить некоторые файлы."
 
 #: UiStrings.resx$SingleInstanceDesc$Message
 msgid "Only allow a single NAPS2 instance"
-msgstr "Разрешать только один экземпляр NAPS2"
+msgstr "Разрешать только один экземпляр ScanMe"
 
 #: UiStrings.resx$OpenFolder$Message
 msgid "Open Folder"
@@ -1470,7 +1470,7 @@ msgstr "Поделиться"
 
 #: UiStrings.resx$ShareAsService$Message
 msgid "Share even when NAPS2 is closed"
-msgstr "Сохранять общий доступ даже при закрытом NAPS2"
+msgstr "Сохранять общий доступ даже при закрытом ScanMe"
 
 #: UiStrings.resx$SharedDeviceFormTitle$Message
 msgid "Shared Scanner Settings"

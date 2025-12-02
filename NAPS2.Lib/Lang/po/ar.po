@@ -866,8 +866,8 @@ msgid "Like NAPS2?"
 msgstr ""
 
 #: UiStrings.resx$LoadIn$Message
-msgid "Load images into NAPS2"
-msgstr "تحميل صور إلى NAPS2"
+msgid "Load images into ScanMe"
+msgstr "تحميل صور إلى ScanMe"
 
 #: UiStrings.resx$MakePdfsSearchable$Message
 msgid "Make PDFs searchable using OCR"

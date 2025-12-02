@@ -441,7 +441,7 @@ msgstr "Kopírování..."
 
 #: UiStrings.resx$CopyrightFormat$Message
 msgid "Copyright {0} NAPS2 Contributors"
-msgstr "Autorská práva {0} přispěvatelů NAPS2"
+msgstr "Autorská práva {0} přispěvatelů ScanMe"
 
 #: UiStrings.resx$CoverageThreshold$Message
 msgid "Coverage Threshold"
@@ -866,8 +866,8 @@ msgid "Like NAPS2?"
 msgstr "Líbí se vám NAPS2?"
 
 #: UiStrings.resx$LoadIn$Message
-msgid "Load images into NAPS2"
-msgstr "Nahrát obrázky do NAPS2"
+msgid "Load images into ScanMe"
+msgstr "Nahrát obrázky do ScanMe"
 
 #: UiStrings.resx$MakePdfsSearchable$Message
 msgid "Make PDFs searchable using OCR"
@@ -1061,7 +1061,7 @@ msgstr "Jeden nebo více souborů nelze stáhnout."
 
 #: UiStrings.resx$SingleInstanceDesc$Message
 msgid "Only allow a single NAPS2 instance"
-msgstr "Povolit pouze jednu instanci NAPS2"
+msgstr "Povolit pouze jednu instanci ScanMe"
 
 #: UiStrings.resx$OpenFolder$Message
 msgid "Open Folder"

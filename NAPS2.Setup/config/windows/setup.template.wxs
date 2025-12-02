@@ -57,7 +57,7 @@
       <!-- Registry -->
       <Component Id="RegistryEntries" Guid="5A1EA674-0ED2-42DF-817A-772F1B91EAE3">
         <RegistryKey Root="HKLM" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\WIA_{1c3a7177-f3a7-439e-be47-e304a185f932}">
-          <RegistryValue Type="string" Name="Action" Value="Scan with NAPS2" />
+          <RegistryValue Type="string" Name="Action" Value="Scan with ScanMe" />
           <RegistryValue Type="string" Name="CLSID" Value="WIACLSID" />
           <RegistryValue Type="string" Name="DefaultIcon" Value="sti.dll,0" />
           <RegistryValue Type="string" Name="InitCmdLine" Value="/WiaCmd;[INSTALLFOLDER]NAPS2.exe /StiDevice:%1 /StiEvent:%2;" />
@@ -68,7 +68,7 @@
         </RegistryKey>
         <RegistryKey Root="HKLM" Key="SYSTEM\CurrentControlSet\Control\StillImage\Events\STIProxyEvent\{1c3a7177-f3a7-439e-be47-e304a185f932}">
           <RegistryValue Type="string" Name="Cmdline" Value="[INSTALLFOLDER]NAPS2.exe /StiDevice:%1 /StiEvent:%2" />
-          <RegistryValue Type="string" Name="Desc" Value="Scan with NAPS2" />
+          <RegistryValue Type="string" Name="Desc" Value="Scan with ScanMe" />
           <RegistryValue Type="string" Name="Icon" Value="[INSTALLFOLDER]NAPS2.exe,0" />
           <RegistryValue Type="string" Name="Name" Value="ScanMe" />
         </RegistryKey>

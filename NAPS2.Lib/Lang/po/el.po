@@ -441,7 +441,7 @@ msgstr "Αντιγραφή..."
 
 #: UiStrings.resx$CopyrightFormat$Message
 msgid "Copyright {0} NAPS2 Contributors"
-msgstr "Πνευματικά δικαιώματα {0} Συνεισφέροντες NAPS2"
+msgstr "Πνευματικά δικαιώματα {0} Συνεισφέροντες ScanMe"
 
 #: UiStrings.resx$CoverageThreshold$Message
 msgid "Coverage Threshold"
@@ -866,8 +866,8 @@ msgid "Like NAPS2?"
 msgstr ""
 
 #: UiStrings.resx$LoadIn$Message
-msgid "Load images into NAPS2"
-msgstr "Φόρτωση εικόνων στο NAPS2"
+msgid "Load images into ScanMe"
+msgstr "Φόρτωση εικόνων στο ScanMe"
 
 #: UiStrings.resx$MakePdfsSearchable$Message
 msgid "Make PDFs searchable using OCR"

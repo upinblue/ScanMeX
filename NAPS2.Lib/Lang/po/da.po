@@ -866,8 +866,8 @@ msgid "Like NAPS2?"
 msgstr ""
 
 #: UiStrings.resx$LoadIn$Message
-msgid "Load images into NAPS2"
-msgstr "Hent billeder ind i NAPS2"
+msgid "Load images into ScanMe"
+msgstr "Hent billeder ind i ScanMe"
 
 #: UiStrings.resx$MakePdfsSearchable$Message
 msgid "Make PDFs searchable using OCR"
@@ -1061,7 +1061,7 @@ msgstr "En eller flere filer, kunne ikke blive hentet."
 
 #: UiStrings.resx$SingleInstanceDesc$Message
 msgid "Only allow a single NAPS2 instance"
-msgstr "Tillad kun en enkelt åben NAPS2"
+msgstr "Tillad kun en enkelt åben ScanMe"
 
 #: UiStrings.resx$OpenFolder$Message
 msgid "Open Folder"

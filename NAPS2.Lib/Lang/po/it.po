@@ -441,7 +441,7 @@ msgstr "Copia..."
 
 #: UiStrings.resx$CopyrightFormat$Message
 msgid "Copyright {0} NAPS2 Contributors"
-msgstr "Copyright {0} contributori NAPS2"
+msgstr "Copyright {0} contributori ScanMe"
 
 #: UiStrings.resx$CoverageThreshold$Message
 msgid "Coverage Threshold"
@@ -866,8 +866,8 @@ msgid "Like NAPS2?"
 msgstr "Ti piace NAPS2?"
 
 #: UiStrings.resx$LoadIn$Message
-msgid "Load images into NAPS2"
-msgstr "Carica immagini in NAPS2"
+msgid "Load images into ScanMe"
+msgstr "Carica immagini in ScanMe"
 
 #: UiStrings.resx$MakePdfsSearchable$Message
 msgid "Make PDFs searchable using OCR"
@@ -1061,7 +1061,7 @@ msgstr "Uno o più file non possono essere scaricati."
 
 #: UiStrings.resx$SingleInstanceDesc$Message
 msgid "Only allow a single NAPS2 instance"
-msgstr "Consenti una sola istanza di NAPS2"
+msgstr "Consenti una sola istanza di ScanMe"
 
 #: UiStrings.resx$OpenFolder$Message
 msgid "Open Folder"

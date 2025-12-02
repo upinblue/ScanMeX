@@ -441,7 +441,7 @@ msgstr "Po kopjon..."
 
 #: UiStrings.resx$CopyrightFormat$Message
 msgid "Copyright {0} NAPS2 Contributors"
-msgstr "Të drejtat e autorit {0} Kontribuesit e NAPS2"
+msgstr "Të drejtat e autorit {0} Kontribuesit e ScanMe"
 
 #: UiStrings.resx$CoverageThreshold$Message
 msgid "Coverage Threshold"
@@ -866,8 +866,8 @@ msgid "Like NAPS2?"
 msgstr ""
 
 #: UiStrings.resx$LoadIn$Message
-msgid "Load images into NAPS2"
-msgstr "Ngarko imazhet në NAPS2"
+msgid "Load images into ScanMe"
+msgstr "Ngarko imazhet në ScanMe"
 
 #: UiStrings.resx$MakePdfsSearchable$Message
 msgid "Make PDFs searchable using OCR"
@@ -1061,7 +1061,7 @@ msgstr "Një ose më shumë skedarë s'mund të shkarkoheshin."
 
 #: UiStrings.resx$SingleInstanceDesc$Message
 msgid "Only allow a single NAPS2 instance"
-msgstr "Lejo vetëm një instancë të NAPS2"
+msgstr "Lejo vetëm një instancë të ScanMe"
 
 #: UiStrings.resx$OpenFolder$Message
 msgid "Open Folder"

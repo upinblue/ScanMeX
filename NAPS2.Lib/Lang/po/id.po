@@ -441,7 +441,7 @@ msgstr "Menyalin..."
 
 #: UiStrings.resx$CopyrightFormat$Message
 msgid "Copyright {0} NAPS2 Contributors"
-msgstr "Copyright {0} , Kontributor NAPS2"
+msgstr "Copyright {0} , Kontributor ScanMe"
 
 #: UiStrings.resx$CoverageThreshold$Message
 msgid "Coverage Threshold"
@@ -866,7 +866,7 @@ msgid "Like NAPS2?"
 msgstr ""
 
 #: UiStrings.resx$LoadIn$Message
-msgid "Load images into NAPS2"
+msgid "Load images into ScanMe"
 msgstr ""
 
 #: UiStrings.resx$MakePdfsSearchable$Message
