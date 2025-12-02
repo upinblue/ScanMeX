@@ -8,16 +8,16 @@
 #define AppCopyrightStartYear    "2025"
 #define AppCopyrightEndYear      GetDateTimeString('yyyy','','')
 #define AppCopyrightCompany      "ScanMe Contributors"
-#define ExeName                  "NAPS2.exe"
+#define ExeName                  "ScanMe.exe"
 
 [Setup]
 AppName={#AppLongName}
 AppVersion={#AppVersion}
 AppVerName={#AppShortName} {#AppVersionName}
 AppPublisher={#AppCompany}
-AppPublisherURL=https://www.naps2.com
-AppSupportURL=https://www.naps2.com/support
-AppUpdatesURL=https://www.naps2.com/download
+AppPublisherURL=https://www.upinblue.com
+AppSupportURL=https://www.upinblue.com/contact
+AppUpdatesURL=https://www.upinblue.com/download
 
 VersionInfoDescription={#AppShortName} installer
 VersionInfoVersion={#AppVersion}

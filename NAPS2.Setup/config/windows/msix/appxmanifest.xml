@@ -25,7 +25,7 @@
         <rescap:Capability Name="unvirtualizedResources" />
     </Capabilities>
     <Applications>
-        <Application Id="ScanMe" Executable="NAPS2.exe"
+        <Application Id="ScanMe" Executable="ScanMe.exe"
                      uap10:RuntimeBehavior="win32App"
                      uap10:TrustLevel="mediumIL">
             <uap3:VisualElements DisplayName="ScanMe"
@@ -36,7 +36,7 @@
             <Extensions>
                 <uap3:Extension Category="windows.appExecutionAlias">
                     <uap3:AppExecutionAlias>
-                        <uap8:ExecutionAlias Alias="NAPS2_Alias.exe" />
+                        <uap8:ExecutionAlias Alias="ScanMe_Alias.exe" />
                     </uap3:AppExecutionAlias>
                 </uap3:Extension>
                 <uap3:Extension Category="windows.fileTypeAssociation" EntryPoint="Windows.FullTrustApplication">
