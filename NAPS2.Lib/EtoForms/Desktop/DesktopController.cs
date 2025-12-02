@@ -539,6 +539,19 @@ public class DesktopController
         _suspended = false;
     }
 
+    public void PlaceholderUploadSharePoint()
+    {
+        if (!_imageList.Images.Any())
+        {
+            MessageBox.Show(_desktopFormProvider.DesktopForm, "There is nothing to upload.", "Upload to SharePoint",
+                MessageBoxButtons.OK, MessageBoxType.Warning);
+            return;
+        }
+        MessageBox.Show(_desktopFormProvider.DesktopForm,
+            "SharePoint upload is not implemented yet. Configure credentials in Profile Settings.",
+            "Upload to SharePoint", MessageBoxButtons.OK, MessageBoxType.Information);
+    }
+
     private class ProcessCoordinatorServiceImpl(DesktopController controller)
         : ProcessCoordinatorService.ProcessCoordinatorServiceBase
     {

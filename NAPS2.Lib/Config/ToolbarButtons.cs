@@ -23,5 +23,6 @@ public enum ToolbarButtons
     Settings = 1 << 16,
     About = 1 << 17,
     Donate = 1 << 18,
-    Sidebar = 1 << 19
+    Sidebar = 1 << 19,
+    UploadSharePoint = 1 << 20
 }

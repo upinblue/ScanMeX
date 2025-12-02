@@ -338,6 +338,11 @@ public class DesktopCommands
             Text = UiStrings.ToggleSidebar,
             IconName = "application_side_list_small"
         };
+        UploadSharePoint = new ActionCommand(() => desktopController.PlaceholderUploadSharePoint())
+        {
+            Text = "Upload to SharePoint",
+            IconName = "folder_picture" // temporary icon
+        };
     }
 
     public DesktopCommands WithSelection(Func<ListSelection<UiImage>> selectionFunc)
@@ -420,4 +425,5 @@ public class DesktopCommands
     public ActionCommand Undo { get; set; }
     public ActionCommand Redo { get; set; }
     public ActionCommand ToggleSidebar { get; set; }
+    public ActionCommand UploadSharePoint { get; set; }
 }

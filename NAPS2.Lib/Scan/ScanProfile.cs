@@ -26,6 +26,8 @@ public class ScanProfile
         BlankPageWhiteThreshold = 70;
         BlankPageCoverageThreshold = 15;
         WiaDelayBetweenScansSeconds = 2.0;
+        EnableSharePointUpload = false;
+        SharePointUploadSettings = new SharePointUploadSettings();
     }
 
     public ScanProfile Clone()
@@ -128,6 +130,16 @@ public class ScanProfile
     public bool FlipDuplexedPages { get; set; }
 
     public KeyValueScanOptions? KeyValueOptions { get; set; }
+
+    /// <summary>
+    /// Enables uploading the generated PDF(s) for this profile to SharePoint Online via Microsoft Graph (app-only).
+    /// </summary>
+    public bool EnableSharePointUpload { get; set; }
+
+    /// <summary>
+    /// Settings for SharePoint Online upload when <see cref="EnableSharePointUpload"/> is true.
+    /// </summary>
+    public SharePointUploadSettings SharePointUploadSettings { get; set; }
 }
 
 /// <summary>
@@ -139,6 +151,28 @@ public record AutoSaveSettings
     public bool PromptForFilePath { get; init; }
     public bool ClearImagesAfterSaving { get; init; }
     public SaveSeparator Separator { get; init; } = SaveSeparator.FilePerPage;
+}
+
+/// <summary>
+/// Configuration for SharePoint Online upload using Microsoft Graph client credentials.
+/// All fields are optional; if omitted, uploading will be skipped. The Azure AD (Entra ID)
+/// application must have appropriate Microsoft Graph application permissions (e.g. Sites.ReadWrite.All
+/// or Sites.Selected) granted by an administrator.
+/// </summary>
+public record SharePointUploadSettings
+{
+    /// <summary>Full https:// URL of the SharePoint site (e.g. https://tenant.sharepoint.com/sites/Invoices).</summary>
+    public string? SiteUrl { get; init; }
+    /// <summary>Document library display name or relative URL (e.g. "Shared Documents" or "Shared Documents/Invoices").</summary>
+    public string? LibraryNameOrPath { get; init; }
+    /// <summary>Optional folder path inside the library (e.g. "2025/12").</summary>
+    public string? FolderPath { get; init; }
+    /// <summary>Azure AD Tenant ID (GUID).</summary>
+    public string? TenantId { get; init; }
+    /// <summary>Azure AD Application (Client) ID.</summary>
+    public string? ClientId { get; init; }
+    /// <summary>Client secret for the App Registration (plain text for now; should be secured later).</summary>
+    public string? ClientSecret { get; init; }
 }
 
 /// <summary>

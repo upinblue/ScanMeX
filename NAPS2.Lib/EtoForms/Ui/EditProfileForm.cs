@@ -32,6 +32,15 @@ public class EditProfileForm : EtoDialogBase
     private readonly SliderWithTextBox _brightnessSlider = new();
     private readonly SliderWithTextBox _contrastSlider = new();
 
+    // SharePoint upload controls
+    private readonly CheckBox _enableSharePointUpload = new() { Text = "Enable SharePoint upload" };
+    private readonly TextBox _sharePointSiteUrl = new();
+    private readonly TextBox _sharePointLibraryPath = new();
+    private readonly TextBox _sharePointFolderPath = new();
+    private readonly TextBox _azureAdTenantId = new();
+    private readonly TextBox _azureAdClientId = new();
+    private readonly PasswordBox _azureAdClientSecret = new();
+
     private ScanProfile _scanProfile = null!;
     private bool _isDefault;
     private bool _result;
@@ -66,6 +75,8 @@ public class EditProfileForm : EtoDialogBase
         _enableAutoSave.CheckedChanged += EnableAutoSave_CheckedChanged;
         _autoSaveSettings.Click += AutoSaveSettings_LinkClicked;
         _advanced.Click += Advanced_Click;
+
+        _enableSharePointUpload.CheckedChanged += EnableSharePointUpload_CheckedChanged;
     }
 
     public void SetDevice(ScanDevice device)
@@ -130,6 +141,25 @@ public class EditProfileForm : EtoDialogBase
             L.Row(
                 _enableAutoSave,
                 _autoSaveSettings
+            ),
+            // SharePoint upload group
+            L.GroupBox(
+                "SharePoint Upload",
+                L.Column(
+                    _enableSharePointUpload,
+                    C.Label("SharePoint site URL"),
+                    _sharePointSiteUrl,
+                    C.Label("Document library / path"),
+                    _sharePointLibraryPath,
+                    C.Label("Folder path (optional)"),
+                    _sharePointFolderPath,
+                    C.Label("Azure AD Tenant ID"),
+                    _azureAdTenantId,
+                    C.Label("Azure AD Client ID"),
+                    _azureAdClientId,
+                    C.Label("Azure AD Client Secret"),
+                    _azureAdClientSecret
+                )
             ),
             C.Filler(),
             L.Row(
@@ -318,6 +348,17 @@ public class EditProfileForm : EtoDialogBase
         _nativeUi.Checked = ScanProfile.UseNativeUI;
         _predefinedSettings.Checked = !ScanProfile.UseNativeUI;
 
+        // SharePoint settings
+        _enableSharePointUpload.Checked = ScanProfile.EnableSharePointUpload;
+        _sharePointSiteUrl.Text = ScanProfile.SharePointUploadSettings.SiteUrl ?? "";
+        _sharePointLibraryPath.Text = ScanProfile.SharePointUploadSettings.LibraryNameOrPath ?? "";
+        _sharePointFolderPath.Text = ScanProfile.SharePointUploadSettings.FolderPath ?? "";
+        _azureAdTenantId.Text = ScanProfile.SharePointUploadSettings.TenantId ?? "";
+        _azureAdClientId.Text = ScanProfile.SharePointUploadSettings.ClientId ?? "";
+        _azureAdClientSecret.Text = ScanProfile.SharePointUploadSettings.ClientSecret ?? "";
+
+        UpdateSharePointControlsEnabled();
+
         // Start triggering onChange events again
         _suppressChangeEvent = false;
     }
@@ -334,6 +375,25 @@ public class EditProfileForm : EtoDialogBase
             _errorOutput.DisplayError(MiscResources.NoDeviceSelected);
             return false;
         }
+
+        // Basic validation for SharePoint settings when enabled
+        if (_enableSharePointUpload.IsChecked())
+        {
+            string site = _sharePointSiteUrl.Text.Trim();
+            if (!site.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                _errorOutput.DisplayError("SharePoint site URL must start with https://");
+                return false;
+            }
+            if (string.IsNullOrWhiteSpace(_azureAdTenantId.Text) ||
+                string.IsNullOrWhiteSpace(_azureAdClientId.Text) ||
+                string.IsNullOrWhiteSpace(_azureAdClientSecret.Text))
+            {
+                _errorOutput.DisplayError("Tenant ID, Client ID and Client Secret are required when SharePoint upload is enabled.");
+                return false;
+            }
+        }
+
         _result = true;
 
         if (ScanProfile.IsLocked)
@@ -397,7 +457,18 @@ public class EditProfileForm : EtoDialogBase
 
             ExcludeBlankPages = ScanProfile.ExcludeBlankPages,
             BlankPageWhiteThreshold = ScanProfile.BlankPageWhiteThreshold,
-            BlankPageCoverageThreshold = ScanProfile.BlankPageCoverageThreshold
+            BlankPageCoverageThreshold = ScanProfile.BlankPageCoverageThreshold,
+
+            EnableSharePointUpload = _enableSharePointUpload.IsChecked(),
+            SharePointUploadSettings = new SharePointUploadSettings
+            {
+                SiteUrl = _sharePointSiteUrl.Text.Trim(),
+                LibraryNameOrPath = _sharePointLibraryPath.Text.Trim(),
+                FolderPath = _sharePointFolderPath.Text.Trim(),
+                TenantId = _azureAdTenantId.Text.Trim(),
+                ClientId = _azureAdClientId.Text.Trim(),
+                ClientSecret = _azureAdClientSecret.Text
+            }
         };
     }
 
@@ -442,10 +513,29 @@ public class EditProfileForm : EtoDialogBase
 
             _advanced.Enabled = !locked;
 
+            // SharePoint controls
+            _enableSharePointUpload.Enabled = !locked;
+            UpdateSharePointControlsEnabled();
+
             _suppressChangeEvent = false;
         }
     }
 
+    private void UpdateSharePointControlsEnabled()
+    {
+        bool enabled = _enableSharePointUpload.IsChecked() && !_scanProfile.IsLocked;
+        _sharePointSiteUrl.Enabled = enabled;
+        _sharePointLibraryPath.Enabled = enabled;
+        _sharePointFolderPath.Enabled = enabled;
+        _azureAdTenantId.Enabled = enabled;
+        _azureAdClientId.Enabled = enabled;
+        _azureAdClientSecret.Enabled = enabled;
+    }
+
+    private void EnableSharePointUpload_CheckedChanged(object? sender, EventArgs e)
+    {
+        UpdateSharePointControlsEnabled();
+    }
 
     private void PaperSource_SelectedItemChanged(object? sender, EventArgs e)
     {

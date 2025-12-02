@@ -75,6 +75,7 @@ public class MacDesktopForm : DesktopForm
                         Commands.EmailAll,
                         Commands.EmailSelected,
                         Commands.Print,
+                        Commands.UploadSharePoint,
                         new SeparatorMenuItem(),
                         Commands.PdfSettings,
                         Commands.ImageSettings,
