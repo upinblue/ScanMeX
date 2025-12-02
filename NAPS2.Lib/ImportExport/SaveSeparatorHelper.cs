@@ -1,9 +1,12 @@
 ﻿using NAPS2.Scan;
+using NLog;
 
 namespace NAPS2.ImportExport;
 
 internal static class SaveSeparatorHelper
 {
+    private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
+
     /// <summary>
     /// Given a list of scans (each of which is a list of 1 or more images),
     /// split up the images into multiple lists as described by the SaveSeparator parameter.
@@ -88,15 +91,18 @@ internal static class SaveSeparatorHelper
             }
 
             var images = new List<ProcessedImage>();
+            int pageIndex = 0;
             foreach (var scan in scans)
             {
                 foreach (var image in scan)
                 {
+                    pageIndex++;
                     var barcode = image.PostProcessingData.Barcode;
-                    bool isCode39Separator = barcode.IsDetected &&
-                                             (regex == null || (barcode.DetectedText != null && regex.IsMatch(barcode.DetectedText)));
-                    if (isCode39Separator)
+                    bool candidate = barcode.IsDetected && barcode.DetectedText != null;
+                    bool matches = candidate && (regex == null || regex.IsMatch(barcode.DetectedText));
+                    if (matches)
                     {
+                        _logger.Debug($"Code39 separator detected on page {pageIndex} text='{barcode.DetectedText}' regex='{pattern ?? "<none>"}'");
                         image.Dispose();
                         if (images.Count > 0)
                         {
@@ -106,6 +112,10 @@ internal static class SaveSeparatorHelper
                     }
                     else
                     {
+                        if (candidate)
+                        {
+                            _logger.Debug($"Barcode detected but not separator on page {pageIndex} text='{barcode.DetectedText}' regex='{pattern ?? "<none>"}'");
+                        }
                         images.Add(image);
                     }
                 }

@@ -1,5 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Threading;
+using Microsoft.Extensions.Logging;
 using NAPS2.ImportExport;
 using NAPS2.Ocr;
 using NAPS2.Scan.Exceptions;
@@ -236,6 +237,8 @@ internal class ScanPerformer : IScanPerformer
     private ScanOptions BuildOptions(ScanProfile scanProfile, ScanParams scanParams, IntPtr dialogParent,
         bool isDeviceQuery)
     {
+        var separator = scanProfile.AutoSaveSettings?.Separator;
+
         var options = new ScanOptions
         {
             Driver = ParseDriver(scanProfile.DriverName),
@@ -277,9 +280,9 @@ internal class ScanPerformer : IScanPerformer
             ExcludeLocalIPs = true,
             BarcodeDetectionOptions =
             {
-                DetectBarcodes = scanParams.DetectPatchT ||
-                                 scanProfile.AutoSaveSettings?.Separator == SaveSeparator.PatchT,
-                PatchTOnly = true
+                DetectBarcodes = scanParams.DetectPatchT || separator is SaveSeparator.PatchT or SaveSeparator.Code39Barcode,
+                // We piggyback PatchTOnly to restrict to CODE_39 for both PatchT and Code39 separation
+                PatchTOnly = scanParams.DetectPatchT || separator is SaveSeparator.PatchT or SaveSeparator.Code39Barcode
             },
             OcrParams = scanParams.OcrParams ?? OcrParams.Empty,
             Brightness = scanProfile.Brightness,
@@ -306,6 +309,11 @@ internal class ScanPerformer : IScanPerformer
             Device = null, // Set after
             PageSize = null // Set after
         };
+
+        if (separator == SaveSeparator.Code39Barcode)
+        {
+            _scanningContext.Logger.LogDebug("Code39 separation enabled. Regex: {Regex}", scanProfile.AutoSaveSettings?.Code39SeparationPattern ?? "<none>");
+        }
 
         var pageDimensions = scanProfile.PageSize.PageDimensions() ?? scanProfile.CustomPageSize;
         if (pageDimensions == null)
