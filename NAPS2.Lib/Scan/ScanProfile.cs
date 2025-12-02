@@ -151,6 +151,8 @@ public record AutoSaveSettings
     public bool PromptForFilePath { get; init; }
     public bool ClearImagesAfterSaving { get; init; }
     public SaveSeparator Separator { get; init; } = SaveSeparator.FilePerPage;
+    // New: Optional regex for Code 39 barcode-based separation (used when Separator == SaveSeparator.Code39Barcode)
+    public string? Code39SeparationPattern { get; init; }
 }
 
 /// <summary>

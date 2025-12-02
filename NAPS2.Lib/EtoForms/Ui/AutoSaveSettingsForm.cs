@@ -3,6 +3,8 @@ using NAPS2.EtoForms.Layout;
 using NAPS2.EtoForms.Widgets;
 using NAPS2.ImportExport;
 using NAPS2.Scan;
+using System.Text.RegularExpressions;
+using Eto.Drawing;
 
 namespace NAPS2.EtoForms.Ui;
 
@@ -15,6 +17,10 @@ public class AutoSaveSettingsForm : EtoDialogBase
     private readonly RadioButton _filePerPage;
     private readonly RadioButton _filePerScan;
     private readonly RadioButton _separateByPatchT;
+    private readonly RadioButton _separateByCode39;
+    private readonly Label _code39RegexLabel = C.Label("Code 39 regex (optional):");
+    private readonly TextBox _code39Regex = new();
+    private readonly LayoutVisibility _code39RegexVis = new(false);
     private readonly CheckBox _clearAfterSaving = new() { Text = UiStrings.ClearAfterSaving };
 
     public AutoSaveSettingsForm(Naps2Config config, DialogHelper dialogHelper)
@@ -24,6 +30,15 @@ public class AutoSaveSettingsForm : EtoDialogBase
         _filePerPage = new() { Text = UiStrings.OneFilePerPage, Checked = true };
         _filePerScan = new(_filePerPage) { Text = UiStrings.OneFilePerScan };
         _separateByPatchT = new RadioButton(_filePerPage) { Text = UiStrings.SeparateByPatchT };
+        _separateByCode39 = new RadioButton(_filePerPage) { Text = "Separate by Code 39 barcode" };
+
+        // Make regex textbox large enough
+        _code39Regex.Size = new Size(320, -1);
+
+        _separateByPatchT.CheckedChanged += SeparationOption_CheckedChanged;
+        _separateByCode39.CheckedChanged += SeparationOption_CheckedChanged;
+        _filePerPage.CheckedChanged += SeparationOption_CheckedChanged;
+        _filePerScan.CheckedChanged += SeparationOption_CheckedChanged;
     }
 
     public ScanProfile? ScanProfile { get; set; }
@@ -45,10 +60,15 @@ public class AutoSaveSettingsForm : EtoDialogBase
             {
                 _separateByPatchT.Checked = true;
             }
+            else if (ScanProfile.AutoSaveSettings.Separator == SaveSeparator.Code39Barcode)
+            {
+                _separateByCode39.Checked = true;
+            }
             else
             {
                 _filePerPage.Checked = true;
             }
+            _code39Regex.Text = ScanProfile.AutoSaveSettings.Code39SeparationPattern ?? "";
         }
 
         Title = UiStrings.AutoSaveSettingsFormTitle;
@@ -64,6 +84,8 @@ public class AutoSaveSettingsForm : EtoDialogBase
             _filePerPage,
             _filePerScan,
             _separateByPatchT,
+            _separateByCode39,
+            L.Column(_code39RegexLabel, _code39Regex).Visible(_code39RegexVis),
             C.UrlLink(PATCH_CODE_INFO_URL, UiStrings.MoreInfo),
             C.Spacer(),
             C.Spacer(),
@@ -76,6 +98,21 @@ public class AutoSaveSettingsForm : EtoDialogBase
                     C.CancelButton(this))
             )
         );
+
+        UpdateRegexVisibility();
+    }
+
+    private void SeparationOption_CheckedChanged(object? sender, EventArgs e)
+    {
+        UpdateRegexVisibility();
+    }
+
+    private void UpdateRegexVisibility()
+    {
+        bool show = _separateByCode39.Checked;
+        _code39RegexVis.IsVisible = show;
+        _code39Regex.Enabled = show;
+        _code39RegexLabel.Enabled = show;
     }
 
     private bool Save()
@@ -87,13 +124,37 @@ public class AutoSaveSettingsForm : EtoDialogBase
         }
         var separator = _filePerScan.Checked ? SaveSeparator.FilePerScan
             : _separateByPatchT.Checked ? SaveSeparator.PatchT
+            : _separateByCode39.Checked ? SaveSeparator.Code39Barcode
             : SaveSeparator.FilePerPage;
+
+        // Minimal regex validation when Code39 selected and non-empty
+        string? regex = null;
+        if (separator == SaveSeparator.Code39Barcode)
+        {
+            var text = _code39Regex.Text?.Trim();
+            if (!string.IsNullOrEmpty(text))
+            {
+                try
+                {
+                    _ = new Regex(text);
+                    regex = text;
+                }
+                catch (Exception)
+                {
+                    MessageBox.Show(this, "Invalid Code 39 regex.", MessageBoxType.Error);
+                    _code39Regex.Focus();
+                    return false;
+                }
+            }
+        }
+
         ScanProfile!.AutoSaveSettings = new AutoSaveSettings
         {
             FilePath = _filePath.Text!,
             PromptForFilePath = _promptForFilePath.IsChecked(),
             ClearImagesAfterSaving = _clearAfterSaving.IsChecked(),
-            Separator = separator
+            Separator = separator,
+            Code39SeparationPattern = regex
         };
         Result = true;
         return true;
