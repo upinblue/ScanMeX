@@ -1,4 +1,6 @@
-﻿namespace NAPS2.ImportExport;
+﻿using NAPS2.Scan;
+
+namespace NAPS2.ImportExport;
 
 internal static class SaveSeparatorHelper
 {
@@ -67,6 +69,57 @@ internal static class SaveSeparatorHelper
             if (images.Count > 0)
             {
                 yield return images;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Extended separation that can use AutoSaveSettings, including Code39 regex-based separation.
+    /// </summary>
+    public static IEnumerable<List<ProcessedImage>> SeparateScans(IEnumerable<IEnumerable<ProcessedImage>> scans, AutoSaveSettings settings, int splitSize = 1)
+    {
+        if (settings.Separator == SaveSeparator.Code39Barcode)
+        {
+            var pattern = settings.Code39SeparationPattern;
+            System.Text.RegularExpressions.Regex? regex = null;
+            if (!string.IsNullOrEmpty(pattern))
+            {
+                try { regex = new System.Text.RegularExpressions.Regex(pattern!); } catch { regex = null; }
+            }
+
+            var images = new List<ProcessedImage>();
+            foreach (var scan in scans)
+            {
+                foreach (var image in scan)
+                {
+                    var barcode = image.PostProcessingData.Barcode;
+                    bool isCode39Separator = barcode.IsDetected &&
+                                             (regex == null || (barcode.DetectedText != null && regex.IsMatch(barcode.DetectedText)));
+                    if (isCode39Separator)
+                    {
+                        image.Dispose();
+                        if (images.Count > 0)
+                        {
+                            yield return images;
+                            images = [];
+                        }
+                    }
+                    else
+                    {
+                        images.Add(image);
+                    }
+                }
+            }
+            if (images.Count > 0)
+            {
+                yield return images;
+            }
+        }
+        else
+        {
+            foreach (var group in SeparateScans(scans, settings.Separator, splitSize))
+            {
+                yield return group;
             }
         }
     }

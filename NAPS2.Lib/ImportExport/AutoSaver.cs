@@ -78,7 +78,8 @@ public class AutoSaver
             var placeholders = Placeholders.All.WithDate(DateTime.Now);
             int i = 0;
             string? firstFileSaved = null;
-            var scans = SaveSeparatorHelper.SeparateScans(new[] { images }, settings.Separator).ToList();
+            // Use extended separator that supports Code39 with regex
+            var scans = SaveSeparatorHelper.SeparateScans(new[] { images }, settings).ToList();
             foreach (var imagesToSave in scans)
             {
                 (bool success, string? filePath) =
