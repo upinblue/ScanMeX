@@ -8,7 +8,7 @@
     <summary>Scan documents to PDF and more, as simply as possible.</summary>
     <description>
         <p>
-            NAPS2 on Linux allows you to scan from USB (using SANE) and network scanners. Use your chosen settings, or
+            ScanMe on Linux allows you to scan from USB (using SANE) and network scanners. Use your chosen settings, or
             set up multiple profiles for different devices and configurations. Once you've finished scanning, you can
             save, email, or print with only a couple clicks. Save to PDF, TIFF, JPEG, PNG, or other file types.
         </p>
@@ -19,17 +19,17 @@
             tasks.
         </p>
         <p>
-            NAPS2 is available on Windows, Mac, and Linux. Share your scanners over the network so you can use them
-            across devices and operating systems.
+          ScanMe is available on Windows, Mac, and Linux. Share your scanners over the network so you can use them
+          across devices and operating systems.
         </p>
     </description>
-    <url type="homepage">https://www.naps2.com</url>
-    <url type="bugtracker">https://github.com/cyanfish/naps2/issues</url>
-    <url type="help">https://www.naps2.com/support</url>
-    <url type="contribute">https://www.naps2.com/contribute</url>
-    <url type="donation">https://www.naps2.com/donate</url>
+    <url type="homepage">https://www.upinblue.com</url>
+    <url type="bugtracker">https://github.com/upinblue/ScanMeX/issues</url>
+    <url type="help">https://www.upinblue.com/contact</url>
+    <url type="contribute">https://www.upinblue.com/contact</url>
+    <url type="donation">https://www.upinblue.com/contact</url>
     <url type="translate">https://translate.naps2.com</url>
-    <developer_name>Ben Olden-Cooligan</developer_name>
+    <developer_name>up in blue GmbH</developer_name>
 
     <launchable type="desktop-id">com.naps2.Naps2.desktop</launchable>
     <provides>

@@ -99,7 +99,6 @@ public class DesktopController
         InitThumbnailRendering();
         await RunStillImageEvents();
         SetFirstRunDate();
-        ShowDonationOrReviewPrompt();
         ShowUpdatePrompt();
     }
 
@@ -118,19 +117,7 @@ public class DesktopController
             _notify.ReviewPrompt();
         }
 #endif
-        // Show a donation prompt after a month of use
-#if !MSI
-        if (!_config.Get(c => c.HiddenButtons).HasFlag(ToolbarButtons.Donate) &&
-            !_config.Get(c => c.HasBeenPromptedForDonation) &&
-            DateTime.Now - _config.Get(c => c.FirstRunDate) > TimeSpan.FromDays(30))
-        {
-            var transact = _config.User.BeginTransaction();
-            transact.Set(c => c.HasBeenPromptedForDonation, true);
-            transact.Set(c => c.LastDonatePromptDate, DateTime.Now);
-            transact.Commit();
-            _notify.DonatePrompt();
-        }
-#endif
+        // Donation prompt disabled
     }
 
     private void ShowUpdatePrompt()
