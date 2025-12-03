@@ -1,3 +1,5 @@
+ScanMe is a fork of the open-source project NAPS2, © NAPS2 authors, licensed under GPL-2.0.
+
 # NAPS2.Sdk
 
 [![NuGet](https://img.shields.io/nuget/v/NAPS2.Sdk)](https://www.nuget.org/packages/NAPS2.Sdk/)

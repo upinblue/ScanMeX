@@ -4,10 +4,10 @@
         <PackageVersion>1.2.1</PackageVersion>
 
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <Authors>Ben Olden-Cooligan</Authors>
-        <Company>NAPS2 Software</Company>
+        <Authors>up in blue GmbH</Authors>
+        <Company>up in blue GmbH</Company>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
-        <RepositoryUrl>https://github.com/cyanfish/naps2</RepositoryUrl>
+        <RepositoryUrl>https://github.com/upinblue/ScanMeX</RepositoryUrl>
         <PackageProjectUrl>https://www.naps2.com/sdk</PackageProjectUrl>
         <RepositoryType>git</RepositoryType>
     </PropertyGroup>
