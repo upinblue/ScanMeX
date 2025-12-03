@@ -54,9 +54,12 @@ public static class WindowsSigning
         }
     }
 
+    private const string SignToolPath = 
+    @"C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\x64\signtool.exe";
+
     public static void SignFile(string path)
     {
-        Cli.Run("signtool",
+        Cli.Run(SignToolPath,
             $"sign /tr http://timestamp.globalsign.com/tsa/r6advanced1 /td sha256 /fd sha256 /a \"{path}\"");
     }
 }
