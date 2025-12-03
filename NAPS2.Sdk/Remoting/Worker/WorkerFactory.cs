@@ -24,11 +24,6 @@ internal class WorkerFactory : IWorkerFactory
 #if NET6_0_OR_GREATER
         if (OperatingSystem.IsMacOS())
         {
-            // The intended way to load sane dependencies (libusb, libjpeg) is by enumerating SaneLibraryDeps and for
-            // each, calling dlopen. Then when we load sane it will use those loaded libraries.
-            // However, while that works on my arm64 macOS 13, it doesn't on my x64 macOS 10.15. I'm not sure why.
-            // But setting DYLD_LIBRARY_PATH on the sane worker process does work.
-            // TODO: This means there may be some cases where in-process sane won't work, which could affect SDK users.
             var sanePath = NativeLibrary.FindLibraryPath(PlatformCompat.System.SaneLibraryName);
             if (sanePath.Contains('/'))
             {
@@ -40,16 +35,37 @@ internal class WorkerFactory : IWorkerFactory
             return new WorkerFactory(Environment.ProcessPath!, null, env);
         }
 #endif
-        var exePath = Path.Combine(AssemblyHelper.EntryFolder, "NAPS2.exe");
-        string[] candidateWorkerPaths =
+        // Determine entry exe and worker exe names dynamically to support branding/assembly renames
+        var entryExeName = Path.GetFileName(AssemblyHelper.EntryFile);
+        var entryFolder = AssemblyHelper.EntryFolder;
+
+        // Common worker exe name candidates (support original and branded names)
+        string[] workerNames =
+        {
+            "NAPS2.Worker.exe",
+            "ScanMe.Worker.exe",
+            // Fallback to pattern based on entry assembly name prefix
+            Path.GetFileNameWithoutExtension(entryExeName) + ".Worker.exe"
+        };
+
+        // Candidate paths for native worker executable
+        var exePath = Path.Combine(entryFolder, entryExeName);
+        var candidateWorkerPaths = new List<string>
         {
 #if DEBUG
-            Path.Combine(AssemblyHelper.EntryFolder,
-                @"..\..\..\..\..\NAPS2.App.Worker\bin\Debug\net9-windows\win-x86\NAPS2.Worker.exe"),
+            Path.Combine(entryFolder,
+                @"..\..\..\..\..\NAPS2.App.Worker\bin\Debug\net9.0-windows\win-x86\NAPS2.Worker.exe"),
+            Path.Combine(entryFolder,
+                @"..\..\..\..\..\NAPS2.App.Worker\bin\Debug\net9.0-windows\win-x86\ScanMe.Worker.exe"),
 #endif
-            Path.Combine(AssemblyHelper.EntryFolder, "NAPS2.Worker.exe"),
-            Path.Combine(AssemblyHelper.EntryFolder, "lib", "NAPS2.Worker.exe")
         };
+        // Add worker names in common locations
+        foreach (var name in workerNames)
+        {
+            candidateWorkerPaths.Add(Path.Combine(entryFolder, name));
+            candidateWorkerPaths.Add(Path.Combine(entryFolder, "lib", name));
+        }
+
         string workerExePath = "";
         foreach (var candidateWorkerPath in candidateWorkerPaths)
         {
@@ -124,8 +140,6 @@ internal class WorkerFactory : IWorkerFactory
             }
         }
 
-        // TODO: Since we set RedirectStandardOutput, we should consume stdout to prevent the buffer from filling up and
-        // stalling the worker process
         var readyStr = proc.StandardOutput.ReadLine();
         if (readyStr?.Trim() == "error")
         {
