@@ -1,0 +1,13 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8;net462</TargetFrameworks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="lib\winarm\" />
+  </ItemGroup>
+
+  <Import Project="..\ScanMe.Setup\targets\CommonTargets.targets" />
+  
+</Project>
