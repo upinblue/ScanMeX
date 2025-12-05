@@ -35,6 +35,13 @@ public class WinFormsEtoPlatform : EtoPlatform
 #pragma warning disable WFO5001
         WF.Application.SetColorMode(ColorScheme.DarkMode ? WF.SystemColorMode.Dark : WF.SystemColorMode.Classic);
 #pragma warning restore WFO5001
+
+        // ToolStrip renderer with borderless, flat style
+        WF.ToolStripManager.Renderer = new WF.ToolStripProfessionalRenderer(new WF.ProfessionalColorTable
+        {
+            UseSystemColors = true
+        });
+
         return new Application(Eto.Platforms.WinForms);
     }
 
@@ -49,6 +56,8 @@ public class WinFormsEtoPlatform : EtoPlatform
             var native = (WF.Button) button.ToNative();
             native.TextImageRelation = WF.TextImageRelation.Overlay;
             native.ImageAlign = SD.ContentAlignment.MiddleCenter;
+            native.FlatStyle = WF.FlatStyle.Flat;
+            native.BackColor = ColorScheme.BackgroundColor.ToSD();
             return;
         }
 
@@ -61,6 +70,8 @@ public class WinFormsEtoPlatform : EtoPlatform
             native.TextImageRelation = largeText ? WF.TextImageRelation.ImageBeforeText : WF.TextImageRelation.Overlay;
             native.ImageAlign = SD.ContentAlignment.MiddleLeft;
             native.TextAlign = largeText ? SD.ContentAlignment.MiddleLeft : SD.ContentAlignment.MiddleRight;
+            native.FlatStyle = WF.FlatStyle.Flat;
+            native.BackColor = ColorScheme.BackgroundColor.ToSD();
 
             if (largeText)
             {
@@ -266,6 +277,9 @@ public class WinFormsEtoPlatform : EtoPlatform
         form.RightToLeftLayout = isRtl;
 
         form.DpiChanged += (_, _) => (window as IFormBase)?.LayoutController.Invalidate();
+
+        // Set background color to scheme to reduce classic gray
+        form.BackColor = ColorScheme.BackgroundColor.ToSD();
     }
 
     public override float GetScaleFactor(Window window)

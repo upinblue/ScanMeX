@@ -123,5 +123,8 @@
       <LastGenOutput>UiStrings.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="EtoForms\Styling\" />
+  </ItemGroup>
   
 </Project>
