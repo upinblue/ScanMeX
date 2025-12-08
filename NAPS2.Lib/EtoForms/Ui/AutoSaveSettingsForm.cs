@@ -22,6 +22,8 @@ public class AutoSaveSettingsForm : EtoDialogBase
     private readonly TextBox _code39Regex = new();
     private readonly LayoutVisibility _code39RegexVis = new(false);
     private readonly CheckBox _clearAfterSaving = new() { Text = UiStrings.ClearAfterSaving };
+    // New: Upload to SharePoint toggle for auto-saved document
+    private readonly CheckBox _uploadToSharePoint = new() { Text = "Upload auto-saved document to SharePoint" };
 
     public AutoSaveSettingsForm(Naps2Config config, DialogHelper dialogHelper)
         : base(config)
@@ -69,6 +71,8 @@ public class AutoSaveSettingsForm : EtoDialogBase
                 _filePerPage.Checked = true;
             }
             _code39Regex.Text = ScanProfile.AutoSaveSettings.Code39SeparationPattern ?? "";
+            // Initialize upload checkbox from model
+            _uploadToSharePoint.Checked = ScanProfile.AutoSaveSettings.UploadToSharePoint;
         }
 
         Title = UiStrings.AutoSaveSettingsFormTitle;
@@ -90,6 +94,8 @@ public class AutoSaveSettingsForm : EtoDialogBase
             C.Spacer(),
             C.Spacer(),
             _clearAfterSaving,
+            // New checkbox for uploading to SharePoint
+            _uploadToSharePoint,
             C.Filler(),
             L.Row(
                 C.Filler(),
@@ -100,6 +106,7 @@ public class AutoSaveSettingsForm : EtoDialogBase
         );
 
         UpdateRegexVisibility();
+        UpdateUploadCheckboxEnabled();
     }
 
     private void SeparationOption_CheckedChanged(object? sender, EventArgs e)
@@ -113,6 +120,17 @@ public class AutoSaveSettingsForm : EtoDialogBase
         _code39RegexVis.IsVisible = show;
         _code39Regex.Enabled = show;
         _code39RegexLabel.Enabled = show;
+    }
+
+    // Ensure the upload checkbox is enabled only when Auto Save is enabled in the parent form/profile
+    private void UpdateUploadCheckboxEnabled()
+    {
+        bool enabled = ScanProfile?.EnableAutoSave == true;
+        _uploadToSharePoint.Enabled = enabled;
+        if (!enabled)
+        {
+            _uploadToSharePoint.Checked = false;
+        }
     }
 
     private bool Save()
@@ -154,7 +172,8 @@ public class AutoSaveSettingsForm : EtoDialogBase
             PromptForFilePath = _promptForFilePath.IsChecked(),
             ClearImagesAfterSaving = _clearAfterSaving.IsChecked(),
             Separator = separator,
-            Code39SeparationPattern = regex
+            Code39SeparationPattern = regex,
+            UploadToSharePoint = _uploadToSharePoint.IsChecked()
         };
         Result = true;
         return true;

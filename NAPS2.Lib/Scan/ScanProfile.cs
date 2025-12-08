@@ -153,6 +153,9 @@ public record AutoSaveSettings
     public SaveSeparator Separator { get; init; } = SaveSeparator.FilePerPage;
     // New: Optional regex for Code 39 barcode-based separation (used when Separator == SaveSeparator.Code39Barcode)
     public string? Code39SeparationPattern { get; init; }
+    // New: When true, also upload the auto-saved PDF to SharePoint using the same filename.
+    // Default is false for backward compatibility.
+    public bool UploadToSharePoint { get; init; }
 }
 
 /// <summary>
