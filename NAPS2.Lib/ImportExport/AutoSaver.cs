@@ -3,6 +3,7 @@ using NAPS2.EtoForms.Notifications;
 using NAPS2.ImportExport.Images;
 using NAPS2.Pdf;
 using NAPS2.Scan;
+using NAPS2.SharePoint;
 
 namespace NAPS2.ImportExport;
 
@@ -17,6 +18,7 @@ public class AutoSaver
     private readonly Naps2Config _config;
     private readonly ImageContext _imageContext;
     private readonly UiImageList _imageList;
+    private readonly SharePointUploadService _sharePointUploadService = new();
 
     public AutoSaver(ErrorOutput errorOutput, DialogHelper dialogHelper,
         OperationProgress operationProgress, ISaveNotify notify, PdfExporter pdfExporter,
@@ -154,6 +156,23 @@ public class AutoSaver
             {
                 _notify.PdfSaved(subPath);
             }
+
+            // After successful local save, optionally upload to SharePoint
+            if (success && settings.UploadToSharePoint)
+            {
+                try
+                {
+                    var fileName = Path.GetFileName(subPath);
+                    var profile = new ScanProfile { AutoSaveSettings = settings };
+                    await _sharePointUploadService.UploadFileAsync(profile, subPath, fileName);
+                }
+                catch (Exception ex)
+                {
+                    // Do not interrupt auto-save; just show a friendly error
+                    _errorOutput.DisplayError($"Auto Save succeeded, but SharePoint upload failed: {ex.Message}");
+                }
+            }
+
             return (success, subPath);
         }
         else
