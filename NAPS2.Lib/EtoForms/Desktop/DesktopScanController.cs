@@ -32,6 +32,8 @@ public class DesktopScanController : IDesktopScanController
         _thumbnailController = thumbnailController;
     }
 
+    public ScanProfile? DefaultProfile => _profileManager.DefaultProfile;
+
     private ScanParams DefaultScanParams() =>
         new()
         {

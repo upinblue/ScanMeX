@@ -20,6 +20,9 @@ public class AutoSaver
     private readonly UiImageList _imageList;
     private readonly SharePointUploadService _sharePointUploadService = new();
 
+    // The active ScanProfile associated with the current auto-save session.
+    public ScanProfile? ActiveProfile { get; set; }
+
     public AutoSaver(ErrorOutput errorOutput, DialogHelper dialogHelper,
         OperationProgress operationProgress, ISaveNotify notify, PdfExporter pdfExporter,
         IOverwritePrompt overwritePrompt, Naps2Config config, ImageContext imageContext, UiImageList imageList)
@@ -33,6 +36,13 @@ public class AutoSaver
         _config = config;
         _imageContext = imageContext;
         _imageList = imageList;
+    }
+
+    // Overload: pass the ScanProfile explicitly, ensuring SharePoint settings are available.
+    public IAsyncEnumerable<ProcessedImage> Save(ScanProfile profile, AutoSaveSettings settings, IAsyncEnumerable<ProcessedImage> images)
+    {
+        ActiveProfile = profile;
+        return Save(settings, images);
     }
 
     public IAsyncEnumerable<ProcessedImage> Save(AutoSaveSettings settings, IAsyncEnumerable<ProcessedImage> images)
@@ -157,18 +167,16 @@ public class AutoSaver
                 _notify.PdfSaved(subPath);
             }
 
-            // After successful local save, optionally upload to SharePoint
-            if (success && settings.UploadToSharePoint)
+            // After successful local save, optionally upload to SharePoint using the active profile.
+            if (success && ActiveProfile?.EnableSharePointUpload == true && ActiveProfile.SharePointUploadSettings != null)
             {
                 try
                 {
                     var fileName = Path.GetFileName(subPath);
-                    var profile = new ScanProfile { AutoSaveSettings = settings };
-                    await _sharePointUploadService.UploadFileAsync(profile, subPath, fileName);
+                    await _sharePointUploadService.UploadFileAsync(ActiveProfile.SharePointUploadSettings, subPath, fileName);
                 }
                 catch (Exception ex)
                 {
-                    // Do not interrupt auto-save; just show a friendly error
                     _errorOutput.DisplayError($"Auto Save succeeded, but SharePoint upload failed: {ex.Message}");
                 }
             }

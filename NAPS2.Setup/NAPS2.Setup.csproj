@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <TargetFrameworks>net8;net462</TargetFrameworks>
+    <Version>1.0.0.100</Version>
   </PropertyGroup>
 
   <ItemGroup>

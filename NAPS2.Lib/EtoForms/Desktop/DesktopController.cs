@@ -12,6 +12,8 @@ using NAPS2.Remoting;
 using NAPS2.Remoting.Server;
 using NAPS2.Scan;
 using NAPS2.Update;
+using NAPS2.SharePoint;
+using NAPS2.Pdf;
 
 namespace NAPS2.EtoForms.Desktop;
 
@@ -526,7 +528,7 @@ public class DesktopController
         _suspended = false;
     }
 
-    public void PlaceholderUploadSharePoint()
+    public async void PlaceholderUploadSharePoint()
     {
         if (!_imageList.Images.Any())
         {
@@ -534,9 +536,51 @@ public class DesktopController
                 MessageBoxButtons.OK, MessageBoxType.Warning);
             return;
         }
-        MessageBox.Show(_desktopFormProvider.DesktopForm,
-            "SharePoint upload is not implemented yet. Configure credentials in Profile Settings.",
-            "Upload to SharePoint", MessageBoxButtons.OK, MessageBoxType.Information);
+
+        var profile = _desktopScanController.DefaultProfile ?? _config.DefaultProfileSettings();
+        // Proceed with whatever settings are present; the service will validate completeness.
+
+        // Prefer auto-saved PDF path if configured
+        var auto = profile.AutoSaveSettings;
+        string? pdfPath = null;
+        if (auto != null)
+        {
+            var placeholders = Placeholders.All.WithDate(DateTime.Now);
+            var subPath = placeholders.Substitute(auto.FilePath, true, 0);
+            if (string.Equals(Path.GetExtension(subPath), ".pdf", StringComparison.InvariantCultureIgnoreCase)
+                && File.Exists(subPath))
+            {
+                pdfPath = subPath;
+            }
+        }
+
+        try
+        {
+            // If no existing auto-saved PDF, export current images to a temp PDF
+            if (pdfPath == null)
+            {
+                var tempDir = Path.GetTempPath();
+                var tempName = $"ScanMe_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
+                pdfPath = Path.Combine(tempDir, tempName);
+
+                using var imagesToSave = _imageList.Images.Select(x => x.GetClonedImage()).ToDisposableList();
+                var exporter = new PdfExporter(_scanningContext);
+                await exporter.Export(pdfPath, imagesToSave.InnerList);
+            }
+
+            var uploader = new SharePointUploadService();
+            var fileName = Path.GetFileName(pdfPath);
+            await uploader.UploadFileAsync(profile.SharePointUploadSettings, pdfPath, fileName);
+            MessageBox.Show(_desktopFormProvider.DesktopForm,
+                "Uploaded to SharePoint.",
+                "Upload to SharePoint", MessageBoxButtons.OK, MessageBoxType.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(_desktopFormProvider.DesktopForm,
+                $"SharePoint upload failed: {ex.Message}",
+                "Upload to SharePoint", MessageBoxButtons.OK, MessageBoxType.Error);
+        }
     }
 
     private class ProcessCoordinatorServiceImpl(DesktopController controller)
