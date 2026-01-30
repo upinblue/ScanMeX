@@ -570,10 +570,19 @@ public class DesktopController
 
             var uploader = new SharePointUploadService();
             var fileName = Path.GetFileName(pdfPath);
-            await uploader.UploadFileAsync(profile.SharePointUploadSettings, pdfPath, fileName);
-            MessageBox.Show(_desktopFormProvider.DesktopForm,
-                "Uploaded to SharePoint.",
-                "Upload to SharePoint", MessageBoxButtons.OK, MessageBoxType.Information);
+            // Show modal progress like scan/OCR
+            var uploadOp = new UploadSharePointOperation(uploader);
+            if (uploadOp.Start(profile.SharePointUploadSettings, pdfPath, fileName))
+            {
+                _operationProgress.ShowProgress(uploadOp);
+                var ok = await uploadOp.Success;
+                if (ok)
+                {
+                    MessageBox.Show(_desktopFormProvider.DesktopForm,
+                        "Uploaded to SharePoint.",
+                        "Upload to SharePoint", MessageBoxButtons.OK, MessageBoxType.Information);
+                }
+            }
         }
         catch (Exception ex)
         {

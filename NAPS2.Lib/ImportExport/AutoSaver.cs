@@ -173,7 +173,13 @@ public class AutoSaver
                 try
                 {
                     var fileName = Path.GetFileName(subPath);
-                    await _sharePointUploadService.UploadFileAsync(ActiveProfile.SharePointUploadSettings, subPath, fileName);
+                    var uploader = new SharePointUploadService();
+                    var uploadOp = new UploadSharePointOperation(uploader);
+                    if (uploadOp.Start(ActiveProfile.SharePointUploadSettings, subPath, fileName))
+                    {
+                        _operationProgress.ShowProgress(uploadOp);
+                        await uploadOp.Success;
+                    }
                 }
                 catch (Exception ex)
                 {
