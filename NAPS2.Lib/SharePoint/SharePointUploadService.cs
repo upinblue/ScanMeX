@@ -90,6 +90,30 @@ public class SharePointUploadService
         return $"{status} at {endpoint}. Details: {details}";
     }
 
+    private static string? CombineFolders(params string?[] parts)
+    {
+        var segments = new List<string>();
+        foreach (var p in parts)
+        {
+            if (string.IsNullOrWhiteSpace(p)) continue;
+            foreach (var seg in p.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var s = seg.Trim();
+                if (s.Length > 0) segments.Add(s);
+            }
+        }
+        return segments.Count == 0 ? null : string.Join('/', segments);
+    }
+
+    private static string EncodePath(string path)
+    {
+        if (string.IsNullOrEmpty(path)) return string.Empty;
+        var encoded = string.Join('/', path.Split('/')
+            .Where(s => !string.IsNullOrEmpty(s))
+            .Select(s => Uri.EscapeDataString(s)));
+        return encoded;
+    }
+
     private async Task UploadCoreAsync(
         SharePointUploadSettings sp,
         string localFilePath,
@@ -151,6 +175,18 @@ public class SharePointUploadService
         Debug.WriteLine($"[SP] Site resolved. siteId='{siteId}'");
         Report(30);
 
+        // Parse library and optional subpath from LibraryNameOrPath
+        var libInput = sp.LibraryNameOrPath!.Trim().Trim('/');
+        string libraryName = libInput;
+        string? librarySubPath = null;
+        var slashIdx = libInput.IndexOf('/');
+        if (slashIdx >= 0)
+        {
+            libraryName = libInput.Substring(0, slashIdx).Trim();
+            librarySubPath = libInput.Substring(slashIdx + 1).Trim('/');
+        }
+        Debug.WriteLine($"[SP] Parsed library='{libraryName}', librarySubPath='{librarySubPath ?? ""}'");
+
         // Resolve drive (document library)
         var drivesEndpoint = $"https://graph.microsoft.com/v1.0/sites/{siteId}/drives";
         Debug.WriteLine("[SP] Listing document libraries...");
@@ -163,28 +199,87 @@ public class SharePointUploadService
         }
         using var drivesJson = JsonDocument.Parse(await drivesResp.Content.ReadAsStringAsync(cancellationToken));
         string? driveId = null;
-        foreach (var drive in drivesJson.RootElement.GetProperty("value").EnumerateArray())
+        string? driveName = null;
+        string? driveWebUrl = null;
+
+        var drives = drivesJson.RootElement.GetProperty("value").EnumerateArray().ToList();
+        foreach (var drive in drives)
         {
             var name = drive.TryGetProperty("name", out var nProp) ? nProp.GetString() : null;
             var webUrl = drive.TryGetProperty("webUrl", out var wProp) ? wProp.GetString() : null;
-            if (string.Equals(name, sp.LibraryNameOrPath, StringComparison.OrdinalIgnoreCase) ||
-                (webUrl != null && webUrl.Contains(sp.LibraryNameOrPath!, StringComparison.OrdinalIgnoreCase)))
+
+            bool match = false;
+            if (!string.IsNullOrEmpty(name) && string.Equals(name, libraryName, StringComparison.OrdinalIgnoreCase))
+            {
+                match = true;
+            }
+            else if (!string.IsNullOrEmpty(webUrl))
+            {
+                try
+                {
+                    var wuri = new Uri(webUrl);
+                    var lastSeg = wuri.Segments.Length > 0 ? wuri.Segments[^1].Trim('/') : string.Empty;
+                    var decodedLast = Uri.UnescapeDataString(lastSeg);
+                    if (string.Equals(decodedLast, libraryName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        match = true;
+                    }
+                }
+                catch { /* ignore parsing issues */ }
+            }
+
+            if (match)
             {
                 driveId = drive.GetProperty("id").GetString();
+                driveName = name;
+                driveWebUrl = webUrl;
                 break;
             }
         }
-        driveId ??= drivesJson.RootElement.GetProperty("value").EnumerateArray().FirstOrDefault().GetProperty("id").GetString();
-        Debug.WriteLine($"[SP] DriveId selected='{driveId}'");
+
+        if (string.IsNullOrEmpty(driveId))
+        {
+            if (drives.Count == 1)
+            {
+                // Fall back to the only drive
+                var drive = drives[0];
+                driveId = drive.GetProperty("id").GetString();
+                driveName = drive.TryGetProperty("name", out var n) ? n.GetString() : null;
+                driveWebUrl = drive.TryGetProperty("webUrl", out var w) ? w.GetString() : null;
+                Debug.WriteLine($"[SP] Library '{libraryName}' not found. Defaulting to the only available library: '{driveName}' ({driveWebUrl})");
+            }
+            else if (drives.Count > 1)
+            {
+                // Keep previous behavior (first drive), but log all available to help troubleshoot
+                var first = drives.FirstOrDefault();
+                if (first.ValueKind != JsonValueKind.Undefined)
+                {
+                    driveId = first.GetProperty("id").GetString();
+                    driveName = first.TryGetProperty("name", out var n) ? n.GetString() : null;
+                    driveWebUrl = first.TryGetProperty("webUrl", out var w) ? w.GetString() : null;
+                }
+                var available = string.Join(", ", drives.Select(d =>
+                {
+                    var n = d.TryGetProperty("name", out var np) ? np.GetString() : "?";
+                    var w = d.TryGetProperty("webUrl", out var wp) ? wp.GetString() : "?";
+                    return $"{n} ({w})";
+                }));
+                Debug.WriteLine($"[SP] Library '{libraryName}' not matched. Falling back to first: '{driveName}'. Available libraries: {available}");
+            }
+        }
+
+        Debug.WriteLine($"[SP] Drive selected id='{driveId}', name='{driveName}', webUrl='{driveWebUrl}'");
         if (string.IsNullOrEmpty(driveId))
         {
             throw new InvalidOperationException("Could not resolve target document library.");
         }
         Report(40);
 
-        // Determine folder segment
-        string folderSegment = string.IsNullOrWhiteSpace(sp.FolderPath) ? "root" : $"root:/{sp.FolderPath!.Trim('/')}";
-        string uploadUrl = $"https://graph.microsoft.com/v1.0/sites/{siteId}/drives/{driveId}/{folderSegment}:/{fileName}:/content";
+        // Determine folder segment combining library subpath and configured folder path
+        var combinedFolder = CombineFolders(librarySubPath, sp.FolderPath);
+        string folderSegment = string.IsNullOrWhiteSpace(combinedFolder) ? "root" : $"root:/{EncodePath(combinedFolder!)}";
+        var encodedFileName = Uri.EscapeDataString(fileName);
+        string uploadUrl = $"https://graph.microsoft.com/v1.0/sites/{siteId}/drives/{driveId}/{folderSegment}:/{encodedFileName}:/content";
         Debug.WriteLine($"[SP] Upload URL: {uploadUrl}");
 
         using var fs = File.OpenRead(localFilePath);
@@ -201,7 +296,23 @@ public class SharePointUploadService
             Debug.WriteLine($"[SP] Upload failed: {msg}");
             throw new InvalidOperationException($"SharePoint upload failed: {msg}");
         }
-        Debug.WriteLine("[SP] Upload succeeded");
+
+        string? itemWebUrl = null;
+        try
+        {
+            using var putJson = JsonDocument.Parse(await putResp.Content.ReadAsStringAsync(cancellationToken));
+            itemWebUrl = putJson.RootElement.TryGetProperty("webUrl", out var w) ? w.GetString() : null;
+        }
+        catch { /* ignore parse */ }
+
+        if (!string.IsNullOrEmpty(itemWebUrl))
+        {
+            Debug.WriteLine($"[SP] Upload succeeded. Item webUrl: {itemWebUrl}");
+        }
+        else
+        {
+            Debug.WriteLine("[SP] Upload succeeded");
+        }
 
         progress?.Report(100);
     }
