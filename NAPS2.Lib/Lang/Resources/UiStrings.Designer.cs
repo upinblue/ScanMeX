@@ -547,7 +547,7 @@ namespace NAPS2.Lang.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Copyright {0} NAPS2 Contributors.
+        ///   Looks up a localized string similar to Copyright {0} up in blue GmbH.
         /// </summary>
         internal static string CopyrightFormat {
             get {
