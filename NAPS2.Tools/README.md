@@ -1,8 +1,8 @@
-ScanMe is a fork of the open-source project NAPS2, © NAPS2 authors, licensed under GPL-2.0.
+ScanMe is a fork of the open-source project NAPS2, © ScanMe authors, licensed under GPL-2.0.
 
 # NAPS2.Tools
 
-Tools for NAPS2 building, testing, packaging, verification, etc.
+Tools for ScanMe building, testing, packaging, verification, etc.
 
 ## Quickstart
 

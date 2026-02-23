@@ -69,7 +69,7 @@ public class GtkEtoPlatform : EtoPlatform
 
     public override void SetFrame(Control container, Control control, Point location, Size size, bool inOverlay)
     {
-        // TODO: Getting some errors when starting naps2 with the sidebar hidden then trying to show it
+        // TODO: Getting some errors when starting ScanMe with the sidebar hidden then trying to show it
         if (location.X < 0 || location.Y < 0) throw new InvalidOperationException();
         var overlay = container.ToNative() as GTK.Overlay;
         var panel = container.ToNative() as GTK.Fixed;

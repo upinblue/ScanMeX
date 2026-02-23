@@ -1,4 +1,4 @@
-ScanMe is a fork of the open-source project NAPS2, © NAPS2 authors, licensed under GPL-2.0.
+ScanMe is a fork of the open-source project NAPS2, © ScanMe authors, licensed under GPL-2.0.
 
 # NAPS2.Sdk
 
@@ -121,7 +121,7 @@ var devices = await controller.GetDeviceList(Driver.Twain);
 
 ### Worker Processes
 
-Using the TWAIN driver on Windows usually requires the calling process to be 32-bit. If you want to use TWAIN from a 64-bit process, NAPS2 provides a 32-bit worker process:
+Using the TWAIN driver on Windows usually requires the calling process to be 32-bit. If you want to use TWAIN from a 64-bit process, ScanMe provides a 32-bit worker process:
 
 ```c#
 // Reference the NAPS2.Sdk.Worker.Win32 package and call this method
@@ -130,4 +130,4 @@ scanningContext.SetUpWin32Worker();
 
 ## Contributing
 
-Looking to contribute to NAPS2 or NAPS2.Sdk? Have a look at the [wiki](https://github.com/cyanfish/naps2/wiki/1.-Building-&-Development-Environment).
+Looking to contribute to ScanMe or NAPS2.Sdk? Have a look at the [wiki](https://github.com/cyanfish/naps2/wiki/1.-Building-&-Development-Environment).

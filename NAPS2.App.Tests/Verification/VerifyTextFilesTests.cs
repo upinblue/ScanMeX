@@ -21,7 +21,7 @@ public class VerifyTextFilesTests
         var path = Path.Combine(installDir, "contributors.txt");
         Assert.True(File.Exists(path));
         var text = File.ReadAllText(path);
-        Assert.Contains("Primary NAPS2 developer", text);
+        Assert.Contains("Primary ScanMe developer", text);
     }
 
     [VerifyTheory]

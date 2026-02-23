@@ -229,7 +229,7 @@ public class EsclClient
                 response.EnsureSuccessStatusCode();
                 break;
             }
-            // TODO: Define a NAPS2 protocol extension to shorten this timeout to 10s (once we do the rollout of server-side 503s)
+            // TODO: Define a ScanMe protocol extension to shorten this timeout to 10s (once we do the rollout of server-side 503s)
             var data = await ReadStreamWithPerReadTimeout(await response.Content.ReadAsStreamAsync(), 60_000);
             var doc = new RawDocument
             {

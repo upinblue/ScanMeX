@@ -46,7 +46,7 @@ public class WindowsServiceManager(ProcessCoordinator processCoordinator)
         }
         catch (Exception ex)
         {
-            Log.ErrorException("Error starting NAPS2 server process", ex);
+            Log.ErrorException("Error starting ScanMe server process", ex);
             return false;
         }
     }
@@ -71,11 +71,11 @@ public class WindowsServiceManager(ProcessCoordinator processCoordinator)
                     stopped++;
                 }
             }
-            Log.Debug($"Stopped {stopped} NAPS2 sharing server processes");
+            Log.Debug($"Stopped {stopped} ScanMe sharing server processes");
         }
         catch (Exception ex)
         {
-            Log.ErrorException("Error stopping NAPS2 server process", ex);
+            Log.ErrorException("Error stopping ScanMe server process", ex);
         }
     }
 }

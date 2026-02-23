@@ -50,7 +50,7 @@ internal class Win32TwainHandleManager : TwainHandleManager
             if (useNativeUi)
             {
                 // We only want to disable the parent window if we're showing the native UI. Otherwise, we expect that
-                // the NAPS2 UI should be interactable, and the only UI shown should be error messages.
+                // the ScanMe UI should be interactable, and the only UI shown should be error messages.
                 Win32.EnableWindow(dialogParent, false);
             }
             _disabledWindow = dialogParent;

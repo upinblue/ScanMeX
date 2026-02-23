@@ -166,7 +166,7 @@ public class DesktopController
 
     private async Task RunStillImageEvents()
     {
-        // If NAPS2 was started by the scanner button, do the appropriate actions automatically
+        // If ScanMe was started by the scanner button, do the appropriate actions automatically
         if (_stillImage.ShouldScan)
         {
             await _desktopScanController.ScanWithDevice(_stillImage.DeviceID!);
@@ -267,7 +267,7 @@ public class DesktopController
 
     private void StartProcessCoordinator()
     {
-        // Receive messages from other NAPS2 processes
+        // Receive messages from other ScanMe processes
         _processCoordinator.StartServer(new ProcessCoordinatorServiceImpl(this));
     }
 

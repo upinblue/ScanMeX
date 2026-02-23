@@ -17,7 +17,7 @@ public class CultureHelper
     }
 
     /// <summary>
-    /// Sets thread and resource cultures based on the culture in the NAPS2 config (if present).
+    /// Sets thread and resource cultures based on the culture in the ScanMe config (if present).
     /// </summary>
     public void SetCulturesFromConfig()
     {

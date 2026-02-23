@@ -3,7 +3,7 @@
 namespace NAPS2.Config;
 
 /// <summary>
-/// Represents the full NAPS2 configuration. Configuration sources are divided into several scopes:<br/>
+/// Represents the full ScanMe configuration. Configuration sources are divided into several scopes:<br/>
 /// - AppLocked: settings that are locked to a particular value by the administrator<br/>
 /// - Run: settings set by the user that will expire after the application is closed<br/>
 /// - User: settings set by the user that will persist after the application is closed<br/>

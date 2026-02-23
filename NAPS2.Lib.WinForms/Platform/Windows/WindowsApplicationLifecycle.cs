@@ -24,7 +24,7 @@ public class WindowsApplicationLifecycle : ApplicationLifecycle
     }
 
     /// <summary>
-    /// Parses the NAPS2 GUI command-line arguments.
+    /// Parses the ScanMe GUI command-line arguments.
     /// </summary>
     /// <param name="args"></param>
     public override void ParseArgs(string[] args)
@@ -150,7 +150,7 @@ public class WindowsApplicationLifecycle : ApplicationLifecycle
     }
 
     /// <summary>
-    /// May terminate the NAPS2 GUI based on the command-line arguments and running processes, sending messages to other processes if appropriate.
+    /// May terminate the ScanMe GUI based on the command-line arguments and running processes, sending messages to other processes if appropriate.
     /// </summary>
     public override void ExitIfRedundant()
     {
@@ -160,13 +160,13 @@ public class WindowsApplicationLifecycle : ApplicationLifecycle
             Environment.Exit(_returnCode);
         }
 
-        // If this instance of NAPS2 was spawned by STI, then there may be another instance of NAPS2 we want to get the scan signal instead
+        // If this instance of ScanMe was spawned by STI, then there may be another instance of ScanMe we want to get the scan signal instead
         if (_sti.ShouldScan)
         {
             // Try each possible process in turn until one receives the message (most recently started first)
             foreach (var process in GetOtherNaps2Processes())
             {
-                // Another instance of NAPS2 is running, so send it the "Scan" signal
+                // Another instance of ScanMe is running, so send it the "Scan" signal
                 SetMainWindowToForeground(process);
                 if (_processCoordinator.ScanWithDevice(process, 100, _sti.DeviceID!))
                 {

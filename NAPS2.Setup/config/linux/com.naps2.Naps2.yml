@@ -4,7 +4,7 @@ runtime-version: '24.08'
 sdk: org.freedesktop.Sdk
 sdk-extensions:
   - org.freedesktop.Sdk.Extension.dotnet9
-command: naps2
+command: ScanMe
 copy-icon: true
 cleanup:
   - /include

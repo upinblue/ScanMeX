@@ -17,7 +17,7 @@ public class ImageClipboard
             return;
         }
 
-        // Fast path for copying within NAPS2
+        // Fast path for copying within ScanMe
         _imageTransfer.SetClipboard(imageList);
 
         if (includeBitmap)

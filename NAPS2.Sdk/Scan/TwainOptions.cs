@@ -6,7 +6,7 @@
 public class TwainOptions
 {
     /// <summary>
-    /// The DSM version of TWAIN to use. Drivers/Windows usually come bundled with an Old version, while NAPS2 itself
+    /// The DSM version of TWAIN to use. Drivers/Windows usually come bundled with an Old version, while ScanMe itself
     /// provides a New version. This is the most common thing to try changing if you have compatibility issues. You
     /// can also use NewX64 to access 64-bit TWAIN drivers but usually they don't exist, everything is generally 32-bit. 
     /// </summary>
@@ -26,7 +26,7 @@ public class TwainOptions
     /// <summary>
     /// Whether to include include devices that start with "WIA-" in GetDeviceList.
     /// Windows makes WIA devices available to TWAIN applications through a translation layer.
-    /// By default they are excluded, since NAPS2 supports using WIA devices directly.
+    /// By default they are excluded, since ScanMe supports using WIA devices directly.
     /// </summary>
     public bool IncludeWiaDevices { get; set; }
 }

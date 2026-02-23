@@ -7,11 +7,11 @@ using static NAPS2.Remoting.ProcessCoordinatorService;
 namespace NAPS2.Remoting;
 
 /// <summary>
-/// Manages communication and coordination between multiple NAPS2 GUI processes. Specifically:
-/// - Allows sending messages to other NAPS2 processes via named pipes
+/// Manages communication and coordination between multiple ScanMe GUI processes. Specifically:
+/// - Allows sending messages to other ScanMe processes via named pipes
 /// - Allows taking the SingleInstance lock (or checking which process currently owns it)
 /// This is different than the worker service - workers are owned by the parent process and are considered part of the
-/// same unit. Instead, this class handles the case where the user (or a system feature like StillImage) opens NAPS2
+/// same unit. Instead, this class handles the case where the user (or a system feature like StillImage) opens ScanMe
 /// twice.
 /// </summary>
 public class ProcessCoordinator(string basePath, string pipeNameFormat)

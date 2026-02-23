@@ -70,7 +70,7 @@ internal class TwainScanDriver : IScanDriver
             // The worker is supposed to re-enable the window before returning, but in case the process dies or
             // some other problem occurs, here we make sure that happens.
             Win32.EnableWindow(options.DialogParent, true);
-            // We also want to make sure the main NAPS2 window is in the foreground
+            // We also want to make sure the main ScanMe window is in the foreground
             Win32.SetForegroundWindow(options.DialogParent);
         }
     }

@@ -1,5 +1,5 @@
-Package: naps2
-Source: naps2
+Package: ScanMe
+Source: ScanMe
 Depends: libsane1
 Recommends: sane-airscan
 Priority: optional
@@ -8,7 +8,7 @@ Maintainer: Ben Olden-Cooligan <ben.cyanfish@gmail.com>
 Architecture: {!arch}
 Version: {!version}
 Description: Scan documents to PDF and more, as simply as possible.
- NAPS2 on Linux allows you to scan from USB (using SANE) and network scanners. Use your chosen settings, or
+ ScanMe on Linux allows you to scan from USB (using SANE) and network scanners. Use your chosen settings, or
  set up multiple profiles for different devices and configurations. Once you've finished scanning, you can
  save, email, or print with only a couple clicks. Save to PDF, TIFF, JPEG, PNG, or other file types.
  .

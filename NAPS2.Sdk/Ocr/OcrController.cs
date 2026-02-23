@@ -8,7 +8,7 @@ namespace NAPS2.Ocr;
 /// argument to ScanController. This is independent of ScanOptions.OcrParams which determines whether OCR is actually
 /// performed.
 ///
-/// In the NAPS2 desktop application, the OcrController instance is registered on OcrOperationManager to show progress.
+/// In the ScanMe desktop application, the OcrController instance is registered on OcrOperationManager to show progress.
 /// OCR results are not accessed directly - OCR is only done to populate the OcrRequestQueue cache for future Save PDF
 /// operations.
 /// </summary>

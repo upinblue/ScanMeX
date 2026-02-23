@@ -95,7 +95,7 @@ public static class MsixPackager
         foreach (var language in pkgInfo.Files.Where(x => x.FileName.StartsWith("NAPS2.Lib.resources.dll"))
                      .Select(x => Path.GetFileName(x.DestDir)))
         {
-            // MSIX expects language codes a bit different from NAPS2
+            // MSIX expects language codes a bit different from ScanMe
             // TODO: Would it be better to use these codes internally? Would it match up more with Windows?
             var correctedLanguage = language switch
             {

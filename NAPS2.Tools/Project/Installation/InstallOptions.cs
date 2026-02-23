@@ -11,6 +11,6 @@ public class InstallOptions : OptionsBase
     [Option('p', "platform", Required = false, HelpText = "win|win32|win64|mac|macintel|macarm|linux")]
     public string? Platform { get; set; }
     
-    [Option('r', "run", Required = false, HelpText = "Run NAPS2 after installation")]
+    [Option('r', "run", Required = false, HelpText = "Run ScanMe after installation")]
     public bool Run { get; set; }
 }

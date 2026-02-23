@@ -112,7 +112,7 @@
     <value>Instalação concluída</value>
   </data>
   <data name="InstallCompletePromptRestart" xml:space="preserve">
-    <value>Instalação completada. Deseja reiniciar o NAPS2 agora?</value>
+    <value>Instalação completada. Deseja reiniciar o ScanMe agora?</value>
   </data>
   <data name="InstallFailed" xml:space="preserve">
     <value>Falha na instalação.</value>
@@ -139,7 +139,7 @@
     <value>O arquivo '{0}' não pode ser importado.</value>
   </data>
   <data name="ImportErrorNAPS2Pdf" xml:space="preserve">
-    <value>O arquivo '{0}' não pode ser importado. Somente arquivos PDF gerados pelo NAPS2 podem ser importados.</value>
+    <value>O arquivo '{0}' não pode ser importado. Somente arquivos PDF gerados pelo ScanMe podem ser importados.</value>
   </data>
   <data name="DownloadError" xml:space="preserve">
     <value>Erro no download</value>

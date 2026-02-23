@@ -3,7 +3,7 @@
 namespace NAPS2.Platform.Windows;
 
 /// <summary>
-/// A class to help with the Still Image API, which lets NAPS2 react to physical "Scan" button presses on the scanner.
+/// A class to help with the Still Image API, which lets ScanMe react to physical "Scan" button presses on the scanner.
 /// </summary>
 public class StillImage
 {

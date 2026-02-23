@@ -2,7 +2,7 @@ namespace NAPS2.Images;
 
 // TODO: Write tests for this class
 /// <summary>
-/// A mutable container for an image in the NAPS2 UI that can be edited, has a thumbnail, etc.
+/// A mutable container for an image in the ScanMe UI that can be edited, has a thumbnail, etc.
 /// </summary>
 public class UiImage : IDisposable
 {

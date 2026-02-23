@@ -33,7 +33,7 @@ public static class CoreWorkerEntryPoint
             run ??= () => flag.WaitOne();
             stop ??= () => flag.Set();
 
-            // Connect to the main NAPS2 process and listen for assigned work
+            // Connect to the main ScanMe process and listen for assigned work
             var server =
                 new NamedPipeServer(string.Format(WorkerFactory.PIPE_NAME_FORMAT, Process.GetCurrentProcess().Id));
             serviceImpl.OnStop += (_, _) => stop();

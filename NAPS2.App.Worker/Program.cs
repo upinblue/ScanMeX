@@ -22,7 +22,7 @@ static class Program
         ProfileOptimization.SetProfileRoot(profilesPath);
         ProfileOptimization.StartProfile("naps2.worker.jit");
 
-        // This NAPS2.App.Worker project doesn't follow the conventions of the rest of NAPS2 as far as using EntryPoint
+        // This NAPS2.App.Worker project doesn't follow the conventions of the rest of ScanMe as far as using EntryPoint
         // classes for everything. The reason is that we want to avoid pulling in extra dependencies as NAPS2.Worker.exe
         // is 32-bit and therefore requires a second copy of every single dependency we use.
         //

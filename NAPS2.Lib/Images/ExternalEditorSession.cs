@@ -103,7 +103,7 @@ public class ExternalEditorSession : IDisposable
         }
         catch (IOException)
         {
-            // Best effort cleanup; the temp folder will get cleared the next time we start NAPS2 anyway
+            // Best effort cleanup; the temp folder will get cleared the next time we start ScanMe anyway
         }
     }
 }

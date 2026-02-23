@@ -36,7 +36,7 @@
       </DirectorySearch>
     </Property>
 
-    <Condition Message="ScanMe has already been installed using the EXE installer and can't be upgraded using the MSI installer. Either use the EXE installer to upgrade, or uninstall NAPS2 then re-install with the MSI.">
+    <Condition Message="ScanMe has already been installed using the EXE installer and can't be upgraded using the MSI installer. Either use the EXE installer to upgrade, or uninstall ScanMe then re-install with the MSI.">
         <![CDATA[INNOINSTALLATION="NOTEXIST"]]>
     </Condition>
 

@@ -18,7 +18,7 @@ internal static class Paths
                     _root = Path.GetDirectoryName(_root);
                     if (_root == null)
                     {
-                        throw new Exception("Couldn't find NAPS2 folder");
+                        throw new Exception("Couldn't find ScanMe folder");
                     }
                 }
             }

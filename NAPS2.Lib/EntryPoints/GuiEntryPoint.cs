@@ -8,7 +8,7 @@ using NAPS2.Scan;
 namespace NAPS2.EntryPoints;
 
 /// <summary>
-/// The entry point for the main NAPS2 executable.
+/// The entry point for the main ScanMe executable.
 /// </summary>
 public static class GuiEntryPoint
 {

@@ -7,7 +7,7 @@ using NAPS2.Remoting.Worker;
 namespace NAPS2.Scan;
 
 /// <summary>
-/// A ScanningContext object is needed for most NAPS2 operations. Set it up with the corresponding ImageContext type
+/// A ScanningContext object is needed for most ScanMe operations. Set it up with the corresponding ImageContext type
 /// for image type you expect (e.g. GdiImageContext for System.Drawing.Bitmap, if you're using Windows Forms). You can
 /// also set various other properties that affect scanning and image processing.
 /// <para/>

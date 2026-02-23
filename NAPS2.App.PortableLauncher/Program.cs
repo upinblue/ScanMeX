@@ -46,8 +46,8 @@ class Program
             var mainProc = Process.GetProcessById(int.Parse(procId));
             mainProc.WaitForExit();
 
-            // Assume any process named NAPS2 or NAPS2.Worker could be a worker, although this isn't necessarily true
-            // if there are multiple NAPS2 installations.
+            // Assume any process named ScanMe or NAPS2.Worker could be a worker, although this isn't necessarily true
+            // if there are multiple ScanMe installations.
             var processesToWaitOn =
                 Process.GetProcessesByName("ScanMe")
                     .Concat(Process.GetProcessesByName("NAPS2.Worker"))

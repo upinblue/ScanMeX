@@ -5,7 +5,7 @@ using NAPS2.Modules;
 namespace NAPS2.EntryPoints;
 
 /// <summary>
-/// The entry point logic for the Gtk NAPS2 executable.
+/// The entry point logic for the Gtk ScanMe executable.
 /// </summary>
 public static class GtkEntryPoint
 {

@@ -3,7 +3,7 @@ using NAPS2.Unmanaged;
 namespace NAPS2.Scan.Internal.Sane.Native;
 
 /// <summary>
-/// Indicates a custom build of SANE bundled with the application (i.e. NAPS2 on Mac).
+/// Indicates a custom build of SANE bundled with the application (i.e. ScanMe on Mac).
 /// </summary>
 internal class BundledSaneInstallation : ISaneInstallation
 {

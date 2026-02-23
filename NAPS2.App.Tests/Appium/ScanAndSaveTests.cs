@@ -31,7 +31,7 @@ public class ScanAndSaveTests : AppiumTests
         // Wait for scanning to finish
         WaitFor(() => !HasElementWithName("Cancel"), 30_000);
         ResetMainWindow();
-        // Save "test.pdf" in the default location (which will be the test data path as NAPS2 knows we're in a test)^
+        // Save "test.pdf" in the default location (which will be the test data path as ScanMe knows we're in a test)^
         ClickAtName("Save PDF");
         ResetMainWindow();
         var fileTextBox = WaitFor(() => _session.FindElementsByName("File name:").Last());
@@ -67,7 +67,7 @@ public class ScanAndSaveTests : AppiumTests
         // Wait for scanning to finish
         WaitFor(() => !HasElementWithName("Cancel"), 30_000);
         ResetMainWindow();
-        // Save "test.pdf" in the default location (which will be the test data path as NAPS2 knows we're in a test)^
+        // Save "test.pdf" in the default location (which will be the test data path as ScanMe knows we're in a test)^
         ClickAtName("Save Images");
         ResetMainWindow();
         var fileTextBox = WaitFor(() => _session.FindElementsByName("File name:").Last());

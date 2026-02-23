@@ -8,7 +8,7 @@ namespace NAPS2.Util;
 public static class GLibLogInterceptor
 {
     /// <summary>
-    /// Intercepts GLib/Gtk logging and writes it to the NAPS2 debuglog instead of stdout.
+    /// Intercepts GLib/Gtk logging and writes it to the ScanMe debuglog instead of stdout.
     /// </summary>
     public static void WriteToDebugLog()
     {

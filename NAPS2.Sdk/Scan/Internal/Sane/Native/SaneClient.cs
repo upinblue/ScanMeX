@@ -44,7 +44,7 @@ internal class SaneClient : SaneNativeObject
     }
 
     // This calls sane_stream_devices which is not a normal part of SANE and is patched into
-    // NAPS2 SANE builds. It will fail when using a SANE installation without the patch.
+    // ScanMe SANE builds. It will fail when using a SANE installation without the patch.
     public void StreamDevices(Action<SaneDeviceInfo> callback, CancellationToken cancelToken)
     {
         HandleStatus(Native.sane_stream_devices(devicePtr =>

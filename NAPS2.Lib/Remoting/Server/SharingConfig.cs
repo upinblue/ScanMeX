@@ -7,7 +7,7 @@ namespace NAPS2.Remoting.Server;
 public class SharingConfig
 {
     /// <summary>
-    /// A unique ID for the NAPS2 instance, so that if you have the same model of scanner connected to different
+    /// A unique ID for the ScanMe instance, so that if you have the same model of scanner connected to different
     /// computers, they still will have unique derived UUIDs.
     /// </summary>
     public Guid? InstanceId { get; set; }

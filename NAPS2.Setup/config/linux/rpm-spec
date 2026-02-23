@@ -3,7 +3,7 @@
 %define        __os_install_post %{_dbpath}/brp-compress
 
 Summary: Scan documents to PDF and more, as simply as possible.
-Name: naps2
+Name: ScanMe
 Version: {!version}
 Release: 1
 License: GPLv2+

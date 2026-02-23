@@ -4,7 +4,7 @@ using NAPS2.Remoting;
 namespace NAPS2.Platform;
 
 /// <summary>
-/// A class to help manage the lifecycle of the NAPS2 GUI.
+/// A class to help manage the lifecycle of the ScanMe GUI.
 /// </summary>
 public abstract class ApplicationLifecycle
 {
@@ -60,11 +60,11 @@ public abstract class ApplicationLifecycle
                 var process = _processCoordinator.GetProcessWithInstanceLock();
                 if (process != null)
                 {
-                    // Another instance of NAPS2 is running, so send it the "Activate" signal
+                    // Another instance of ScanMe is running, so send it the "Activate" signal
                     Log.Debug($"Activating process {process.Id}");
 
                     // For new processes, wait until the process is at least 5 seconds old.
-                    // This might be useful in cases where multiple NAPS2 processes are started at once, e.g. clicking
+                    // This might be useful in cases where multiple ScanMe processes are started at once, e.g. clicking
                     // to open a group of files associated with NAPS2.
                     int processAge = (DateTime.Now - process.StartTime).Milliseconds;
                     int timeout = (5000 - processAge).Clamp(100, 5000);

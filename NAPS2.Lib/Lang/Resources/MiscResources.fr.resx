@@ -112,7 +112,7 @@
     <value>Installation terminée</value>
   </data>
   <data name="InstallCompletePromptRestart" xml:space="preserve">
-    <value>Installation terminée. Faut-il redémarrer NAPS2 maintenant ?</value>
+    <value>Installation terminée. Faut-il redémarrer ScanMe maintenant ?</value>
   </data>
   <data name="InstallFailed" xml:space="preserve">
     <value>Échec de l'installation.</value>
@@ -139,7 +139,7 @@
     <value>Le fichier « {0} » n'a pas pu être importé.</value>
   </data>
   <data name="ImportErrorNAPS2Pdf" xml:space="preserve">
-    <value>Le fichier « {0} » n'a pas pu être importé. Seuls les fichiers PDF générés par NAPS2 peuvent être importés.</value>
+    <value>Le fichier « {0} » n'a pas pu être importé. Seuls les fichiers PDF générés par ScanMe peuvent être importés.</value>
   </data>
   <data name="DownloadError" xml:space="preserve">
     <value>Erreur de téléchargement</value>
@@ -343,7 +343,7 @@
     <value>Laisser un avis</value>
   </data>
   <data name="ReviewPrompt" xml:space="preserve">
-    <value>Aimez-vous NAPS2 ?</value>
+    <value>Aimez-vous ScanMe ?</value>
   </data>
   <data name="SaneNotAvailable" xml:space="preserve">
     <value>Le pilote SANE n'est pas disponible. Merci d'installer les paquets nécessaires :</value>

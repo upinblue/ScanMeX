@@ -9,7 +9,7 @@ public class NetworkSharingSample
 {
     public static async Task Server()
     {
-        // NAPS2 can share scanners across the local network using the ESCL protocol with the NAPS2.Escl.Server package.
+        // ScanMe can share scanners across the local network using the ESCL protocol with the NAPS2.Escl.Server package.
         // On the server, you need to set up ScanServer with the device(s) to share.
         // On the client, you just scan as usual using Driver.Escl.
 

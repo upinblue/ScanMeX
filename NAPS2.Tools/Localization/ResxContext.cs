@@ -2,7 +2,7 @@
 
 public class ResxContext
 {
-    // Fraction of strings translated before we start including the language in NAPS2
+    // Fraction of strings translated before we start including the language in ScanMe
     private const double INCLUDE_THRESHOLD = 0.05;
 
     private readonly string _langCode;

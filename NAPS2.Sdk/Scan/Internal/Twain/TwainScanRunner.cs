@@ -351,7 +351,7 @@ internal class TwainScanRunner
                 break;
         }
 
-        // TODO: Should we add an "Automatic" option in the NAPS2 GUI instead of making "Glass" = Auto?
+        // TODO: Should we add an "Automatic" option in the ScanMe GUI instead of making "Glass" = Auto?
         // For "Auto", choose the feeder if it has paper, otherwise the flatbed.
         if (_options.PaperSource == PaperSource.Auto)
         {

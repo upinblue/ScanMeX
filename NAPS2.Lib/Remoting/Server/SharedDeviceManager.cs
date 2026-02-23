@@ -75,7 +75,7 @@ public class SharedDeviceManager : ISharedDeviceManager
         lock (this)
         {
             // Only start if (1) we haven't stopped, (2) we have devices to share, and (3) we can take the exclusive
-            // sharing lock (so multiple NAPS2 instances don't try to share duplicates of the same devices)
+            // sharing lock (so multiple ScanMe instances don't try to share duplicates of the same devices)
             if (_userStarted && SharedDevices.Any() && TakeLock())
             {
                 ResetStartTimer();

@@ -5,7 +5,7 @@ using NAPS2.Modules;
 namespace NAPS2.EntryPoints;
 
 /// <summary>
-/// The entry point logic for the Mac NAPS2 executable.
+/// The entry point logic for the Mac ScanMe executable.
 /// </summary>
 public static class MacEntryPoint
 {
