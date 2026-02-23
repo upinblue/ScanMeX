@@ -5,7 +5,7 @@ using NAPS2.Modules;
 namespace NAPS2.EntryPoints;
 
 /// <summary>
-/// The entry point logic for NAPS2.exe, the NAPS2 GUI.
+/// The entry point logic for ScanMe.exe, the NAPS2 GUI.
 /// </summary>
 public static class WinFormsEntryPoint
 {

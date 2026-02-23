@@ -215,7 +215,7 @@ public class PackageCommand : ICommand<PackageOptions>
 
     private static void PatchExe(FileInfo exeFile)
     {
-        // The dotnet base exes (e.g. NAPS2.exe) have a hard-coded path for the relevant dll (e.g. NAPS2.dll).
+        // The dotnet base exes (e.g. ScanMe.exe) have a hard-coded path for the relevant dll (e.g. NAPS2.dll).
         // This path is also the path at which all the dependencies are searched. By default, the path is in the current
         // directory, but we can easily replace it with a subpath to the "lib" folder. (Note that the path is padded so
         // we don't even need to offset the bytes afterward.) This means everything other than the exes can live in

@@ -60,16 +60,16 @@
           <RegistryValue Type="string" Name="Action" Value="Scan with ScanMe" />
           <RegistryValue Type="string" Name="CLSID" Value="WIACLSID" />
           <RegistryValue Type="string" Name="DefaultIcon" Value="sti.dll,0" />
-          <RegistryValue Type="string" Name="InitCmdLine" Value="/WiaCmd;[INSTALLFOLDER]NAPS2.exe /StiDevice:%1 /StiEvent:%2;" />
+          <RegistryValue Type="string" Name="InitCmdLine" Value="/WiaCmd;[INSTALLFOLDER]ScanMe.exe /StiDevice:%1 /StiEvent:%2;" />
           <RegistryValue Type="string" Name="Provider" Value="ScanMe" />
         </RegistryKey>
         <RegistryKey Root="HKLM" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\StillImage\Registered Applications">
-          <RegistryValue Type="string" Name="ScanMe" Value="[INSTALLFOLDER]NAPS2.exe" />
+          <RegistryValue Type="string" Name="ScanMe" Value="[INSTALLFOLDER]ScanMe.exe" />
         </RegistryKey>
         <RegistryKey Root="HKLM" Key="SYSTEM\CurrentControlSet\Control\StillImage\Events\STIProxyEvent\{1c3a7177-f3a7-439e-be47-e304a185f932}">
-          <RegistryValue Type="string" Name="Cmdline" Value="[INSTALLFOLDER]NAPS2.exe /StiDevice:%1 /StiEvent:%2" />
+          <RegistryValue Type="string" Name="Cmdline" Value="[INSTALLFOLDER]ScanMe.exe /StiDevice:%1 /StiEvent:%2" />
           <RegistryValue Type="string" Name="Desc" Value="Scan with ScanMe" />
-          <RegistryValue Type="string" Name="Icon" Value="[INSTALLFOLDER]NAPS2.exe,0" />
+          <RegistryValue Type="string" Name="Icon" Value="[INSTALLFOLDER]ScanMe.exe,0" />
           <RegistryValue Type="string" Name="Name" Value="ScanMe" />
         </RegistryKey>
         <RegistryKey Root="HKCR" Key=".pdf\OpenWithProgids">
@@ -97,10 +97,10 @@
           <RegistryValue Type="string" Value="ScanMe" />
         </RegistryKey>
         <RegistryKey Root="HKCR" Key="NAPS2\DefaultIcon">
-          <RegistryValue Type="string" Value="[INSTALLFOLDER]NAPS2.exe,0" />
+          <RegistryValue Type="string" Value="[INSTALLFOLDER]ScanMe.exe,0" />
         </RegistryKey>
         <RegistryKey Root="HKCR" Key="NAPS2\shell\open\command">
-          <RegistryValue Type="string" Value="&quot;[INSTALLFOLDER]NAPS2.exe&quot; &quot;%1&quot;" />
+          <RegistryValue Type="string" Value="&quot;[INSTALLFOLDER]ScanMe.exe&quot; &quot;%1&quot;" />
         </RegistryKey>
       </Component>
     </Directory>
@@ -134,7 +134,7 @@
         <Shortcut Id="ApplicationStartMenuShortcut"
                   Name="ScanMe"
                   Description="Not Another PDF Scanner"
-                  Target="[INSTALLFOLDER]NAPS2.exe"
+                  Target="[INSTALLFOLDER]ScanMe.exe"
                   WorkingDirectory="INSTALLFOLDER" />
         <RemoveFolder Id="ProgramMenuDir" On="uninstall"/>
         <RegistryValue Root="HKCU" Key="Software\Microsoft\NAPS2" Name="installed" Type="integer" Value="1" KeyPath="yes"/>

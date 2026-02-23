@@ -7,7 +7,7 @@ using NAPS2.Scan.Internal.Twain;
 namespace NAPS2.EntryPoints;
 
 /// <summary>
-/// The entry point logic for NAPS2.exe when running in worker mode.
+/// The entry point logic for ScanMe.exe when running in worker mode.
 /// </summary>
 public static class WindowsNativeWorkerEntryPoint
 {
