@@ -20,6 +20,8 @@ public class BarcodeTests : ContextualTests
         Assert.True(barcode.IsDetectionAttempted);
         Assert.True(barcode.IsDetected);
         Assert.True(barcode.IsPatchT);
+        Assert.True(barcode.IsCode39);
+        Assert.Equal("CODE_39", barcode.DetectedFormat);
     }
 
     [Fact]
@@ -35,6 +37,7 @@ public class BarcodeTests : ContextualTests
         Assert.True(barcode.IsDetected);
         Assert.False(barcode.IsPatchT);
         Assert.Equal("725272730706", barcode.DetectedText);
+        Assert.False(barcode.IsCode39);
     }
 
     [Fact]
@@ -49,6 +52,8 @@ public class BarcodeTests : ContextualTests
         Assert.True(barcode.IsDetectionAttempted);
         Assert.False(barcode.IsDetected);
         Assert.False(barcode.IsPatchT);
+        Assert.False(barcode.IsCode39);
         Assert.Null(barcode.DetectedText);
+        Assert.Null(barcode.DetectedFormat);
     }
 }

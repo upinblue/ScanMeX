@@ -191,13 +191,107 @@ public class AutoSaverTests : ContextualTests
             ImageResources.dog_h_n300);
         scanned[2] = scanned[2].WithPostProcessingData(scanned[2].PostProcessingData with
         {
-            Barcode = new Barcode(true, true, "PATCHT")
+            Barcode = new Barcode(true, true, "PATCHT", "CODE_39")
         }, true);
         var output = _autoSaver.Save(settings, scanned.ToAsyncEnumerable());
         Assert.Equal(4, (await output.ToListAsync()).Count);
         Assert.Equal(2, Folder.GetFiles().Length);
         PdfAsserts.AssertImages(Path.Combine(FolderPath, "test1.pdf"), ImageResources.dog, ImageResources.dog_gray);
         PdfAsserts.AssertImages(Path.Combine(FolderPath, "test2.pdf"), ImageResources.dog_h_n300);
+    }
+
+    [Fact]
+    public async Task PdfSplitCode39_StartsNewDocumentAtBarcodePage()
+    {
+        var settings = new AutoSaveSettings
+        {
+            FilePath = Path.Combine(FolderPath, "test$(n).pdf"),
+            Separator = SaveSeparator.Code39Barcode
+        };
+
+        var scanned = CreateScannedImages(
+            ImageResources.dog,
+            ImageResources.dog_gray,
+            ImageResources.dog_h_n300,
+            ImageResources.dog_s_n300);
+
+        scanned[2] = scanned[2].WithPostProcessingData(scanned[2].PostProcessingData with
+        {
+            Barcode = new Barcode(true, true, "12345678", "CODE_39")
+        }, true);
+
+        var output = _autoSaver.Save(settings, scanned.ToAsyncEnumerable());
+
+        Assert.Equal(4, (await output.ToListAsync()).Count);
+        Assert.Equal(2, Folder.GetFiles().Length);
+        PdfAsserts.AssertImages(Path.Combine(FolderPath, "test1.pdf"), ImageResources.dog, ImageResources.dog_gray);
+        PdfAsserts.AssertImages(Path.Combine(FolderPath, "test2.pdf"), ImageResources.dog_h_n300, ImageResources.dog_s_n300);
+    }
+
+    [Fact]
+    public async Task PdfSplitCode39_WithRegex_SplitsOnlyWhenRegexMatches()
+    {
+        var settings = new AutoSaveSettings
+        {
+            FilePath = Path.Combine(FolderPath, "test$(n).pdf"),
+            Separator = SaveSeparator.Code39Barcode,
+            Code39SeparationPattern = "\\b\\d{8}\\b"
+        };
+
+        var scanned = CreateScannedImages(
+            ImageResources.dog,
+            ImageResources.dog_gray,
+            ImageResources.dog_h_n300,
+            ImageResources.dog_s_n300,
+            ImageResources.dog_sh_n1000);
+
+        // Not matching regex -> should NOT split
+        scanned[1] = scanned[1].WithPostProcessingData(scanned[1].PostProcessingData with
+        {
+            Barcode = new Barcode(true, true, "ABC123", "CODE_39")
+        }, true);
+
+        // Matching regex -> should split here, barcode page starts new document
+        scanned[3] = scanned[3].WithPostProcessingData(scanned[3].PostProcessingData with
+        {
+            Barcode = new Barcode(true, true, "87654321", "CODE_39")
+        }, true);
+
+        var output = _autoSaver.Save(settings, scanned.ToAsyncEnumerable());
+
+        Assert.Equal(5, (await output.ToListAsync()).Count);
+        Assert.Equal(2, Folder.GetFiles().Length);
+        PdfAsserts.AssertImages(Path.Combine(FolderPath, "test1.pdf"), ImageResources.dog, ImageResources.dog_gray, ImageResources.dog_h_n300);
+        PdfAsserts.AssertImages(Path.Combine(FolderPath, "test2.pdf"), ImageResources.dog_s_n300, ImageResources.dog_sh_n1000);
+    }
+
+    [Fact]
+    public async Task PdfSplitCode39_WithoutFormatMetadata_StillSplits()
+    {
+        var settings = new AutoSaveSettings
+        {
+            FilePath = Path.Combine(FolderPath, "test$(n).pdf"),
+            Separator = SaveSeparator.Code39Barcode
+        };
+
+        var scanned = CreateScannedImages(
+            ImageResources.dog,
+            ImageResources.dog_gray,
+            ImageResources.dog_h_n300,
+            ImageResources.dog_s_n300);
+
+        // Format is unknown/null -> should still be treated as Code39 in Code39 separation mode.
+        scanned[2] = scanned[2].WithPostProcessingData(scanned[2].PostProcessingData with
+        {
+            Barcode = new Barcode(true, true, "12345678", null)
+        }, true);
+
+        var output = _autoSaver.Save(settings, scanned.ToAsyncEnumerable());
+
+        Assert.Equal(4, (await output.ToListAsync()).Count);
+        Assert.Equal(2, Folder.GetFiles().Length);
+        PdfAsserts.AssertImages(Path.Combine(FolderPath, "test1.pdf"), ImageResources.dog, ImageResources.dog_gray);
+        PdfAsserts.AssertImages(Path.Combine(FolderPath, "test2.pdf"), ImageResources.dog_h_n300, ImageResources.dog_s_n300);
     }
 
     [Fact]

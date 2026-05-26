@@ -29,8 +29,20 @@ internal static class BarcodeDetector
         {
              Options = zxingOptions
         };
-        var result = reader.Decode(image);
-        return new Barcode(true, result != null, result?.Text);
+
+        // Some pages contain multiple barcodes; prefer CODE_39 when available.
+        Result? result = null;
+        var results = reader.DecodeMultiple(image);
+        if (results != null && results.Length > 0)
+        {
+            result = results.FirstOrDefault(x => x.BarcodeFormat == BarcodeFormat.CODE_39) ?? results[0];
+        }
+        else
+        {
+            result = reader.Decode(image);
+        }
+
+        return new Barcode(true, result != null, result?.Text, result?.BarcodeFormat.ToString());
     }
     
     private class MemoryImageLuminanceSource : LuminanceSource
