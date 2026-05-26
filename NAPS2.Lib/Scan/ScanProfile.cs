@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Reflection;
 using System.Xml.Serialization;
 using NAPS2.ImportExport;
+using NAPS2.Sap;
 using NAPS2.Serialization;
 
 namespace NAPS2.Scan;
@@ -140,6 +141,11 @@ public class ScanProfile
     /// Settings for SharePoint Online upload when <see cref="EnableSharePointUpload"/> is true.
     /// </summary>
     public SharePointUploadSettings SharePointUploadSettings { get; set; }
+
+    /// <summary>
+    /// Optional SAP ArchiveLink settings. Null keeps XML profile serialization backward-compatible for existing profiles.
+    /// </summary>
+    public SapArchiveProfileSettings? SapArchiveSettings { get; set; }
 }
 
 /// <summary>

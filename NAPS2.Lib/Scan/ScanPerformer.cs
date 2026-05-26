@@ -3,6 +3,7 @@ using System.Threading;
 using Microsoft.Extensions.Logging;
 using NAPS2.ImportExport;
 using NAPS2.Ocr;
+using NAPS2.Sap;
 using NAPS2.Scan.Exceptions;
 using NAPS2.Scan.Internal;
 #if !MAC
@@ -136,7 +137,7 @@ internal class ScanPerformer : IScanPerformer
 
         if (scanProfile.EnableAutoSave && scanProfile.AutoSaveSettings != null && !scanParams.NoAutoSave)
         {
-            images = _autoSaver.Save(scanProfile.AutoSaveSettings, images);
+            images = _autoSaver.Save(scanProfile, scanProfile.AutoSaveSettings, images);
         }
 
         int pageCount = 0;
@@ -238,6 +239,8 @@ internal class ScanPerformer : IScanPerformer
         bool isDeviceQuery)
     {
         var separator = scanProfile.AutoSaveSettings?.Separator;
+        var sapNeedsBarcode = scanProfile.SapArchiveSettings?.EnableUpload == true &&
+                              scanProfile.SapArchiveSettings.ObjectKeySource == ObjectKeySource.FromBarcode;
 
         var options = new ScanOptions
         {
@@ -280,7 +283,7 @@ internal class ScanPerformer : IScanPerformer
             ExcludeLocalIPs = true,
             BarcodeDetectionOptions =
             {
-                DetectBarcodes = scanParams.DetectPatchT || separator is SaveSeparator.PatchT or SaveSeparator.Code39Barcode,
+                DetectBarcodes = scanParams.DetectPatchT || sapNeedsBarcode || separator is SaveSeparator.PatchT or SaveSeparator.Code39Barcode,
                 // We piggyback PatchTOnly to restrict to CODE_39 for both PatchT and Code39 separation
                 PatchTOnly = scanParams.DetectPatchT || separator is SaveSeparator.PatchT or SaveSeparator.Code39Barcode
             },

@@ -4,6 +4,7 @@ using NAPS2.ImportExport.Images;
 using NAPS2.Pdf;
 using NAPS2.Scan;
 using NAPS2.SharePoint;
+using NAPS2.Sap;
 
 namespace NAPS2.ImportExport;
 
@@ -19,6 +20,7 @@ public class AutoSaver
     private readonly ImageContext _imageContext;
     private readonly UiImageList _imageList;
     private readonly SharePointUploadService _sharePointUploadService = new();
+    private readonly SapArchivePostScanService _sapArchivePostScanService;
 
     // The active ScanProfile associated with the current auto-save session.
     public ScanProfile? ActiveProfile { get; set; }
@@ -36,6 +38,7 @@ public class AutoSaver
         _config = config;
         _imageContext = imageContext;
         _imageList = imageList;
+        _sapArchivePostScanService = new SapArchivePostScanService(config, operationProgress);
     }
 
     // Overload: pass the ScanProfile explicitly, ensuring SharePoint settings are available.
@@ -184,6 +187,20 @@ public class AutoSaver
                 catch (Exception ex)
                 {
                     _errorOutput.DisplayError($"Auto Save succeeded, but SharePoint upload failed: {ex.Message}");
+                }
+            }
+
+            // After successful local save, optionally upload to SAP ArchiveLink. This is independent from SharePoint.
+            if (success && ActiveProfile?.SapArchiveSettings?.EnableUpload == true)
+            {
+                try
+                {
+                    await _sapArchivePostScanService.UploadSavedFileAsync(ActiveProfile, subPath, images);
+                }
+                catch (Exception ex)
+                {
+                    Log.ErrorException("SAP ArchiveLink upload failed", ex);
+                    _errorOutput.DisplayError(SapUi.UploadFailed(ex.Message));
                 }
             }
 

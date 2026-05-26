@@ -5,6 +5,7 @@ using NAPS2.ImportExport.Email;
 using NAPS2.ImportExport.Images;
 using NAPS2.Pdf;
 using NAPS2.Ocr;
+using NAPS2.Sap;
 using NAPS2.Scan;
 using NAPS2.Scan.Batch;
 
@@ -199,6 +200,10 @@ public class CommonConfig
     [Config]
     [Common]
     public BatchSettings BatchSettings { get; set; } = new();
+
+    [Config]
+    [User]
+    public SapConnectionConfig SapConnection { get; set; } = new();
 
     [Config]
     [Common]

@@ -1,0 +1,11 @@
+C:\Users\BastianWirth\source\repos\ScanMeX\ScanMe.Sap\obj\Debug\netstandard2.0\ScanMe.Sap.csproj.AssemblyReference.cache
+C:\Users\BastianWirth\source\repos\ScanMeX\ScanMe.Sap\obj\Debug\netstandard2.0\ScanMe.Sap.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\BastianWirth\source\repos\ScanMeX\ScanMe.Sap\obj\Debug\netstandard2.0\ScanMe.Sap.AssemblyInfoInputs.cache
+C:\Users\BastianWirth\source\repos\ScanMeX\ScanMe.Sap\obj\Debug\netstandard2.0\ScanMe.Sap.AssemblyInfo.cs
+C:\Users\BastianWirth\source\repos\ScanMeX\ScanMe.Sap\obj\Debug\netstandard2.0\ScanMe.Sap.csproj.CoreCompileInputs.cache
+C:\Users\BastianWirth\source\repos\ScanMeX\ScanMe.Sap\obj\Debug\netstandard2.0\ScanMe.Sap.sourcelink.json
+C:\Users\BastianWirth\source\repos\ScanMeX\ScanMe.Sap\bin\Debug\netstandard2.0\ScanMe.Sap.deps.json
+C:\Users\BastianWirth\source\repos\ScanMeX\ScanMe.Sap\bin\Debug\netstandard2.0\ScanMe.Sap.dll
+C:\Users\BastianWirth\source\repos\ScanMeX\ScanMe.Sap\bin\Debug\netstandard2.0\ScanMe.Sap.pdb
+C:\Users\BastianWirth\source\repos\ScanMeX\ScanMe.Sap\obj\Debug\netstandard2.0\ScanMe.Sap.dll
+C:\Users\BastianWirth\source\repos\ScanMeX\ScanMe.Sap\obj\Debug\netstandard2.0\ScanMe.Sap.pdb

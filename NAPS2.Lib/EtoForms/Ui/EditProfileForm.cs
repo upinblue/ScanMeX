@@ -6,6 +6,7 @@ using NAPS2.EtoForms.Layout;
 using NAPS2.EtoForms.Widgets;
 using NAPS2.Scan;
 using NAPS2.Scan.Internal;
+using NAPS2.Sap;
 
 namespace NAPS2.EtoForms.Ui;
 
@@ -40,6 +41,21 @@ public class EditProfileForm : EtoDialogBase
     private readonly TextBox _azureAdTenantId = new();
     private readonly TextBox _azureAdClientId = new();
     private readonly PasswordBox _azureAdClientSecret = new();
+
+    // SAP ArchiveLink controls
+    private readonly CheckBox _enableSapArchiveUpload = new() { Text = SapUi.EnableUpload };
+    private readonly DropDownWidget<SapObjectTypeCatalogEntry> _sapObjectType = new();
+    private readonly TextBox _sapArchiveId = new();
+    private readonly TextBox _sapDocumentType = new();
+    private readonly RadioButton _sapPromptObjectKey = new() { Text = SapUi.PromptEachScan };
+    private readonly RadioButton _sapBarcodeObjectKey;
+    private readonly RadioButton _sapFilenameObjectKey;
+    private readonly RadioButton _sapFixedObjectKey;
+    private readonly TextBox _sapBarcodeRegex = new();
+    private readonly TextBox _sapFilenameRegex = new();
+    private readonly TextBox _sapFixedObjectKeyValue = new();
+    private readonly TextBox _sapDescriptionTemplate = new() { PlaceholderText = SapUi.DescriptionHint };
+    private readonly Button _sapTestConnection = new() { Text = SapUi.TestConnection };
 
     private ScanProfile _scanProfile = null!;
     private bool _isDefault;
@@ -77,6 +93,19 @@ public class EditProfileForm : EtoDialogBase
         _advanced.Click += Advanced_Click;
 
         _enableSharePointUpload.CheckedChanged += EnableSharePointUpload_CheckedChanged;
+
+        _sapBarcodeObjectKey = new RadioButton(_sapPromptObjectKey) { Text = SapUi.FromBarcode };
+        _sapFilenameObjectKey = new RadioButton(_sapPromptObjectKey) { Text = SapUi.FromFilename };
+        _sapFixedObjectKey = new RadioButton(_sapPromptObjectKey) { Text = SapUi.FixedValue };
+        _sapObjectType.Format = x => $"{x.Key} - {x.DisplayName}";
+        _sapObjectType.Items = SapObjectTypeCatalog.CommonTypes;
+        _sapObjectType.SelectedItemChanged += (_, _) => UpdateSapObjectTypeTooltip();
+        _enableSapArchiveUpload.CheckedChanged += (_, _) => UpdateSapControlsEnabled();
+        _sapPromptObjectKey.CheckedChanged += (_, _) => UpdateSapControlsEnabled();
+        _sapBarcodeObjectKey.CheckedChanged += (_, _) => UpdateSapControlsEnabled();
+        _sapFilenameObjectKey.CheckedChanged += (_, _) => UpdateSapControlsEnabled();
+        _sapFixedObjectKey.CheckedChanged += (_, _) => UpdateSapControlsEnabled();
+        _sapTestConnection.Click += SapTestConnection_Click;
     }
 
     public void SetDevice(ScanDevice device)
@@ -159,6 +188,26 @@ public class EditProfileForm : EtoDialogBase
                     _azureAdClientId,
                     C.Label("Azure AD Client Secret"),
                     _azureAdClientSecret
+                )
+            ),
+            L.GroupBox(
+                SapUi.ArchiveLink,
+                L.Column(
+                    _enableSapArchiveUpload,
+                    C.Label(SapUi.SapObjectType),
+                    _sapObjectType,
+                    C.Label(SapUi.ArchiveId),
+                    _sapArchiveId,
+                    C.Label(SapUi.DocumentType),
+                    _sapDocumentType,
+                    C.Label(SapUi.ObjectKeySource),
+                    _sapPromptObjectKey,
+                    L.Row(_sapBarcodeObjectKey, C.Label($"{SapUi.Regex}:"), _sapBarcodeRegex),
+                    L.Row(_sapFilenameObjectKey, C.Label($"{SapUi.Regex}:"), _sapFilenameRegex),
+                    L.Row(_sapFixedObjectKey, _sapFixedObjectKeyValue),
+                    C.Label(SapUi.Description),
+                    _sapDescriptionTemplate,
+                    _sapTestConnection
                 )
             ),
             C.Filler(),
@@ -357,7 +406,27 @@ public class EditProfileForm : EtoDialogBase
         _azureAdClientId.Text = ScanProfile.SharePointUploadSettings.ClientId ?? "";
         _azureAdClientSecret.Text = ScanProfile.SharePointUploadSettings.ClientSecret ?? "";
 
+        var sap = ScanProfile.SapArchiveSettings ?? new SapArchiveProfileSettings();
+        _enableSapArchiveUpload.Checked = sap.EnableUpload;
+        _sapArchiveId.Text = sap.ArchiveId ?? "";
+        _sapDocumentType.Text = sap.ArDocType ?? "";
+        _sapDescriptionTemplate.Text = sap.DescriptionTemplate ?? "";
+        _sapBarcodeRegex.Text = sap.BarcodeRegex ?? "";
+        _sapFilenameRegex.Text = sap.FilenameRegex ?? "";
+        _sapFixedObjectKeyValue.Text = sap.FixedObjectKey ?? "";
+        var selectedType = SapObjectTypeCatalog.CommonTypes.FirstOrDefault(x => x.Key == sap.SapObjectType) ?? SapObjectTypeCatalog.CommonTypes.FirstOrDefault();
+        if (selectedType != null)
+        {
+            _sapObjectType.SelectedItem = selectedType;
+        }
+        _sapPromptObjectKey.Checked = sap.ObjectKeySource == ObjectKeySource.PromptUser;
+        _sapBarcodeObjectKey.Checked = sap.ObjectKeySource == ObjectKeySource.FromBarcode;
+        _sapFilenameObjectKey.Checked = sap.ObjectKeySource == ObjectKeySource.FromFilename;
+        _sapFixedObjectKey.Checked = sap.ObjectKeySource == ObjectKeySource.Fixed;
+        UpdateSapObjectTypeTooltip();
+
         UpdateSharePointControlsEnabled();
+        UpdateSapControlsEnabled();
 
         // Start triggering onChange events again
         _suppressChangeEvent = false;
@@ -392,6 +461,13 @@ public class EditProfileForm : EtoDialogBase
                 _errorOutput.DisplayError("Tenant ID, Client ID and Client Secret are required when SharePoint upload is enabled.");
                 return false;
             }
+        }
+
+        var sapValidation = BuildSapArchiveSettings().Validate();
+        if (!sapValidation.IsValid)
+        {
+            _errorOutput.DisplayError(string.Join(Environment.NewLine, sapValidation.Errors));
+            return false;
         }
 
         _result = true;
@@ -441,7 +517,9 @@ public class EditProfileForm : EtoDialogBase
 
             EnableAutoSave = _enableAutoSave.IsChecked(),
             AutoSaveSettings = ScanProfile.AutoSaveSettings,
+            SapArchiveSettings = BuildSapArchiveSettings(),
             Quality = ScanProfile.Quality,
+
             BrightnessContrastAfterScan = ScanProfile.BrightnessContrastAfterScan,
             AutoDeskew = ScanProfile.AutoDeskew,
             WiaOffsetWidth = ScanProfile.WiaOffsetWidth,
@@ -517,8 +595,68 @@ public class EditProfileForm : EtoDialogBase
             _enableSharePointUpload.Enabled = !locked;
             UpdateSharePointControlsEnabled();
 
+            // SAP controls
+            _enableSapArchiveUpload.Enabled = !locked;
+            UpdateSapControlsEnabled();
+
             _suppressChangeEvent = false;
         }
+    }
+
+    private SapArchiveProfileSettings BuildSapArchiveSettings()
+    {
+        return new SapArchiveProfileSettings
+        {
+            EnableUpload = _enableSapArchiveUpload.IsChecked(),
+            ArchiveId = _sapArchiveId.Text.Trim(),
+            SapObjectType = _sapObjectType.SelectedItem?.Key,
+            ArDocType = _sapDocumentType.Text.Trim(),
+            ObjectKeySource = _sapBarcodeObjectKey.Checked ? ObjectKeySource.FromBarcode
+                : _sapFilenameObjectKey.Checked ? ObjectKeySource.FromFilename
+                : _sapFixedObjectKey.Checked ? ObjectKeySource.Fixed
+                : ObjectKeySource.PromptUser,
+            BarcodeRegex = _sapBarcodeRegex.Text.Trim(),
+            FilenameRegex = _sapFilenameRegex.Text.Trim(),
+            FixedObjectKey = _sapFixedObjectKeyValue.Text.Trim(),
+            DescriptionTemplate = _sapDescriptionTemplate.Text.Trim()
+        };
+    }
+
+    private void UpdateSapObjectTypeTooltip()
+    {
+        _sapObjectType.AsControl().ToolTip = _sapObjectType.SelectedItem?.KeyFormatHint ?? "";
+    }
+
+    private void UpdateSapControlsEnabled()
+    {
+        if (_scanProfile == null)
+        {
+            return;
+        }
+        bool enabled = _enableSapArchiveUpload.IsChecked() && !_scanProfile.IsLocked;
+        _enableSapArchiveUpload.Enabled = !_scanProfile.IsLocked;
+        _sapObjectType.Enabled = enabled;
+        _sapArchiveId.Enabled = enabled;
+        _sapDocumentType.Enabled = enabled;
+        _sapPromptObjectKey.Enabled = enabled;
+        _sapBarcodeObjectKey.Enabled = enabled;
+        _sapFilenameObjectKey.Enabled = enabled;
+        _sapFixedObjectKey.Enabled = enabled;
+        _sapBarcodeRegex.Enabled = enabled && _sapBarcodeObjectKey.Checked;
+        _sapFilenameRegex.Enabled = enabled && _sapFilenameObjectKey.Checked;
+        _sapFixedObjectKeyValue.Enabled = enabled && _sapFixedObjectKey.Checked;
+        _sapDescriptionTemplate.Enabled = enabled;
+        _sapTestConnection.Enabled = enabled;
+    }
+
+    private async void SapTestConnection_Click(object? sender, EventArgs e)
+    {
+        var result = await SapArchiveDiagnostics.TestConnectionAsync(Config.Get(c => c.SapConnection));
+        MessageBox.Show(this,
+            result.Success ? SapUi.ConnectionOk : string.Format(SapUi.ConnectionFailed, result.ErrorMessage ?? result.ErrorCode),
+            SapUi.SapConnection,
+            MessageBoxButtons.OK,
+            result.Success ? MessageBoxType.Information : MessageBoxType.Error);
     }
 
     private void UpdateSharePointControlsEnabled()
