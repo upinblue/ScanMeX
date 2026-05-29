@@ -96,6 +96,11 @@ public class ScanProfile
 
     public AutoSaveSettings? AutoSaveSettings { get; set; }
 
+    /// <summary>
+    /// Enables full barcode recognition for placeholder and upload processing. Disabled by default to avoid performance impact for existing profiles.
+    /// </summary>
+    public bool BarcodeRecognitionEnabled { get; set; }
+
     public int Quality { get; set; }
 
     public bool AutoDeskew { get; set; }
@@ -145,6 +150,7 @@ public class ScanProfile
     /// <summary>
     /// Optional SAP ArchiveLink settings. Null keeps XML profile serialization backward-compatible for existing profiles.
     /// </summary>
+    [XmlElement(IsNullable = true)]
     public SapArchiveProfileSettings? SapArchiveSettings { get; set; }
 }
 

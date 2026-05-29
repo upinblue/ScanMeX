@@ -77,6 +77,25 @@ internal static class SaveSeparatorHelper
         }
     }
 
+    public static IEnumerable<List<ProcessedImage>> SegmentByPatchTKeepingSeparator(IEnumerable<ProcessedImage> source)
+    {
+        var current = new List<ProcessedImage>();
+        foreach (var image in source)
+        {
+            if (image.PostProcessingData.Barcode.IsPatchT && current.Count > 0)
+            {
+                yield return current;
+                current = [];
+            }
+            // Keep the separator sheet: it carries the visual/business barcode used by SAP ArchiveLink.
+            current.Add(image);
+        }
+        if (current.Count > 0)
+        {
+            yield return current;
+        }
+    }
+
     /// <summary>
     /// Extended separation that can use AutoSaveSettings, including Code39 regex-based separation.
     /// </summary>

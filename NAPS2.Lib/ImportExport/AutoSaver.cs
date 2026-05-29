@@ -137,13 +137,23 @@ public class AutoSaver
         {
             return (true, null);
         }
-        string subPath = placeholders.Substitute(settings.FilePath, true, i);
+        string subPath = ResolveAutoSavePath(settings.FilePath, settings, placeholders, i, images);
+        if (subPath.Contains("$(", StringComparison.Ordinal))
+        {
+            _errorOutput.DisplayError($"Unaufgelöster Platzhalter: {settings.FilePath}");
+            return (false, null);
+        }
         if (settings.PromptForFilePath)
         {
             string? newPath = null!;
             if (Invoker.Current.InvokeGet(() => _dialogHelper.PromptToSavePdfOrImage(subPath, out newPath)))
             {
-                subPath = placeholders.Substitute(newPath!, true, i);
+                subPath = ResolveAutoSavePath(newPath!, settings, placeholders, i, images);
+                if (subPath.Contains("$(", StringComparison.Ordinal))
+                {
+                    _errorOutput.DisplayError($"Unaufgelöster Platzhalter: {newPath}");
+                    return (false, null);
+                }
             }
             else
             {
@@ -220,5 +230,33 @@ public class AutoSaver
             }
             return (success, subPath);
         }
+    }
+
+    private string ResolveAutoSavePath(string template, AutoSaveSettings settings, Placeholders placeholders, int index,
+        List<ProcessedImage> images)
+    {
+        if (ActiveProfile == null)
+        {
+            return placeholders.Substitute(template, true, index);
+        }
+        var ext = Path.GetExtension(template).TrimStart('.');
+        if (string.IsNullOrWhiteSpace(ext))
+        {
+            ext = "pdf";
+        }
+        var ctx = new ScanContext
+        {
+            Timestamp = DateTime.Now,
+            SequenceIndex = index,
+            Profile = ActiveProfile,
+            Images = images,
+            Barcodes = new BarcodeExtractor().Extract(images),
+            SeparatorBarcodeValue = images.FirstOrDefault()?.PostProcessingData.Barcode.IsPatchT == true
+                ? images.First().PostProcessingData.Barcode.DetectedText
+                : null,
+            OutputExtension = ext,
+            FileFormat = ext
+        };
+        return new FileNamePlaceholders().SubstitutePlaceholders(template, ctx, autoIncrement: true);
     }
 }

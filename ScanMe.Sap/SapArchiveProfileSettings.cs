@@ -5,17 +5,79 @@ using System.Text.RegularExpressions;
 namespace NAPS2.Sap;
 
 /// <summary>
-/// Specifies where the SAP ArchiveLink object key should be obtained from.
+/// Specifies where the SAP ArchiveLink barcode value should be obtained from.
+/// </summary>
+public enum BarcodeSource
+{
+    /// <summary>
+    /// Use a fixed configured barcode value.
+    /// </summary>
+    Fixed,
+
+    /// <summary>
+    /// Extract the barcode from scanned page barcode metadata.
+    /// </summary>
+    FromScannedBarcode,
+
+    /// <summary>
+    /// Extract the barcode from the saved file name.
+    /// </summary>
+    FromFilename,
+
+    /// <summary>
+    /// Prompt the user for the barcode.
+    /// </summary>
+    PromptUser
+}
+
+/// <summary>
+/// Specifies where the SAP barcode value should be obtained from for upload.
+/// </summary>
+public enum BarcodeSourceForSap
+{
+    /// <summary>
+    /// Use a fixed configured barcode value.
+    /// </summary>
+    Fixed,
+
+    /// <summary>
+    /// Use the separator barcode or first detected barcode from ScanContext.
+    /// </summary>
+    FromContextBarcode,
+
+    /// <summary>
+    /// Resolve the configured barcode template using ScanContext placeholders.
+    /// </summary>
+    Template,
+
+    /// <summary>
+    /// Extract the barcode from scanned page barcode metadata.
+    /// </summary>
+    FromScannedBarcode,
+
+    /// <summary>
+    /// Extract the barcode from the saved file name.
+    /// </summary>
+    FromFilename,
+
+    /// <summary>
+    /// Prompt the user for the barcode.
+    /// </summary>
+    PromptUser
+}
+
+/// <summary>
+/// Legacy object key source retained for compatibility with older ScanMe integration code.
 /// </summary>
 public enum ObjectKeySource
 {
     /// <summary>
-    /// Ask the user for the object key before uploading.
+    /// Prompt the user for the object key.
     /// </summary>
     PromptUser,
 
     /// <summary>
-    /// Extract the object key from a barcode value.
+    /// Extract the object key from scanned page barcode metadata.
     /// </summary>
     FromBarcode,
 
@@ -25,13 +87,13 @@ public enum ObjectKeySource
     FromFilename,
 
     /// <summary>
-    /// Use a fixed configured object key.
+    /// Use a fixed configured object key value.
     /// </summary>
     Fixed
 }
 
 /// <summary>
-/// Contains SAP ArchiveLink upload settings embedded in a ScanMe scan profile.
+/// Contains per-profile SAP ArchiveLink OData upload settings embedded in a ScanMe scan profile.
 /// </summary>
 public class SapArchiveProfileSettings
 {
@@ -41,155 +103,201 @@ public class SapArchiveProfileSettings
     public bool EnableUpload { get; set; }
 
     /// <summary>
-    /// Gets or sets the SAP content repository/archive ID, for example <c>A1</c>.
+    /// Gets or sets the SAP archive/content repository ID, for example <c>PS</c>.
     /// </summary>
     public string? ArchiveId { get; set; }
 
     /// <summary>
-    /// Gets or sets the SAP business object type, for example <c>BUS2012</c>.
+    /// Gets or sets the source used to determine the barcode header value.
     /// </summary>
-    public string? SapObjectType { get; set; }
+    public BarcodeSource BarcodeSource { get; set; } = BarcodeSource.PromptUser;
 
     /// <summary>
-    /// Gets or sets the ArchiveLink document type, for example <c>ZSCAN_PDF</c>.
+    /// Gets or sets the fixed barcode used when <see cref="BarcodeSource" /> is <see cref="BarcodeSource.Fixed" />.
     /// </summary>
-    public string? ArDocType { get; set; }
+    public string? FixedBarcode { get; set; }
 
     /// <summary>
-    /// Gets or sets the source used to determine the SAP object key.
-    /// </summary>
-    public ObjectKeySource ObjectKeySource { get; set; } = ObjectKeySource.PromptUser;
-
-    /// <summary>
-    /// Gets or sets the fixed object key used when <see cref="ObjectKeySource" /> is <see cref="ObjectKeySource.Fixed" />.
-    /// </summary>
-    public string? FixedObjectKey { get; set; }
-
-    /// <summary>
-    /// Gets or sets the regular expression used to extract an object key from barcode values.
+    /// Gets or sets the optional regular expression used for <see cref="BarcodeSource.FromScannedBarcode" /> or <see cref="BarcodeSource.FromFilename" />.
     /// </summary>
     public string? BarcodeRegex { get; set; }
 
     /// <summary>
-    /// Gets or sets the regular expression used to extract an object key from the saved file name.
+    /// Gets or sets the optional ArchiveLink/BOR object type header value, for example <c>BUS2012</c>.
     /// </summary>
-    public string? FilenameRegex { get; set; }
+    public string? ArObject { get; set; }
 
     /// <summary>
-    /// Gets or sets the optional SAP ArchiveLink description template.
+    /// Gets or sets the optional SAP business object header value.
+    /// </summary>
+    public string? SapObject { get; set; }
+
+    /// <summary>
+    /// Gets or sets the profile-specific SAP OData connection. Passwords are stored only in encrypted form.
+    /// </summary>
+    public SapConnectionConfig? Connection { get; set; }
+
+    /// <summary>
+    /// Gets or sets the name of the global SAP connection used by this profile.
+    /// </summary>
+    public string? ConnectionName { get; set; }
+
+    /// <summary>
+    /// Gets or sets the barcode template used when <see cref="BarcodeSourceForSap" /> is <see cref="BarcodeSourceForSap.Template" />.
+    /// </summary>
+    public string? BarcodeTemplate { get; set; }
+
+    /// <summary>
+    /// Gets or sets an optional slug/file-name override template.
+    /// </summary>
+    public string? SlugTemplate { get; set; }
+
+    /// <summary>
+    /// Gets or sets the optional SAP object ID header value. May contain placeholders such as <c>{barcode}</c>.
+    /// </summary>
+    public string? ObjectId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the optional SAP object ID template. May contain placeholders such as <c>$(barcode)</c>.
+    /// </summary>
+    public string? ObjectIdTemplate
+    {
+        get => ObjectId;
+        set => ObjectId = value;
+    }
+
+    /// <summary>
+    /// Gets or sets the barcode source used by SAP upload. Alias for <see cref="BarcodeSource" />.
+    /// </summary>
+    public BarcodeSourceForSap BarcodeSourceForSap
+    {
+        get => BarcodeSource switch
+        {
+            BarcodeSource.Fixed => BarcodeSourceForSap.Fixed,
+            BarcodeSource.FromScannedBarcode => BarcodeSourceForSap.FromContextBarcode,
+            BarcodeSource.FromFilename => BarcodeSourceForSap.FromFilename,
+            _ => BarcodeSourceForSap.FromContextBarcode
+        };
+        set => BarcodeSource = value switch
+        {
+            BarcodeSourceForSap.Fixed => BarcodeSource.Fixed,
+            BarcodeSourceForSap.Template => BarcodeSource.PromptUser,
+            BarcodeSourceForSap.FromScannedBarcode => BarcodeSource.FromScannedBarcode,
+            BarcodeSourceForSap.FromFilename => BarcodeSource.FromFilename,
+            BarcodeSourceForSap.PromptUser => BarcodeSource.PromptUser,
+            _ => BarcodeSource.FromScannedBarcode
+        };
+    }
+
+    /// <summary>
+    /// Legacy property retained for compatibility. Maps to <see cref="ArObject" />.
+    /// </summary>
+    public string? SapObjectType
+    {
+        get => ArObject;
+        set => ArObject = value;
+    }
+
+    /// <summary>
+    /// Legacy property retained for compatibility. OData upload does not send this value directly.
+    /// </summary>
+    public string? ArDocType { get; set; }
+
+    /// <summary>
+    /// Legacy property retained for compatibility. Maps to <see cref="BarcodeSource" />.
+    /// </summary>
+    public ObjectKeySource ObjectKeySource
+    {
+        get => BarcodeSource switch
+        {
+            BarcodeSource.Fixed => ObjectKeySource.Fixed,
+            BarcodeSource.FromScannedBarcode => ObjectKeySource.FromBarcode,
+            BarcodeSource.FromFilename => ObjectKeySource.FromFilename,
+            _ => ObjectKeySource.PromptUser
+        };
+        set => BarcodeSource = value switch
+        {
+            ObjectKeySource.Fixed => BarcodeSource.Fixed,
+            ObjectKeySource.FromBarcode => BarcodeSource.FromScannedBarcode,
+            ObjectKeySource.FromFilename => BarcodeSource.FromFilename,
+            _ => BarcodeSource.PromptUser
+        };
+    }
+
+    /// <summary>
+    /// Legacy property retained for compatibility. Maps to <see cref="FixedBarcode" />.
+    /// </summary>
+    public string? FixedObjectKey
+    {
+        get => FixedBarcode;
+        set => FixedBarcode = value;
+    }
+
+    /// <summary>
+    /// Legacy property retained for compatibility. Maps to <see cref="BarcodeRegex" />.
+    /// </summary>
+    public string? FilenameRegex
+    {
+        get => BarcodeRegex;
+        set => BarcodeRegex = value;
+    }
+
+    /// <summary>
+    /// Legacy property retained for compatibility. OData upload does not send descriptions in part 2.
     /// </summary>
     public string? DescriptionTemplate { get; set; }
 
     /// <summary>
     /// Validates the profile settings for configuration completeness and consistency.
     /// </summary>
-    /// <returns>A validation result containing all detected configuration errors.</returns>
-    public ValidationResult Validate()
+    /// <returns>A list of validation problems. An empty list indicates success.</returns>
+    public IReadOnlyList<string> Validate()
     {
-        var errors = new List<string>();
-
+        var problems = new List<string>();
         if (!EnableUpload)
         {
-            return ValidationResult.Success;
+            return problems;
         }
 
         if (string.IsNullOrWhiteSpace(ArchiveId))
         {
-            errors.Add("ArchiveId is required when SAP ArchiveLink upload is enabled.");
+            problems.Add("ArchiveId is required when SAP ArchiveLink upload is enabled.");
         }
-        if (string.IsNullOrWhiteSpace(SapObjectType))
+        var connection = Connection;
+        if (connection != null)
         {
-            errors.Add("SapObjectType is required when SAP ArchiveLink upload is enabled.");
+            if (string.IsNullOrWhiteSpace(connection.Host) || !connection.Host.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                problems.Add("SAP Host is required and must start with https://.");
+            }
+            if (string.IsNullOrWhiteSpace(connection.ServiceName))
+            {
+                problems.Add("SAP ServiceName is required.");
+            }
+            if (string.IsNullOrWhiteSpace(connection.Client) || connection.Client.Length != 3)
+            {
+                problems.Add("SAP Client must be 3 digits.");
+            }
+            if (string.IsNullOrWhiteSpace(connection.User))
+            {
+                problems.Add("SAP User is required.");
+            }
         }
-        if (string.IsNullOrWhiteSpace(ArDocType))
+        if (BarcodeSource == BarcodeSource.Fixed && string.IsNullOrWhiteSpace(FixedBarcode))
         {
-            errors.Add("ArDocType is required when SAP ArchiveLink upload is enabled.");
+            problems.Add("FixedBarcode is required when BarcodeSource is Fixed.");
         }
-
-        switch (ObjectKeySource)
+        if (!string.IsNullOrWhiteSpace(BarcodeRegex))
         {
-            case ObjectKeySource.Fixed:
-                if (string.IsNullOrWhiteSpace(FixedObjectKey))
-                {
-                    errors.Add("FixedObjectKey is required when ObjectKeySource is Fixed.");
-                }
-                break;
-            case ObjectKeySource.FromBarcode:
-                if (string.IsNullOrWhiteSpace(BarcodeRegex))
-                {
-                    errors.Add("BarcodeRegex is required when ObjectKeySource is FromBarcode.");
-                }
-                else
-                {
-                    AddRegexError(errors, BarcodeRegex, "BarcodeRegex");
-                }
-                break;
-            case ObjectKeySource.FromFilename:
-                if (string.IsNullOrWhiteSpace(FilenameRegex))
-                {
-                    errors.Add("FilenameRegex is required when ObjectKeySource is FromFilename.");
-                }
-                else
-                {
-                    AddRegexError(errors, FilenameRegex, "FilenameRegex");
-                }
-                break;
+            try
+            {
+                _ = new Regex(BarcodeRegex);
+            }
+            catch (ArgumentException ex)
+            {
+                problems.Add($"BarcodeRegex is invalid: {ex.Message}");
+            }
         }
-
-        return errors.Count == 0 ? ValidationResult.Success : ValidationResult.Failure(errors);
-    }
-
-    private static void AddRegexError(List<string> errors, string pattern, string fieldName)
-    {
-        try
-        {
-            _ = new Regex(pattern);
-        }
-        catch (ArgumentException ex)
-        {
-            errors.Add($"{fieldName} is invalid: {ex.Message}");
-        }
-    }
-}
-
-/// <summary>
-/// Represents the result of validating a configuration object.
-/// </summary>
-public sealed class ValidationResult
-{
-    private static readonly ValidationResult ValidResult = new ValidationResult(Array.Empty<string>());
-
-    private ValidationResult(IReadOnlyList<string> errors)
-    {
-        Errors = errors;
-    }
-
-    /// <summary>
-    /// Gets a successful validation result.
-    /// </summary>
-    public static ValidationResult Success => ValidResult;
-
-    /// <summary>
-    /// Gets a value indicating whether validation completed without errors.
-    /// </summary>
-    public bool IsValid => Errors.Count == 0;
-
-    /// <summary>
-    /// Gets the validation errors.
-    /// </summary>
-    public IReadOnlyList<string> Errors { get; }
-
-    /// <summary>
-    /// Creates a failed validation result from a set of error messages.
-    /// </summary>
-    /// <param name="errors">The validation error messages.</param>
-    /// <returns>A failed validation result.</returns>
-    public static ValidationResult Failure(IReadOnlyList<string> errors)
-    {
-        if (errors == null)
-        {
-            throw new ArgumentNullException(nameof(errors));
-        }
-        return new ValidationResult(errors);
+        return problems;
     }
 }

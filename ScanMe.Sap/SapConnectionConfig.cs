@@ -3,61 +3,42 @@ using System;
 namespace NAPS2.Sap;
 
 /// <summary>
-/// Specifies the transport used to connect ScanMe with SAP ArchiveLink infrastructure.
+/// Legacy connection mode retained for compatibility with older ScanMe integration code.
 /// </summary>
 public enum ConnectionMode
 {
-    /// <summary>
-    /// Uses SAP RFC connectivity. No RFC implementation is included in this project.
-    /// </summary>
     Rfc,
-
-    /// <summary>
-    /// Uses an SAP HTTP Content Server endpoint.
-    /// </summary>
     HttpContentServer
 }
 
 /// <summary>
-/// Specifies how the ArchiveLink connection row is created after a content-server upload.
+/// Legacy connection insert mode retained for compatibility with older ScanMe integration code.
 /// </summary>
 public enum ConnectionInsertMode
 {
-    /// <summary>
-    /// Uses the standard SAP RFC <c>ARCHIV_CONNECTION_INSERT</c>.
-    /// </summary>
     StandardRfc,
-
-    /// <summary>
-    /// Uses a customer-specific RFC wrapper.
-    /// </summary>
     CustomRfc
 }
 
 /// <summary>
-/// Stores SAP system connection settings for ArchiveLink integration.
+/// Stores global SAP OData connection settings for ArchiveLink upload.
 /// </summary>
 public class SapConnectionConfig : IEquatable<SapConnectionConfig>
 {
     /// <summary>
-    /// Gets or sets the SAP connection mode.
+    /// Gets or sets the display name of this connection, for example <c>PRD - Schwan Cosmetics</c>.
     /// </summary>
-    public ConnectionMode ConnectionMode { get; set; }
+    public string? Name { get; set; }
 
     /// <summary>
-    /// Gets or sets the SAP system ID, for example <c>PRD</c>.
+    /// Gets or sets the SAP host including scheme and optional port, without trailing slash.
     /// </summary>
-    public string? SystemId { get; set; }
+    public string? Host { get; set; }
 
     /// <summary>
-    /// Gets or sets the SAP application server host name.
+    /// Gets or sets the SAP OData service name, for example <c>ZARCHIVE_UPLOAD_SRV</c>.
     /// </summary>
-    public string? AppServerHost { get; set; }
-
-    /// <summary>
-    /// Gets or sets the two-digit SAP system number, for example <c>00</c>.
-    /// </summary>
-    public string? SystemNumber { get; set; }
+    public string? ServiceName { get; set; }
 
     /// <summary>
     /// Gets or sets the SAP client, for example <c>100</c>.
@@ -65,9 +46,9 @@ public class SapConnectionConfig : IEquatable<SapConnectionConfig>
     public string? Client { get; set; }
 
     /// <summary>
-    /// Gets or sets the SAP logon language, for example <c>DE</c> or <c>EN</c>.
+    /// Gets or sets the SAP logon language.
     /// </summary>
-    public string? Language { get; set; }
+    public string? Language { get; set; } = "DE";
 
     /// <summary>
     /// Gets or sets the SAP user name.
@@ -80,29 +61,93 @@ public class SapConnectionConfig : IEquatable<SapConnectionConfig>
     public string? EncryptedPassword { get; set; }
 
     /// <summary>
-    /// Gets or sets the SAP HTTP Content Server base URL used in <see cref="ConnectionMode.HttpContentServer" /> mode.
-    /// </summary>
-    public string? ContentServerBaseUrl { get; set; }
-
-    /// <summary>
-    /// Gets or sets a value indicating whether HTTPS should be required for HTTP Content Server communication.
-    /// </summary>
-    public bool UseHttps { get; set; } = true;
-
-    /// <summary>
-    /// Gets or sets a value indicating whether certificate validation errors should be ignored.
+    /// Gets or sets a value indicating whether TLS certificate validation errors should be ignored. Intended only for test environments.
     /// </summary>
     public bool IgnoreCertificateErrors { get; set; }
 
     /// <summary>
-    /// Gets or sets how the ArchiveLink connection is inserted after HTTP content-server upload.
+    /// Legacy property retained for compatibility. OData upload ignores this value.
+    /// </summary>
+    public ConnectionMode ConnectionMode { get; set; } = ConnectionMode.HttpContentServer;
+
+    /// <summary>
+    /// Legacy property retained for compatibility. Prefer <see cref="ServiceName" /> for OData.
+    /// </summary>
+    public string? SystemId { get; set; }
+
+    /// <summary>
+    /// Legacy property retained for compatibility. Prefer <see cref="Host" /> for OData.
+    /// </summary>
+    public string? AppServerHost
+    {
+        get => Host;
+        set => Host = value;
+    }
+
+    /// <summary>
+    /// Legacy property retained for compatibility. OData upload ignores this value.
+    /// </summary>
+    public string? SystemNumber { get; set; }
+
+    /// <summary>
+    /// Legacy property retained for compatibility. Maps to <see cref="Host" />.
+    /// </summary>
+    public string? ContentServerBaseUrl
+    {
+        get => Host;
+        set => Host = value;
+    }
+
+    /// <summary>
+    /// Legacy property retained for compatibility. When set to true, ensures the host starts with HTTPS only by convention.
+    /// </summary>
+    public bool UseHttps { get; set; } = true;
+
+    /// <summary>
+    /// Legacy property retained for compatibility. OData upload ignores this value.
     /// </summary>
     public ConnectionInsertMode ConnectionInsertMode { get; set; } = ConnectionInsertMode.StandardRfc;
 
     /// <summary>
-    /// Gets or sets the customer-specific RFC name used when <see cref="ConnectionInsertMode" /> is <see cref="ConnectionInsertMode.CustomRfc" />.
+    /// Legacy property retained for compatibility. OData upload ignores this value.
     /// </summary>
     public string? CustomRfcName { get; set; }
+
+    /// <summary>
+    /// Builds the SAP OData base service URL.
+    /// </summary>
+    /// <returns>The base service URL.</returns>
+    public string GetBaseServiceUrl()
+    {
+        return $"{(Host ?? string.Empty).TrimEnd('/')}/sap/opu/odata/sap/{Uri.EscapeDataString(ServiceName ?? string.Empty)}";
+    }
+
+    /// <summary>
+    /// Builds the SAP OData service root URL used first to fetch a CSRF token.
+    /// </summary>
+    /// <returns>The service root URL including SAP client/language query.</returns>
+    public string GetRootUrl()
+    {
+        return $"{GetBaseServiceUrl()}/?{BuildQuery()}";
+    }
+
+    /// <summary>
+    /// Builds the SAP OData metadata URL used to fetch a CSRF token.
+    /// </summary>
+    /// <returns>The metadata URL.</returns>
+    public string GetMetadataUrl()
+    {
+        return $"{GetBaseServiceUrl()}/$metadata?{BuildQuery()}";
+    }
+
+    /// <summary>
+    /// Builds the SAP OData AttachmentSet upload URL.
+    /// </summary>
+    /// <returns>The upload URL.</returns>
+    public string GetUploadUrl()
+    {
+        return $"{GetBaseServiceUrl()}/AttachmentSet?{BuildQuery()}";
+    }
 
     /// <inheritdoc />
     public override bool Equals(object? obj) => Equals(obj as SapConnectionConfig);
@@ -111,19 +156,14 @@ public class SapConnectionConfig : IEquatable<SapConnectionConfig>
     public bool Equals(SapConnectionConfig? other)
     {
         return other != null &&
-               ConnectionMode == other.ConnectionMode &&
-               string.Equals(SystemId, other.SystemId, StringComparison.Ordinal) &&
-               string.Equals(AppServerHost, other.AppServerHost, StringComparison.Ordinal) &&
-               string.Equals(SystemNumber, other.SystemNumber, StringComparison.Ordinal) &&
+               string.Equals(Name, other.Name, StringComparison.Ordinal) &&
+               string.Equals(Host, other.Host, StringComparison.Ordinal) &&
+               string.Equals(ServiceName, other.ServiceName, StringComparison.Ordinal) &&
                string.Equals(Client, other.Client, StringComparison.Ordinal) &&
                string.Equals(Language, other.Language, StringComparison.Ordinal) &&
                string.Equals(User, other.User, StringComparison.Ordinal) &&
                string.Equals(EncryptedPassword, other.EncryptedPassword, StringComparison.Ordinal) &&
-               string.Equals(ContentServerBaseUrl, other.ContentServerBaseUrl, StringComparison.Ordinal) &&
-               UseHttps == other.UseHttps &&
-               IgnoreCertificateErrors == other.IgnoreCertificateErrors &&
-               ConnectionInsertMode == other.ConnectionInsertMode &&
-               string.Equals(CustomRfcName, other.CustomRfcName, StringComparison.Ordinal);
+               IgnoreCertificateErrors == other.IgnoreCertificateErrors;
     }
 
     /// <inheritdoc />
@@ -132,21 +172,21 @@ public class SapConnectionConfig : IEquatable<SapConnectionConfig>
         unchecked
         {
             var hash = 17;
-            hash = hash * 31 + ConnectionMode.GetHashCode();
-            hash = AddHash(hash, SystemId);
-            hash = AddHash(hash, AppServerHost);
-            hash = AddHash(hash, SystemNumber);
+            hash = AddHash(hash, Name);
+            hash = AddHash(hash, Host);
+            hash = AddHash(hash, ServiceName);
             hash = AddHash(hash, Client);
             hash = AddHash(hash, Language);
             hash = AddHash(hash, User);
             hash = AddHash(hash, EncryptedPassword);
-            hash = AddHash(hash, ContentServerBaseUrl);
-            hash = hash * 31 + UseHttps.GetHashCode();
             hash = hash * 31 + IgnoreCertificateErrors.GetHashCode();
-            hash = hash * 31 + ConnectionInsertMode.GetHashCode();
-            hash = AddHash(hash, CustomRfcName);
             return hash;
         }
+    }
+
+    private string BuildQuery()
+    {
+        return $"sap-client={Uri.EscapeDataString(Client ?? string.Empty)}&sap-language={Uri.EscapeDataString(string.IsNullOrWhiteSpace(Language) ? "DE" : Language!)}";
     }
 
     private static int AddHash(int hash, string? value)

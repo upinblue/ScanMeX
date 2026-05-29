@@ -1,46 +1,86 @@
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace NAPS2.Sap;
 
 /// <summary>
-/// Uploads a document to SAP ArchiveLink and links it to a SAP business object.
+/// Uploads a document to a customer-specific SAP ArchiveLink OData service.
 /// </summary>
 public interface ISapArchiveUploader
 {
     /// <summary>
-    /// Uploads the document and creates the SAP ArchiveLink connection.
+    /// Uploads the document to the SAP OData AttachmentSet endpoint.
     /// </summary>
     /// <param name="request">The upload request.</param>
     /// <param name="ct">A cancellation token.</param>
     /// <returns>The upload result.</returns>
     Task<SapUploadResult> UploadAsync(SapUploadRequest request, CancellationToken ct);
+
+    /// <summary>
+    /// Tests connectivity by fetching a CSRF token for the supplied connection.
+    /// </summary>
+    /// <param name="cfg">The SAP OData connection configuration.</param>
+    /// <param name="ct">A cancellation token.</param>
+    /// <returns>The connection test result.</returns>
+    Task<SapConnectionTestResult> TestConnectionAsync(SapConnectionConfig cfg, CancellationToken ct);
 }
 
 /// <summary>
-/// Describes a SAP ArchiveLink upload request.
+/// Describes a SAP ArchiveLink OData upload request.
 /// </summary>
-/// <param name="Connection">The SAP connection configuration.</param>
+/// <param name="Connection">The SAP OData connection configuration.</param>
 /// <param name="Profile">The ArchiveLink profile settings.</param>
-/// <param name="ObjectKey">The SAP business object key.</param>
-/// <param name="DocumentBytes">The raw document bytes to archive. These bytes are never base64-encoded by the uploader.</param>
-/// <param name="FileName">The original file name.</param>
-/// <param name="MimeType">The document MIME type.</param>
-/// <param name="Description">The ArchiveLink description.</param>
+/// <param name="Barcode">The already resolved barcode value sent as <c>x-sap-barcode</c>.</param>
+/// <param name="ObjectId">The already resolved SAP object id sent as <c>x-sap-objectid</c>.</param>
+/// <param name="DocumentBytes">The raw document bytes.</param>
+/// <param name="FileName">The already resolved original file name sent as <c>slug</c>.</param>
+/// <param name="OverrideMimeType">An optional MIME type override.</param>
 public record SapUploadRequest(
     SapConnectionConfig Connection,
     SapArchiveProfileSettings Profile,
-    string ObjectKey,
+    string Barcode,
+    string? ObjectId,
     byte[] DocumentBytes,
     string FileName,
-    string MimeType,
-    string Description);
+    string? OverrideMimeType = null)
+{
+    /// <summary>
+    /// Legacy constructor retained for older integration code. The old object key is used as OData barcode.
+    /// </summary>
+    public SapUploadRequest(SapConnectionConfig connection, SapArchiveProfileSettings profile, string objectKey,
+        byte[] documentBytes, string fileName, string mimeType, string description)
+        : this(connection, profile, objectKey, null, documentBytes, fileName, mimeType)
+    {
+    }
+};
 
 /// <summary>
-/// Describes the outcome of a SAP ArchiveLink upload.
+/// Describes the outcome of a SAP ArchiveLink OData upload.
 /// </summary>
-/// <param name="Success">A value indicating whether the upload and connection insert succeeded.</param>
-/// <param name="ArchivDocId">The 32-character ArchiveLink document ID returned by the content server/SAP.</param>
-/// <param name="ErrorMessage">The user-readable error message, if any.</param>
-/// <param name="ErrorCode">The technical error code, if any.</param>
-public record SapUploadResult(bool Success, string? ArchivDocId, string? ErrorMessage, string? ErrorCode);
+public record SapUploadResult(
+    bool Success,
+    int? HttpStatusCode,
+    string? ArchivDocId,
+    string? LocationHeader,
+    string? ErrorCode,
+    string? ErrorMessage,
+    string? TransactionId,
+    string? RawResponseBody,
+    IReadOnlyList<SapErrorDetail> Details);
+
+/// <summary>
+/// Describes one SAP Gateway error detail entry.
+/// </summary>
+/// <param name="Code">The SAP error code.</param>
+/// <param name="Message">The SAP error message.</param>
+/// <param name="Severity">The SAP error severity.</param>
+public record SapErrorDetail(string Code, string Message, string Severity);
+
+/// <summary>
+/// Describes the outcome of a SAP OData connection test.
+/// </summary>
+/// <param name="Success">A value indicating whether a CSRF token was obtained.</param>
+/// <param name="CsrfToken">The fetched CSRF token.</param>
+/// <param name="ErrorMessage">The error message when the test failed.</param>
+public record SapConnectionTestResult(bool Success, string? CsrfToken, string? ErrorMessage);

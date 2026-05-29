@@ -240,7 +240,7 @@ internal class ScanPerformer : IScanPerformer
     {
         var separator = scanProfile.AutoSaveSettings?.Separator;
         var sapNeedsBarcode = scanProfile.SapArchiveSettings?.EnableUpload == true &&
-                              scanProfile.SapArchiveSettings.ObjectKeySource == ObjectKeySource.FromBarcode;
+                              scanProfile.SapArchiveSettings.BarcodeSource == BarcodeSource.FromScannedBarcode;
 
         var options = new ScanOptions
         {

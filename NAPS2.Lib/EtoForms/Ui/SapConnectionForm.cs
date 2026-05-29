@@ -1,56 +1,57 @@
+using Eto.Drawing;
 using Eto.Forms;
 using NAPS2.EtoForms.Layout;
 using NAPS2.EtoForms.Widgets;
 using NAPS2.Sap;
+using System.Threading;
 
 namespace NAPS2.EtoForms.Ui;
 
 internal class SapConnectionForm : EtoDialogBase
 {
-    private readonly EnumDropDownWidget<ConnectionMode> _connectionMode = new(scale: false);
-    private readonly TextBox _systemId = new();
-    private readonly TextBox _appServerHost = new();
-    private readonly TextBox _systemNumber = new();
+    private readonly TextBox _host = new();
+    private readonly TextBox _serviceName = new();
     private readonly TextBox _client = new();
-    private readonly TextBox _language = new();
+    private readonly DropDownWidget<string> _language = new(scale: false);
     private readonly TextBox _user = new();
     private readonly PasswordBox _password = new();
-    private readonly TextBox _contentServerBaseUrl = new();
-    private readonly CheckBox _useHttps = new() { Text = "HTTPS" };
-    private readonly CheckBox _ignoreCertificateErrors = new() { Text = "Ignore certificate errors" };
-    private readonly EnumDropDownWidget<ConnectionInsertMode> _connectionInsertMode = new(scale: false);
-    private readonly TextBox _customRfcName = new();
+    private readonly CheckBox _ignoreCertificateErrors = new() { Text = "SSL-Zertifikatsprüfung deaktivieren (nur Testumgebung!)" };
+    private readonly Label _certificateWarning = new()
+    {
+        Text = "Warnung: TLS-Zertifikate werden nicht geprüft.",
+        TextColor = Colors.Red
+    };
+    private readonly LayoutVisibility _certificateWarningVis = new(false);
     private readonly Button _testConnection = new() { Text = SapUi.TestConnection };
+    private readonly Label _testResult = new();
 
     public SapConnectionForm(Naps2Config config) : base(config)
     {
         Title = SapUi.SapConnection;
         IconName = "cog_small";
+        _language.Items = new[] { "DE", "EN", "FR", "IT", "ES" };
+        _ignoreCertificateErrors.CheckedChanged += (_, _) =>
+            _certificateWarningVis.IsVisible = _ignoreCertificateErrors.IsChecked();
         _testConnection.Click += TestConnection_Click;
         LoadValues(config.Get(c => c.SapConnection));
     }
 
     protected override void BuildLayout()
     {
-        FormStateController.DefaultExtraLayoutSize = new Eto.Drawing.Size(120, 0);
+        FormStateController.DefaultExtraLayoutSize = new Size(120, 0);
         FormStateController.FixedHeightLayout = true;
 
         LayoutController.Content = L.Column(
             L.GroupBox(SapUi.SapConnection, L.Column(
-                C.Label("Connection mode"), _connectionMode,
-                C.Label("System ID"), _systemId,
-                C.Label("Application server host"), _appServerHost,
-                C.Label("System number"), _systemNumber,
-                C.Label("Client"), _client,
-                C.Label("Language"), _language,
-                C.Label("User"), _user,
-                C.Label("Password (leave blank to keep existing)"), _password,
-                C.Label("Content Server Base URL"), _contentServerBaseUrl,
-                _useHttps,
+                C.Label("Host"), _host,
+                C.Label("Service-Name"), _serviceName,
+                C.Label("Mandant"), _client,
+                C.Label("Sprache"), _language,
+                C.Label("Benutzer"), _user,
+                C.Label("Passwort"), _password,
                 _ignoreCertificateErrors,
-                C.Label("Connection insert mode"), _connectionInsertMode,
-                C.Label("Custom RFC name"), _customRfcName,
-                _testConnection
+                _certificateWarning.Visible(_certificateWarningVis),
+                L.Row(_testConnection, _testResult)
             )),
             C.Filler(),
             L.Row(C.Filler(), L.OkCancel(C.OkButton(this, Save), C.CancelButton(this)))
@@ -59,18 +60,14 @@ internal class SapConnectionForm : EtoDialogBase
 
     private void LoadValues(SapConnectionConfig config)
     {
-        _connectionMode.SelectedItem = config.ConnectionMode;
-        _systemId.Text = config.SystemId ?? "";
-        _appServerHost.Text = config.AppServerHost ?? "";
-        _systemNumber.Text = config.SystemNumber ?? "";
+        _host.Text = config.Host ?? "";
+        _serviceName.Text = string.IsNullOrWhiteSpace(config.ServiceName) ? "ZARCHIVE_UPLOAD_SRV" : config.ServiceName;
         _client.Text = config.Client ?? "";
-        _language.Text = config.Language ?? "";
+        _language.SelectedItem = string.IsNullOrWhiteSpace(config.Language) ? "DE" : config.Language;
         _user.Text = config.User ?? "";
-        _contentServerBaseUrl.Text = config.ContentServerBaseUrl ?? "";
-        _useHttps.Checked = config.UseHttps;
+        _password.Text = "";
         _ignoreCertificateErrors.Checked = config.IgnoreCertificateErrors;
-        _connectionInsertMode.SelectedItem = config.ConnectionInsertMode;
-        _customRfcName.Text = config.CustomRfcName ?? "";
+        _certificateWarningVis.IsVisible = config.IgnoreCertificateErrors;
     }
 
     private SapConnectionConfig BuildConfig()
@@ -78,19 +75,13 @@ internal class SapConnectionForm : EtoDialogBase
         var current = Config.Get(c => c.SapConnection);
         var result = new SapConnectionConfig
         {
-            ConnectionMode = _connectionMode.SelectedItem,
-            SystemId = _systemId.Text.Trim(),
-            AppServerHost = _appServerHost.Text.Trim(),
-            SystemNumber = _systemNumber.Text.Trim(),
+            Host = _host.Text.Trim().TrimEnd('/'),
+            ServiceName = _serviceName.Text.Trim(),
             Client = _client.Text.Trim(),
-            Language = _language.Text.Trim(),
+            Language = _language.SelectedItem ?? "DE",
             User = _user.Text.Trim(),
             EncryptedPassword = current.EncryptedPassword,
-            ContentServerBaseUrl = _contentServerBaseUrl.Text.Trim(),
-            UseHttps = _useHttps.IsChecked(),
-            IgnoreCertificateErrors = _ignoreCertificateErrors.IsChecked(),
-            ConnectionInsertMode = _connectionInsertMode.SelectedItem,
-            CustomRfcName = _customRfcName.Text.Trim()
+            IgnoreCertificateErrors = _ignoreCertificateErrors.IsChecked()
         };
         if (!string.IsNullOrEmpty(_password.Text))
         {
@@ -99,18 +90,60 @@ internal class SapConnectionForm : EtoDialogBase
         return result;
     }
 
+    private bool ValidateConfig(SapConnectionConfig config)
+    {
+        if (string.IsNullOrWhiteSpace(config.Host) || !config.Host.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            MessageBox.Show(this, "Host muss mit https:// beginnen.", SapUi.SapConnection, MessageBoxButtons.OK, MessageBoxType.Error);
+            _host.Focus();
+            return false;
+        }
+        if (string.IsNullOrWhiteSpace(config.ServiceName))
+        {
+            MessageBox.Show(this, "Service-Name ist erforderlich.", SapUi.SapConnection, MessageBoxButtons.OK, MessageBoxType.Error);
+            _serviceName.Focus();
+            return false;
+        }
+        if (config.Client?.Length != 3 || !config.Client.All(char.IsDigit))
+        {
+            MessageBox.Show(this, "Mandant muss 3-stellig sein.", SapUi.SapConnection, MessageBoxButtons.OK, MessageBoxType.Error);
+            _client.Focus();
+            return false;
+        }
+        return true;
+    }
+
     private async void TestConnection_Click(object? sender, EventArgs e)
     {
-        var result = await SapArchiveDiagnostics.TestConnectionAsync(BuildConfig());
-        MessageBox.Show(this,
-            result.Success ? SapUi.ConnectionOk : string.Format(SapUi.ConnectionFailed, result.ErrorMessage ?? result.ErrorCode),
-            SapUi.SapConnection,
-            MessageBoxButtons.OK,
-            result.Success ? MessageBoxType.Information : MessageBoxType.Error);
+        var config = BuildConfig();
+        if (!ValidateConfig(config))
+        {
+            return;
+        }
+        _testResult.Text = "...";
+        var result = await new HttpSapArchiveUploader(config).TestConnectionAsync(CancellationToken.None);
+        _testResult.TextColor = result.Success ? Colors.Green : Colors.Red;
+        _testResult.Text = result.Success
+            ? $"? CSRF-Token: {Shorten(result.CsrfToken)}"
+            : result.ErrorMessage ?? "Verbindungstest fehlgeschlagen.";
     }
 
     private void Save()
     {
-        Config.User.Set(c => c.SapConnection, BuildConfig());
+        var config = BuildConfig();
+        if (!ValidateConfig(config))
+        {
+            return;
+        }
+        Config.User.Set(c => c.SapConnection, config);
+    }
+
+    private static string Shorten(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "";
+        }
+        return value.Length <= 12 ? value : value.Substring(0, 6) + "..." + value.Substring(value.Length - 4);
     }
 }

@@ -205,6 +205,12 @@ public class CommonConfig
     [User]
     public SapConnectionConfig SapConnection { get; set; } = new();
 
+    [User]
+    public List<SapConnectionConfig> SapConnections { get; set; } = new();
+
+    [User]
+    public string? DefaultSapConnectionName { get; set; }
+
     [Config]
     [Common]
     public KeyboardShortcuts KeyboardShortcuts { get; set; } = new();

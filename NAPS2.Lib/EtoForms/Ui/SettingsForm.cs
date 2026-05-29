@@ -4,6 +4,7 @@ using Eto.Forms;
 using NAPS2.EtoForms.Desktop;
 using NAPS2.EtoForms.Layout;
 using NAPS2.EtoForms.Widgets;
+using NAPS2.Sap;
 
 namespace NAPS2.EtoForms.Ui;
 
@@ -23,6 +24,7 @@ internal class SettingsForm : EtoDialogBase
     private readonly ActionCommand _imageSettingsCommand;
     private readonly ActionCommand _emailSettingsCommand;
     private readonly ActionCommand _keyboardShortcutsCommand;
+    private readonly Button _sapConnection = new() { Text = SapUi.SapConnection };
     private readonly Button _restoreDefaults = new() { Text = UiStrings.RestoreDefaults };
 
     public SettingsForm(Naps2Config config, DesktopSubFormController desktopSubFormController,
@@ -55,6 +57,7 @@ internal class SettingsForm : EtoDialogBase
             Text = UiStrings.KeyboardShortcuts,
             Image = iconProvider.GetIcon("keyboard_small")
         };
+        _sapConnection.Click += (_, _) => FormFactory.Create<SapConnectionForm>().ShowModal(this);
     }
 
     protected override void BuildLayout()
@@ -89,7 +92,8 @@ internal class SettingsForm : EtoDialogBase
                         : C.None(),
                     PlatformCompat.System.SupportsKeyboardShortcuts
                         ? C.Button(_keyboardShortcutsCommand, ButtonImagePosition.Left).AlignLeading()
-                        : C.None()
+                        : C.None(),
+                    _sapConnection.AlignLeading()
                 )
             ),
             L.GroupBox(

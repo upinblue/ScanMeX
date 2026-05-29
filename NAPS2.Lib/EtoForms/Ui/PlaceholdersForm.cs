@@ -2,6 +2,7 @@ using Eto.Drawing;
 using Eto.Forms;
 using NAPS2.EtoForms.Layout;
 using NAPS2.ImportExport;
+using NAPS2.Scan;
 
 namespace NAPS2.EtoForms.Ui;
 
@@ -18,7 +19,15 @@ public class PlaceholdersForm : EtoDialogBase
             (Placeholders.NUMBER_4_DIGITS, UiStrings.AutoIncrementing4Digit),
             (Placeholders.NUMBER_3_DIGITS, UiStrings.AutoIncrementing3Digit),
             (Placeholders.NUMBER_2_DIGITS, UiStrings.AutoIncrementing2Digit),
-            (Placeholders.NUMBER_1_DIGIT, UiStrings.AutoIncrementing1Digit)
+            (Placeholders.NUMBER_1_DIGIT, UiStrings.AutoIncrementing1Digit),
+            ("$(barcode)", "Barcode (Beispiel: 12345678)"),
+            ("$(barcode:2)", "Zweiter Barcode"),
+            ("$(barcode:type=QR)", "Erster QR-Barcode"),
+            ("$(barcode:regex=BC-(\\d+))", "Barcode per Regex, Gruppe 1"),
+            ("$(profile)", "Profilname"),
+            ("$(user)", "Benutzername"),
+            ("$(host)", "Computername"),
+            ("$(ext)", "Dateiendung ohne Punkt")
         };
 
     private readonly TextBox _fileName = new();
@@ -87,7 +96,21 @@ public class PlaceholdersForm : EtoDialogBase
 
     private void FileName_TextChanged(object? sender, EventArgs e)
     {
-        _preview.Text = Placeholders.All.Substitute(_fileName.Text, false);
+        var ctx = new ScanContext
+        {
+            Timestamp = DateTime.Now,
+            SequenceIndex = 0,
+            Profile = new ScanProfile { DisplayName = "ScanMe Profil" },
+            Barcodes = new[]
+            {
+                new DetectedBarcode("12345678", "CODE128", 0, false),
+                new DetectedBarcode("QR-12345678", "QR", 0, false),
+                new DetectedBarcode("BC-12345678", "CODE128", 0, false)
+            },
+            OutputExtension = "pdf",
+            FileFormat = "pdf"
+        };
+        _preview.Text = new FileNamePlaceholders().SubstitutePlaceholders(_fileName.Text, ctx, false);
     }
 
 }

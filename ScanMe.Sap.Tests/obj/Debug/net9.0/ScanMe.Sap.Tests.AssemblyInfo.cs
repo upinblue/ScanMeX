@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ScanMe.Sap.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4112c88b1c292393608ef9dc88f5ca7815ba860f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+286d0c744796f6faafb49e0e2f5b0f4ba3c6382a")]
 [assembly: System.Reflection.AssemblyProductAttribute("ScanMe.Sap.Tests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ScanMe.Sap.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

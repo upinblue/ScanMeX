@@ -44,6 +44,13 @@ public class EditProfileForm : EtoDialogBase
 
     // SAP ArchiveLink controls
     private readonly CheckBox _enableSapArchiveUpload = new() { Text = SapUi.EnableUpload };
+    private readonly TextBox _sapHost = new();
+    private readonly TextBox _sapServiceName = new();
+    private readonly TextBox _sapClient = new();
+    private readonly TextBox _sapLanguage = new();
+    private readonly TextBox _sapUser = new();
+    private readonly PasswordBox _sapPassword = new();
+    private readonly CheckBox _sapIgnoreSsl = new() { Text = "SSL-Zertifikatsprüfung deaktivieren (nur Testumgebung!)" };
     private readonly DropDownWidget<SapObjectTypeCatalogEntry> _sapObjectType = new();
     private readonly TextBox _sapArchiveId = new();
     private readonly TextBox _sapDocumentType = new();
@@ -54,8 +61,8 @@ public class EditProfileForm : EtoDialogBase
     private readonly TextBox _sapBarcodeRegex = new();
     private readonly TextBox _sapFilenameRegex = new();
     private readonly TextBox _sapFixedObjectKeyValue = new();
-    private readonly TextBox _sapDescriptionTemplate = new() { PlaceholderText = SapUi.DescriptionHint };
-    private readonly Button _sapTestConnection = new() { Text = SapUi.TestConnection };
+    private readonly TextBox _sapDescriptionTemplate = new() { PlaceholderText = "darf {barcode} enthalten" };
+    private readonly Button _sapTestConnection = new() { Text = "Test-Upload" };
 
     private ScanProfile _scanProfile = null!;
     private bool _isDefault;
@@ -132,7 +139,7 @@ public class EditProfileForm : EtoDialogBase
         FormStateController.DefaultExtraLayoutSize = new Size(60, 0);
         FormStateController.FixedHeightLayout = true;
 
-        LayoutController.Content = L.Column(
+        var scrollableContent = L.Column(
             C.Label(UiStrings.DisplayNameLabel),
             _displayName,
             C.Spacer(),
@@ -194,23 +201,34 @@ public class EditProfileForm : EtoDialogBase
                 SapUi.ArchiveLink,
                 L.Column(
                     _enableSapArchiveUpload,
-                    C.Label(SapUi.SapObjectType),
-                    _sapObjectType,
+                    C.Label("SAP Host"),
+                    _sapHost,
+                    C.Label("Service-Name"),
+                    _sapServiceName,
+                    C.Label("Mandant"),
+                    _sapClient,
+                    C.Label("Sprache"),
+                    _sapLanguage,
+                    C.Label("SAP Benutzer"),
+                    _sapUser,
+                    C.Label("SAP Passwort (leer lassen = unverändert)"),
+                    _sapPassword,
+                    _sapIgnoreSsl,
                     C.Label(SapUi.ArchiveId),
                     _sapArchiveId,
-                    C.Label(SapUi.DocumentType),
+                    C.Label("ArObject"),
+                    _sapObjectType,
+                    C.Label("SapObject"),
                     _sapDocumentType,
-                    C.Label(SapUi.ObjectKeySource),
-                    _sapPromptObjectKey,
-                    L.Row(_sapBarcodeObjectKey, C.Label($"{SapUi.Regex}:"), _sapBarcodeRegex),
-                    L.Row(_sapFilenameObjectKey, C.Label($"{SapUi.Regex}:"), _sapFilenameRegex),
-                    L.Row(_sapFixedObjectKey, _sapFixedObjectKeyValue),
-                    C.Label(SapUi.Description),
+                    C.Label("ObjectId"),
                     _sapDescriptionTemplate,
                     _sapTestConnection
                 )
-            ),
-            C.Filler(),
+            )
+        );
+
+        LayoutController.Content = L.Column(
+            L.Scrollable(scrollableContent),
             L.Row(
                 _advanced,
                 C.Filler(),
@@ -407,22 +425,30 @@ public class EditProfileForm : EtoDialogBase
         _azureAdClientSecret.Text = ScanProfile.SharePointUploadSettings.ClientSecret ?? "";
 
         var sap = ScanProfile.SapArchiveSettings ?? new SapArchiveProfileSettings();
+        var sapConnection = sap.Connection ?? Config.Get(c => c.SapConnection);
         _enableSapArchiveUpload.Checked = sap.EnableUpload;
+        _sapHost.Text = sapConnection.Host ?? "";
+        _sapServiceName.Text = string.IsNullOrWhiteSpace(sapConnection.ServiceName) ? "ZARCHIVE_UPLOAD_SRV" : sapConnection.ServiceName;
+        _sapClient.Text = sapConnection.Client ?? "";
+        _sapLanguage.Text = string.IsNullOrWhiteSpace(sapConnection.Language) ? "DE" : sapConnection.Language;
+        _sapUser.Text = sapConnection.User ?? "";
+        _sapPassword.Text = "";
+        _sapIgnoreSsl.Checked = sapConnection.IgnoreCertificateErrors;
         _sapArchiveId.Text = sap.ArchiveId ?? "";
-        _sapDocumentType.Text = sap.ArDocType ?? "";
-        _sapDescriptionTemplate.Text = sap.DescriptionTemplate ?? "";
+        _sapDocumentType.Text = sap.SapObject ?? "";
+        _sapDescriptionTemplate.Text = sap.ObjectId ?? "";
         _sapBarcodeRegex.Text = sap.BarcodeRegex ?? "";
-        _sapFilenameRegex.Text = sap.FilenameRegex ?? "";
-        _sapFixedObjectKeyValue.Text = sap.FixedObjectKey ?? "";
-        var selectedType = SapObjectTypeCatalog.CommonTypes.FirstOrDefault(x => x.Key == sap.SapObjectType) ?? SapObjectTypeCatalog.CommonTypes.FirstOrDefault();
+        _sapFilenameRegex.Text = sap.BarcodeRegex ?? "";
+        _sapFixedObjectKeyValue.Text = sap.FixedBarcode ?? "";
+        var selectedType = SapObjectTypeCatalog.CommonTypes.FirstOrDefault(x => x.Key == sap.ArObject) ?? SapObjectTypeCatalog.CommonTypes.FirstOrDefault();
         if (selectedType != null)
         {
             _sapObjectType.SelectedItem = selectedType;
         }
-        _sapPromptObjectKey.Checked = sap.ObjectKeySource == ObjectKeySource.PromptUser;
-        _sapBarcodeObjectKey.Checked = sap.ObjectKeySource == ObjectKeySource.FromBarcode;
-        _sapFilenameObjectKey.Checked = sap.ObjectKeySource == ObjectKeySource.FromFilename;
-        _sapFixedObjectKey.Checked = sap.ObjectKeySource == ObjectKeySource.Fixed;
+        _sapPromptObjectKey.Checked = sap.BarcodeSource == BarcodeSource.PromptUser;
+        _sapBarcodeObjectKey.Checked = sap.BarcodeSource == BarcodeSource.FromScannedBarcode;
+        _sapFilenameObjectKey.Checked = sap.BarcodeSource == BarcodeSource.FromFilename;
+        _sapFixedObjectKey.Checked = sap.BarcodeSource == BarcodeSource.Fixed;
         UpdateSapObjectTypeTooltip();
 
         UpdateSharePointControlsEnabled();
@@ -464,9 +490,9 @@ public class EditProfileForm : EtoDialogBase
         }
 
         var sapValidation = BuildSapArchiveSettings().Validate();
-        if (!sapValidation.IsValid)
+        if (sapValidation.Count > 0)
         {
-            _errorOutput.DisplayError(string.Join(Environment.NewLine, sapValidation.Errors));
+            _errorOutput.DisplayError(string.Join(Environment.NewLine, sapValidation));
             return false;
         }
 
@@ -605,20 +631,36 @@ public class EditProfileForm : EtoDialogBase
 
     private SapArchiveProfileSettings BuildSapArchiveSettings()
     {
+        var currentConnection = ScanProfile.SapArchiveSettings?.Connection ?? Config.Get(c => c.SapConnection);
+        var connection = new SapConnectionConfig
+        {
+            Host = _sapHost.Text.Trim().TrimEnd('/'),
+            ServiceName = string.IsNullOrWhiteSpace(_sapServiceName.Text) ? "ZARCHIVE_UPLOAD_SRV" : _sapServiceName.Text.Trim(),
+            Client = _sapClient.Text.Trim(),
+            Language = string.IsNullOrWhiteSpace(_sapLanguage.Text) ? "DE" : _sapLanguage.Text.Trim(),
+            User = _sapUser.Text.Trim(),
+            EncryptedPassword = currentConnection.EncryptedPassword,
+            IgnoreCertificateErrors = _sapIgnoreSsl.IsChecked()
+        };
+        if (!string.IsNullOrEmpty(_sapPassword.Text))
+        {
+            SapCredentialStore.WritePassword(connection, _sapPassword.Text);
+        }
+
         return new SapArchiveProfileSettings
         {
             EnableUpload = _enableSapArchiveUpload.IsChecked(),
+            Connection = connection,
             ArchiveId = _sapArchiveId.Text.Trim(),
-            SapObjectType = _sapObjectType.SelectedItem?.Key,
-            ArDocType = _sapDocumentType.Text.Trim(),
-            ObjectKeySource = _sapBarcodeObjectKey.Checked ? ObjectKeySource.FromBarcode
-                : _sapFilenameObjectKey.Checked ? ObjectKeySource.FromFilename
-                : _sapFixedObjectKey.Checked ? ObjectKeySource.Fixed
-                : ObjectKeySource.PromptUser,
-            BarcodeRegex = _sapBarcodeRegex.Text.Trim(),
-            FilenameRegex = _sapFilenameRegex.Text.Trim(),
-            FixedObjectKey = _sapFixedObjectKeyValue.Text.Trim(),
-            DescriptionTemplate = _sapDescriptionTemplate.Text.Trim()
+            ArObject = _sapObjectType.SelectedItem?.Key,
+            SapObject = _sapDocumentType.Text.Trim(),
+            ObjectId = _sapDescriptionTemplate.Text.Trim(),
+            BarcodeSource = _sapBarcodeObjectKey.Checked ? BarcodeSource.FromScannedBarcode
+                : _sapFilenameObjectKey.Checked ? BarcodeSource.FromFilename
+                : _sapFixedObjectKey.Checked ? BarcodeSource.Fixed
+                : BarcodeSource.PromptUser,
+            BarcodeRegex = _sapBarcodeObjectKey.Checked ? _sapBarcodeRegex.Text.Trim() : _sapFilenameRegex.Text.Trim(),
+            FixedBarcode = _sapFixedObjectKeyValue.Text.Trim()
         };
     }
 
@@ -635,6 +677,13 @@ public class EditProfileForm : EtoDialogBase
         }
         bool enabled = _enableSapArchiveUpload.IsChecked() && !_scanProfile.IsLocked;
         _enableSapArchiveUpload.Enabled = !_scanProfile.IsLocked;
+        _sapHost.Enabled = enabled;
+        _sapServiceName.Enabled = enabled;
+        _sapClient.Enabled = enabled;
+        _sapLanguage.Enabled = enabled;
+        _sapUser.Enabled = enabled;
+        _sapPassword.Enabled = enabled;
+        _sapIgnoreSsl.Enabled = enabled;
         _sapObjectType.Enabled = enabled;
         _sapArchiveId.Enabled = enabled;
         _sapDocumentType.Enabled = enabled;
@@ -651,10 +700,37 @@ public class EditProfileForm : EtoDialogBase
 
     private async void SapTestConnection_Click(object? sender, EventArgs e)
     {
-        var result = await SapArchiveDiagnostics.TestConnectionAsync(Config.Get(c => c.SapConnection));
+        if (MessageBox.Show(this,
+                "Eine Testdatei wird hochgeladen. Fortfahren?",
+                "SAP ArchiveLink",
+                MessageBoxButtons.YesNo,
+                MessageBoxType.Question) != DialogResult.Yes)
+        {
+            return;
+        }
+
+        var settings = BuildSapArchiveSettings();
+        var validation = settings.Validate();
+        if (validation.Count > 0)
+        {
+            _errorOutput.DisplayError(string.Join(Environment.NewLine, validation));
+            return;
+        }
+        var barcode = string.IsNullOrWhiteSpace(settings.FixedBarcode) ? "SCANME_TEST" : settings.FixedBarcode!;
+        var request = new SapUploadRequest(
+            settings.Connection ?? Config.Get(c => c.SapConnection),
+            settings,
+            barcode,
+            string.IsNullOrWhiteSpace(settings.ObjectId) ? null : settings.ObjectId.Replace("{barcode}", barcode, StringComparison.OrdinalIgnoreCase),
+            System.Text.Encoding.ASCII.GetBytes("%PDF-1.4\n% ScanMe SAP test\n%%EOF"),
+            "scanme-test.pdf",
+            "application/pdf");
+        var result = await new HttpSapArchiveUploader(request.Connection).UploadAsync(request, CancellationToken.None);
         MessageBox.Show(this,
-            result.Success ? SapUi.ConnectionOk : string.Format(SapUi.ConnectionFailed, result.ErrorMessage ?? result.ErrorCode),
-            SapUi.SapConnection,
+            result.Success
+                ? $"SAP-Upload OK – DocId: {result.ArchivDocId}, Barcode: {barcode}"
+                : $"SAP-Upload fehlgeschlagen – HTTP: {result.HttpStatusCode}, Code: {result.ErrorCode}, Message: {result.ErrorMessage}, TransactionId: {result.TransactionId}",
+            "SAP ArchiveLink",
             MessageBoxButtons.OK,
             result.Success ? MessageBoxType.Information : MessageBoxType.Error);
     }

@@ -27,30 +27,39 @@ internal class SapArchivePostScanService
             return true;
         }
 
-        var objectKey = ResolveObjectKey(settings, filePath, images);
-        if (string.IsNullOrWhiteSpace(objectKey))
+        var barcode = ResolveBarcode(settings, filePath, images);
+        if (string.IsNullOrWhiteSpace(barcode))
         {
-            objectKey = PromptForObjectKey(filePath);
+            if (settings.BarcodeSource == BarcodeSource.PromptUser)
+            {
+                barcode = PromptForObjectKey(filePath);
+            }
+            else
+            {
+                Log.Logger.LogError("SAP ArchiveLink upload skipped for {FilePath}: no barcode found for source {BarcodeSource}",
+                    filePath, settings.BarcodeSource);
+                return false;
+            }
         }
-        if (string.IsNullOrWhiteSpace(objectKey))
+        if (string.IsNullOrWhiteSpace(barcode))
         {
-            Log.Logger.LogWarning("SAP ArchiveLink upload skipped for {FilePath}: no object key", filePath);
+            Log.Logger.LogWarning("SAP ArchiveLink upload skipped for {FilePath}: no barcode", filePath);
             return false;
         }
 
-        var connection = _config.Get(c => c.SapConnection);
+        var connection = settings.Connection ?? _config.Get(c => c.SapConnection);
         var fileName = Path.GetFileName(filePath);
-        var description = ResolveDescription(settings.DescriptionTemplate, objectKey);
+        var objectId = ResolveObjectId(settings.ObjectId, barcode);
         var request = new SapUploadRequest(
             connection,
             settings,
-            objectKey,
+            barcode,
+            objectId,
             await File.ReadAllBytesAsync(filePath),
             fileName,
-            GetMimeType(filePath),
-            description);
+            SapMimeTypeResolver.Resolve(filePath));
 
-        var uploader = SapArchiveUploaderFactory.Create(connection);
+        var uploader = new HttpSapArchiveUploader(connection);
         var op = new UploadSapArchiveOperation();
         if (op.Start(uploader, request))
         {
@@ -60,18 +69,18 @@ internal class SapArchivePostScanService
         return false;
     }
 
-    private string? ResolveObjectKey(SapArchiveProfileSettings settings, string filePath, IReadOnlyList<ProcessedImage> images)
+    private string? ResolveBarcode(SapArchiveProfileSettings settings, string filePath, IReadOnlyList<ProcessedImage> images)
     {
-        return settings.ObjectKeySource switch
+        return settings.BarcodeSource switch
         {
-            ObjectKeySource.Fixed => settings.FixedObjectKey?.Trim(),
-            ObjectKeySource.FromFilename => ExtractWithRegex(Path.GetFileNameWithoutExtension(filePath), settings.FilenameRegex),
-            ObjectKeySource.FromBarcode => ResolveBarcodeObjectKey(settings, images),
+            BarcodeSource.Fixed => settings.FixedBarcode?.Trim(),
+            BarcodeSource.FromFilename => ExtractWithRegex(Path.GetFileNameWithoutExtension(filePath), settings.BarcodeRegex),
+            BarcodeSource.FromScannedBarcode => ResolveScannedBarcode(settings, images),
             _ => null
         };
     }
 
-    private string? ResolveBarcodeObjectKey(SapArchiveProfileSettings settings, IReadOnlyList<ProcessedImage> images)
+    private string? ResolveScannedBarcode(SapArchiveProfileSettings settings, IReadOnlyList<ProcessedImage> images)
     {
         var matches = images
             .Select(x => x.PostProcessingData.Barcode.DetectedText)
@@ -112,6 +121,13 @@ internal class SapArchivePostScanService
             form.ShowModal(Application.Instance?.MainForm);
             return form.ObjectKey;
         });
+    }
+
+    private static string? ResolveObjectId(string? template, string barcode)
+    {
+        return string.IsNullOrWhiteSpace(template)
+            ? null
+            : template.Replace("{barcode}", barcode, StringComparison.OrdinalIgnoreCase);
     }
 
     private static string ResolveDescription(string? template, string objectKey)

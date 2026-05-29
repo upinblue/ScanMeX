@@ -14,6 +14,9 @@ public static class L
     public static LayoutOverlay Overlay(params LayoutElement[] children) =>
         new LayoutOverlay(children);
 
+    public static LayoutScrollable Scrollable(LayoutElement content) =>
+        new LayoutScrollable(content);
+
     /// <summary>
     /// Displays "Ok" and "Cancel" type buttons in a platform-dependent order.
     /// </summary>

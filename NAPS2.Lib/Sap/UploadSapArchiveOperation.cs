@@ -38,19 +38,21 @@ internal class UploadSapArchiveOperation : OperationBase
                 Result = await _uploader.UploadAsync(_request, CancelToken);
                 Status.CurrentProgress = 100;
                 Status.StatusText = Result.Success
-                    ? SapUi.UploadSuccess(Result.ArchivDocId ?? "")
-                    : SapUi.UploadFailed(Result.ErrorMessage ?? Result.ErrorCode ?? "Unknown error");
+                    ? $"SAP-Upload OK – DocId: {Result.ArchivDocId}, Barcode: {_request.Barcode}"
+                    : $"SAP-Upload fehlgeschlagen – HTTP: {Result.HttpStatusCode}, Code: {Result.ErrorCode}, Message: {Result.ErrorMessage}, TransactionId: {Result.TransactionId}";
                 InvokeStatusChanged();
 
                 if (Result.Success)
                 {
-                    Log.Info(Status.StatusText);
+                    Log.Logger.LogInformation("SAP ArchiveLink upload succeeded for {FileName}. DocId={DocId}, Barcode={Barcode}",
+                        _request.FileName, Result.ArchivDocId, _request.Barcode);
                     return true;
                 }
 
-                Log.Logger.LogWarning("SAP ArchiveLink upload failed for {FileName}: {ErrorCode} {ErrorMessage}",
-                    _request.FileName, Result.ErrorCode, Result.ErrorMessage);
-                InvokeError(SapUi.UploadTitle, new InvalidOperationException(Result.ErrorMessage ?? Result.ErrorCode ?? "SAP ArchiveLink upload failed"));
+                Log.Logger.LogError("SAP ArchiveLink upload failed for {FileName}. HTTP={HttpStatusCode}, ErrorCode={ErrorCode}, ErrorMessage={ErrorMessage}, TransactionId={TransactionId}, Body={Body}",
+                    _request.FileName, Result.HttpStatusCode, Result.ErrorCode, Result.ErrorMessage, Result.TransactionId,
+                    Truncate(Result.RawResponseBody));
+                InvokeError(SapUi.UploadTitle, new InvalidOperationException(Status.StatusText));
                 return false;
             }
             catch (OperationCanceledException)
@@ -65,5 +67,10 @@ internal class UploadSapArchiveOperation : OperationBase
             }
         });
         return true;
+    }
+
+    private static string? Truncate(string? value)
+    {
+        return value == null || value.Length <= 4096 ? value : value.Substring(0, 4096) + "...";
     }
 }
