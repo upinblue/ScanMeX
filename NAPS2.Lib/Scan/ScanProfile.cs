@@ -168,6 +168,7 @@ public record AutoSaveSettings
     // New: When true, also upload the auto-saved PDF to SharePoint using the same filename.
     // Default is false for backward compatibility.
     public bool UploadToSharePoint { get; init; }
+    public bool UploadToSap { get; init; }
 }
 
 /// <summary>

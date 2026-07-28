@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using NAPS2.EtoForms;
 using NAPS2.EtoForms.Ui;
 using NAPS2.Images;
+using NAPS2.ImportExport;
 using NAPS2.Scan;
 
 namespace NAPS2.Sap;
@@ -19,15 +20,16 @@ internal class SapArchivePostScanService
         _operationProgress = operationProgress;
     }
 
-    public async Task<bool> UploadSavedFileAsync(ScanProfile profile, string filePath, IReadOnlyList<ProcessedImage> images)
+    public async Task<bool> UploadSavedFileAsync(ScanProfile profile, string filePath, IReadOnlyList<ProcessedImage> images,
+        ScanContext ctx)
     {
         var settings = profile.SapArchiveSettings;
-        if (settings?.EnableUpload != true)
+        if (settings == null)
         {
             return true;
         }
 
-        var barcode = ResolveBarcode(settings, filePath, images);
+        var barcode = ResolveBarcode(settings, filePath, images, ctx);
         if (string.IsNullOrWhiteSpace(barcode))
         {
             if (settings.BarcodeSource == BarcodeSource.PromptUser)
@@ -49,7 +51,7 @@ internal class SapArchivePostScanService
 
         var connection = settings.Connection ?? _config.Get(c => c.SapConnection);
         var fileName = Path.GetFileName(filePath);
-        var objectId = ResolveObjectId(settings.ObjectId, barcode);
+        var objectId = ResolveObjectId(settings.ObjectId, barcode, ctx);
         var request = new SapUploadRequest(
             connection,
             settings,
@@ -69,23 +71,26 @@ internal class SapArchivePostScanService
         return false;
     }
 
-    private string? ResolveBarcode(SapArchiveProfileSettings settings, string filePath, IReadOnlyList<ProcessedImage> images)
+    private string? ResolveBarcode(SapArchiveProfileSettings settings, string filePath, IReadOnlyList<ProcessedImage> images,
+        ScanContext ctx)
     {
         return settings.BarcodeSource switch
         {
-            BarcodeSource.Fixed => settings.FixedBarcode?.Trim(),
-            BarcodeSource.FromFilename => ExtractWithRegex(Path.GetFileNameWithoutExtension(filePath), settings.BarcodeRegex),
-            BarcodeSource.FromScannedBarcode => ResolveScannedBarcode(settings, images),
+            BarcodeSource.Fixed => Substitute(settings.FixedBarcode, ctx)?.Trim(),
+            BarcodeSource.FromFilename => ExtractWithRegex(Path.GetFileNameWithoutExtension(filePath), Substitute(settings.BarcodeRegex, ctx)),
+            BarcodeSource.FromScannedBarcode => ResolveScannedBarcode(settings, images, ctx),
             _ => null
         };
     }
 
-    private string? ResolveScannedBarcode(SapArchiveProfileSettings settings, IReadOnlyList<ProcessedImage> images)
+    private string? ResolveScannedBarcode(SapArchiveProfileSettings settings, IReadOnlyList<ProcessedImage> images,
+        ScanContext ctx)
     {
+        var pattern = Substitute(settings.BarcodeRegex, ctx);
         var matches = images
             .Select(x => x.PostProcessingData.Barcode.DetectedText)
             .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Select(x => ExtractWithRegex(x!, settings.BarcodeRegex))
+            .Select(x => ExtractWithRegex(x!, pattern))
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -123,11 +128,20 @@ internal class SapArchivePostScanService
         });
     }
 
-    private static string? ResolveObjectId(string? template, string barcode)
+    private static string? ResolveObjectId(string? template, string barcode, ScanContext ctx)
     {
-        return string.IsNullOrWhiteSpace(template)
-            ? null
-            : template.Replace("{barcode}", barcode, StringComparison.OrdinalIgnoreCase);
+        if (string.IsNullOrWhiteSpace(template))
+        {
+            return null;
+        }
+        return Substitute(template, ctx)?
+            .Replace("{barcode}", barcode, StringComparison.OrdinalIgnoreCase)
+            .Replace("$(barcode)", barcode, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string? Substitute(string? template, ScanContext ctx)
+    {
+        return string.IsNullOrWhiteSpace(template) ? template : new FileNamePlaceholders().SubstitutePlaceholders(template!, ctx);
     }
 
     private static string ResolveDescription(string? template, string objectKey)

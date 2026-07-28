@@ -18,12 +18,12 @@ public class AutoSaveSettingsForm : EtoDialogBase
     private readonly RadioButton _filePerScan;
     private readonly RadioButton _separateByPatchT;
     private readonly RadioButton _separateByCode39;
-    private readonly Label _code39RegexLabel = C.Label("Code 39 regex (optional):");
+    private readonly Label _code39RegexLabel = C.Label(UiStrings.Code39RegexOptionalLabel);
     private readonly TextBox _code39Regex = new();
     private readonly LayoutVisibility _code39RegexVis = new(false);
     private readonly CheckBox _clearAfterSaving = new() { Text = UiStrings.ClearAfterSaving };
-    // New: Upload to SharePoint toggle for auto-saved document
-    private readonly CheckBox _uploadToSharePoint = new() { Text = "Upload auto-saved document to SharePoint" };
+    private readonly CheckBox _uploadToSharePoint = new() { Text = UiStrings.UploadAutoSavedDocumentToSharePoint };
+    private readonly CheckBox _uploadToSap = new() { Text = UiStrings.UploadAutoSavedDocumentToSap };
 
     public AutoSaveSettingsForm(Naps2Config config, DialogHelper dialogHelper)
         : base(config)
@@ -32,7 +32,7 @@ public class AutoSaveSettingsForm : EtoDialogBase
         _filePerPage = new() { Text = UiStrings.OneFilePerPage, Checked = true };
         _filePerScan = new(_filePerPage) { Text = UiStrings.OneFilePerScan };
         _separateByPatchT = new RadioButton(_filePerPage) { Text = UiStrings.SeparateByPatchT };
-        _separateByCode39 = new RadioButton(_filePerPage) { Text = "Separate by Code 39 barcode" };
+        _separateByCode39 = new RadioButton(_filePerPage) { Text = UiStrings.SeparateByCode39Barcode };
 
         // Make regex textbox large enough
         _code39Regex.Size = new Size(320, -1);
@@ -71,8 +71,8 @@ public class AutoSaveSettingsForm : EtoDialogBase
                 _filePerPage.Checked = true;
             }
             _code39Regex.Text = ScanProfile.AutoSaveSettings.Code39SeparationPattern ?? "";
-            // Initialize upload checkbox from model
             _uploadToSharePoint.Checked = ScanProfile.AutoSaveSettings.UploadToSharePoint;
+            _uploadToSap.Checked = ScanProfile.AutoSaveSettings.UploadToSap || ScanProfile.SapArchiveSettings?.EnableUpload == true;
         }
 
         Title = UiStrings.AutoSaveSettingsFormTitle;
@@ -94,8 +94,8 @@ public class AutoSaveSettingsForm : EtoDialogBase
             C.Spacer(),
             C.Spacer(),
             _clearAfterSaving,
-            // New checkbox for uploading to SharePoint
             _uploadToSharePoint,
+            _uploadToSap,
             C.Filler(),
             L.Row(
                 C.Filler(),
@@ -127,9 +127,11 @@ public class AutoSaveSettingsForm : EtoDialogBase
     {
         bool enabled = ScanProfile?.EnableAutoSave == true;
         _uploadToSharePoint.Enabled = enabled;
+        _uploadToSap.Enabled = enabled;
         if (!enabled)
         {
             _uploadToSharePoint.Checked = false;
+            _uploadToSap.Checked = false;
         }
     }
 
@@ -159,7 +161,7 @@ public class AutoSaveSettingsForm : EtoDialogBase
                 }
                 catch (Exception)
                 {
-                    MessageBox.Show(this, "Invalid Code 39 regex.", MessageBoxType.Error);
+                    MessageBox.Show(this, UiStrings.InvalidCode39Regex, MessageBoxType.Error);
                     _code39Regex.Focus();
                     return false;
                 }
@@ -173,7 +175,8 @@ public class AutoSaveSettingsForm : EtoDialogBase
             ClearImagesAfterSaving = _clearAfterSaving.IsChecked(),
             Separator = separator,
             Code39SeparationPattern = regex,
-            UploadToSharePoint = _uploadToSharePoint.IsChecked()
+            UploadToSharePoint = _uploadToSharePoint.IsChecked(),
+            UploadToSap = _uploadToSap.IsChecked()
         };
         Result = true;
         return true;

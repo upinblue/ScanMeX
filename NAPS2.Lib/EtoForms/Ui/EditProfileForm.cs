@@ -34,7 +34,7 @@ public class EditProfileForm : EtoDialogBase
     private readonly SliderWithTextBox _contrastSlider = new();
 
     // SharePoint upload controls
-    private readonly CheckBox _enableSharePointUpload = new() { Text = "Enable SharePoint upload" };
+    private readonly CheckBox _enableSharePointUpload = new() { Text = UiStrings.EnableSharePointUpload };
     private readonly TextBox _sharePointSiteUrl = new();
     private readonly TextBox _sharePointLibraryPath = new();
     private readonly TextBox _sharePointFolderPath = new();
@@ -61,8 +61,8 @@ public class EditProfileForm : EtoDialogBase
     private readonly TextBox _sapBarcodeRegex = new();
     private readonly TextBox _sapFilenameRegex = new();
     private readonly TextBox _sapFixedObjectKeyValue = new();
-    private readonly TextBox _sapDescriptionTemplate = new() { PlaceholderText = "darf {barcode} enthalten" };
-    private readonly Button _sapTestConnection = new() { Text = "Test-Upload" };
+    private readonly TextBox _sapDescriptionTemplate = new() { PlaceholderText = UiStrings.SapObjectIdPlaceholder };
+    private readonly Button _sapTestConnection = new() { Text = UiStrings.SapTestUpload };
 
     private ScanProfile _scanProfile = null!;
     private bool _isDefault;
@@ -139,92 +139,134 @@ public class EditProfileForm : EtoDialogBase
         FormStateController.DefaultExtraLayoutSize = new Size(60, 0);
         FormStateController.FixedHeightLayout = true;
 
-        var scrollableContent = L.Column(
-            C.Label(UiStrings.DisplayNameLabel),
-            _displayName,
-            C.Spacer(),
-            _deviceSelectorWidget,
-            C.Spacer(),
-            PlatformCompat.System.IsWiaDriverSupported || PlatformCompat.System.IsTwainDriverSupported
-                ? L.Row(
-                    _predefinedSettings,
-                    _nativeUi
-                ).Visible(_nativeUiVis)
-                : C.None(),
-            C.Spacer(),
-            L.Row(
-                L.Column(
-                    C.Label(UiStrings.PaperSourceLabel),
-                    _paperSource,
-                    C.Label(UiStrings.PageSizeLabel),
-                    _pageSize,
-                    C.Label(UiStrings.ResolutionLabel),
-                    _resolution,
-                    C.Label(UiStrings.BrightnessLabel),
-                    _brightnessSlider
-                ).Scale(),
-                L.Column(
-                    C.Label(UiStrings.BitDepthLabel),
-                    _bitDepth,
-                    C.Label(UiStrings.HorizontalAlignLabel),
-                    _horAlign,
-                    C.Label(UiStrings.ScaleLabel),
-                    _scale,
-                    C.Label(UiStrings.ContrastLabel),
-                    _contrastSlider
-                ).Scale()
-            ),
-            L.Row(
-                _enableAutoSave,
-                _autoSaveSettings
-            ),
-            // SharePoint upload group
-            L.GroupBox(
-                "SharePoint Upload",
-                L.Column(
-                    _enableSharePointUpload,
-                    C.Label("SharePoint site URL"),
-                    _sharePointSiteUrl,
-                    C.Label("Document library / path"),
-                    _sharePointLibraryPath,
-                    C.Label("Folder path (optional)"),
-                    _sharePointFolderPath,
-                    C.Label("Azure AD Tenant ID"),
-                    _azureAdTenantId,
-                    C.Label("Azure AD Client ID"),
-                    _azureAdClientId,
-                    C.Label("Azure AD Client Secret"),
-                    _azureAdClientSecret
-                )
-            ),
-            L.GroupBox(
-                SapUi.ArchiveLink,
-                L.Column(
-                    _enableSapArchiveUpload,
-                    C.Label("SAP Host"),
-                    _sapHost,
-                    C.Label("Service-Name"),
-                    _sapServiceName,
-                    C.Label("Mandant"),
-                    _sapClient,
-                    C.Label("Sprache"),
-                    _sapLanguage,
-                    C.Label("SAP Benutzer"),
-                    _sapUser,
-                    C.Label("SAP Passwort (leer lassen = unver�ndert)"),
-                    _sapPassword,
-                    _sapIgnoreSsl,
-                    C.Label(SapUi.ArchiveId),
-                    _sapArchiveId,
-                    C.Label("ArObject"),
-                    _sapObjectType,
-                    C.Label("SapObject"),
-                    _sapDocumentType,
-                    C.Label("ObjectId"),
-                    _sapDescriptionTemplate,
-                    _sapTestConnection
+        var scannerSettings = L.GroupBox(
+            UiStrings.ProfileScannerSection,
+            L.Column(
+                C.Label(UiStrings.DisplayNameLabel),
+                _displayName,
+                C.Spacer(),
+                _deviceSelectorWidget,
+                C.Spacer(),
+                PlatformCompat.System.IsWiaDriverSupported || PlatformCompat.System.IsTwainDriverSupported
+                    ? L.Row(
+                        _predefinedSettings,
+                        _nativeUi
+                    ).Visible(_nativeUiVis)
+                    : C.None(),
+                C.Spacer(),
+                L.Row(
+                    L.Column(
+                        C.Label(UiStrings.PaperSourceLabel),
+                        _paperSource,
+                        C.Label(UiStrings.PageSizeLabel),
+                        _pageSize,
+                        C.Label(UiStrings.ResolutionLabel),
+                        _resolution,
+                        C.Label(UiStrings.BrightnessLabel),
+                        _brightnessSlider
+                    ).Scale(),
+                    L.Column(
+                        C.Label(UiStrings.BitDepthLabel),
+                        _bitDepth,
+                        C.Label(UiStrings.HorizontalAlignLabel),
+                        _horAlign,
+                        C.Label(UiStrings.ScaleLabel),
+                        _scale,
+                        C.Label(UiStrings.ContrastLabel),
+                        _contrastSlider
+                    ).Scale()
                 )
             )
+        );
+
+        var autoSaveUploadSettings = L.GroupBox(
+            UiStrings.ProfileAutoSaveUploadsSection,
+            L.Column(
+                L.Row(
+                    _enableAutoSave,
+                    _autoSaveSettings
+                ),
+                C.Label(UiStrings.UploadRequiresAutoSaveInfo)
+            )
+        );
+
+        var sharePointSettings = L.GroupBox(
+            UiStrings.SharePointUpload,
+            L.Column(
+                _enableSharePointUpload,
+                C.Label(UiStrings.SharePointSiteUrlLabel),
+                _sharePointSiteUrl,
+                C.Label(UiStrings.SharePointLibraryPathLabel),
+                _sharePointLibraryPath,
+                C.Label(UiStrings.SharePointFolderPathLabel),
+                _sharePointFolderPath,
+                C.Label(UiStrings.AzureAdTenantIdLabel),
+                _azureAdTenantId,
+                C.Label(UiStrings.AzureAdClientIdLabel),
+                _azureAdClientId,
+                C.Label(UiStrings.AzureAdClientSecretLabel),
+                _azureAdClientSecret
+            )
+        );
+
+        var sapSettings = L.GroupBox(
+            SapUi.ArchiveLink,
+            L.Column(
+                _enableSapArchiveUpload,
+                L.Row(
+                    L.Column(
+                        C.Label(UiStrings.SapHostLabel),
+                        _sapHost,
+                        C.Label(UiStrings.SapServiceNameLabel),
+                        _sapServiceName,
+                        C.Label(UiStrings.SapClientLabel),
+                        _sapClient,
+                        C.Label(UiStrings.SapLanguageLabel),
+                        _sapLanguage
+                    ).Scale(),
+                    L.Column(
+                        C.Label(UiStrings.SapUserLabel),
+                        _sapUser,
+                        C.Label(UiStrings.SapPasswordLabel),
+                        _sapPassword,
+                        _sapIgnoreSsl
+                    ).Scale()
+                ),
+                C.Spacer(),
+                L.Row(
+                    L.Column(
+                        C.Label(SapUi.ArchiveId),
+                        _sapArchiveId,
+                        C.Label(UiStrings.SapArObjectLabel),
+                        _sapObjectType,
+                        C.Label(UiStrings.SapObjectLabel),
+                        _sapDocumentType
+                    ).Scale(),
+                    L.Column(
+                        C.Label(SapUi.ObjectKeySource),
+                        _sapPromptObjectKey,
+                        _sapBarcodeObjectKey,
+                        C.Label(UiStrings.Code39RegexOptionalLabel),
+                        _sapBarcodeRegex,
+                        _sapFilenameObjectKey,
+                        C.Label(SapUi.Regex),
+                        _sapFilenameRegex,
+                        _sapFixedObjectKey,
+                        C.Label(SapUi.FixedValue),
+                        _sapFixedObjectKeyValue,
+                        C.Label(UiStrings.SapObjectIdLabel),
+                        _sapDescriptionTemplate
+                    ).Scale()
+                ),
+                _sapTestConnection
+            )
+        );
+
+        var scrollableContent = L.Column(
+            scannerSettings,
+            autoSaveUploadSettings,
+            sharePointSettings,
+            sapSettings
         );
 
         LayoutController.Content = L.Column(
@@ -477,14 +519,14 @@ public class EditProfileForm : EtoDialogBase
             string site = _sharePointSiteUrl.Text.Trim();
             if (!site.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
             {
-                _errorOutput.DisplayError("SharePoint site URL must start with https://");
+                _errorOutput.DisplayError(UiStrings.SharePointSiteUrlHttpsRequired);
                 return false;
             }
             if (string.IsNullOrWhiteSpace(_azureAdTenantId.Text) ||
                 string.IsNullOrWhiteSpace(_azureAdClientId.Text) ||
                 string.IsNullOrWhiteSpace(_azureAdClientSecret.Text))
             {
-                _errorOutput.DisplayError("Tenant ID, Client ID and Client Secret are required when SharePoint upload is enabled.");
+                _errorOutput.DisplayError(UiStrings.SharePointCredentialsRequired);
                 return false;
             }
         }
@@ -700,15 +742,6 @@ public class EditProfileForm : EtoDialogBase
 
     private async void SapTestConnection_Click(object? sender, EventArgs e)
     {
-        if (MessageBox.Show(this,
-                "Eine Testdatei wird hochgeladen. Fortfahren?",
-                "SAP ArchiveLink",
-                MessageBoxButtons.YesNo,
-                MessageBoxType.Question) != DialogResult.Yes)
-        {
-            return;
-        }
-
         var settings = BuildSapArchiveSettings();
         var validation = settings.Validate();
         if (validation.Count > 0)
@@ -716,23 +749,104 @@ public class EditProfileForm : EtoDialogBase
             _errorOutput.DisplayError(string.Join(Environment.NewLine, validation));
             return;
         }
-        var barcode = string.IsNullOrWhiteSpace(settings.FixedBarcode) ? "SCANME_TEST" : settings.FixedBarcode!;
+
+        var filePath = PromptForSapTestPdf();
+        if (filePath == null)
+        {
+            return;
+        }
+
+        var fileName = Path.GetFileName(filePath);
+        var barcode = ResolveSapTestBarcode(settings, filePath);
+        if (string.IsNullOrWhiteSpace(barcode))
+        {
+            _errorOutput.DisplayError(UiStrings.SapTestUploadNoObjectKey);
+            return;
+        }
+
         var request = new SapUploadRequest(
             settings.Connection ?? Config.Get(c => c.SapConnection),
             settings,
             barcode,
             string.IsNullOrWhiteSpace(settings.ObjectId) ? null : settings.ObjectId.Replace("{barcode}", barcode, StringComparison.OrdinalIgnoreCase),
-            System.Text.Encoding.ASCII.GetBytes("%PDF-1.4\n% ScanMe SAP test\n%%EOF"),
-            "scanme-test.pdf",
+            await File.ReadAllBytesAsync(filePath),
+            fileName,
             "application/pdf");
         var result = await new HttpSapArchiveUploader(request.Connection).UploadAsync(request, CancellationToken.None);
         MessageBox.Show(this,
             result.Success
-                ? $"SAP-Upload OK � DocId: {result.ArchivDocId}, Barcode: {barcode}"
-                : $"SAP-Upload fehlgeschlagen � HTTP: {result.HttpStatusCode}, Code: {result.ErrorCode}, Message: {result.ErrorMessage}, TransactionId: {result.TransactionId}",
+                ? $"SAP-Upload OK � DocId: {result.ArchivDocId}, Barcode: {barcode}"
+                : $"SAP-Upload fehlgeschlagen � HTTP: {result.HttpStatusCode}, Code: {result.ErrorCode}, Message: {result.ErrorMessage}, TransactionId: {result.TransactionId}",
             "SAP ArchiveLink",
             MessageBoxButtons.OK,
             result.Success ? MessageBoxType.Information : MessageBoxType.Error);
+    }
+
+    private string? PromptForSapTestPdf()
+    {
+        var ofd = new OpenFileDialog
+        {
+            MultiSelect = false,
+            CheckFileExists = true,
+            Title = "PDF für SAP-Testupload auswählen"
+        };
+        ofd.Filters.Add(new FileFilter("PDF (*.pdf)", ".pdf"));
+        EtoPlatform.Current.ConfigureFileDialog(ofd);
+        if (ofd.ShowDialog(this) != DialogResult.Ok)
+        {
+            return null;
+        }
+
+        var filePath = ofd.Filenames.FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(filePath))
+        {
+            _errorOutput.DisplayError("Keine PDF-Datei für den SAP-Testupload ausgewählt.");
+            return null;
+        }
+        if (!Path.GetExtension(filePath).Equals(".pdf", StringComparison.OrdinalIgnoreCase))
+        {
+            _errorOutput.DisplayError("Bitte eine PDF-Datei für den SAP-Testupload auswählen.");
+            return null;
+        }
+        return filePath;
+    }
+
+    private string? ResolveSapTestBarcode(SapArchiveProfileSettings settings, string filePath)
+    {
+        return settings.BarcodeSource switch
+        {
+            BarcodeSource.Fixed => settings.FixedBarcode?.Trim(),
+            BarcodeSource.FromFilename => ExtractSapBarcodeWithRegex(Path.GetFileNameWithoutExtension(filePath), settings.BarcodeRegex),
+            _ => PromptForSapTestObjectKey(Path.GetFileName(filePath))
+        };
+    }
+
+    private string? PromptForSapTestObjectKey(string fileName)
+    {
+        var form = new SapObjectKeyPromptForm(Config, fileName);
+        form.ShowModal(this);
+        return form.ObjectKey;
+    }
+
+    private static string? ExtractSapBarcodeWithRegex(string value, string? pattern)
+    {
+        if (string.IsNullOrWhiteSpace(pattern))
+        {
+            return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        }
+        var match = System.Text.RegularExpressions.Regex.Match(value, pattern, System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+        if (!match.Success)
+        {
+            return null;
+        }
+        for (var i = 1; i < match.Groups.Count; i++)
+        {
+            if (match.Groups[i].Success)
+            {
+                return match.Groups[i].Value.Trim();
+            }
+        }
+        return match.Value.Trim();
     }
 
     private void UpdateSharePointControlsEnabled()
@@ -765,6 +879,7 @@ public class EditProfileForm : EtoDialogBase
         }
         var form = FormFactory.Create<AutoSaveSettingsForm>();
         ScanProfile.DriverName = DeviceDriver.ToString().ToLowerInvariant();
+        ScanProfile.EnableAutoSave = _enableAutoSave.IsChecked();
         form.ScanProfile = ScanProfile;
         form.ShowModal();
     }
@@ -785,6 +900,7 @@ public class EditProfileForm : EtoDialogBase
             if (_enableAutoSave.IsChecked())
             {
                 _autoSaveSettings.Enabled = true;
+                ScanProfile.EnableAutoSave = true;
                 var form = FormFactory.Create<AutoSaveSettingsForm>();
                 form.ScanProfile = ScanProfile;
                 form.ShowModal();

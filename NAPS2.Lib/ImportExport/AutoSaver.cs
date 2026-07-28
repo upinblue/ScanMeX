@@ -137,7 +137,8 @@ public class AutoSaver
         {
             return (true, null);
         }
-        string subPath = ResolveAutoSavePath(settings.FilePath, settings, placeholders, i, images);
+        var ctx = CreateScanContext(settings.FilePath, i, images);
+        string subPath = ResolveAutoSavePath(settings.FilePath, placeholders, ctx);
         if (subPath.Contains("$(", StringComparison.Ordinal))
         {
             _errorOutput.DisplayError($"Unaufgelöster Platzhalter: {settings.FilePath}");
@@ -148,7 +149,8 @@ public class AutoSaver
             string? newPath = null!;
             if (Invoker.Current.InvokeGet(() => _dialogHelper.PromptToSavePdfOrImage(subPath, out newPath)))
             {
-                subPath = ResolveAutoSavePath(newPath!, settings, placeholders, i, images);
+                ctx = CreateScanContext(newPath!, i, images);
+                subPath = ResolveAutoSavePath(newPath!, placeholders, ctx);
                 if (subPath.Contains("$(", StringComparison.Ordinal))
                 {
                     _errorOutput.DisplayError($"Unaufgelöster Platzhalter: {newPath}");
@@ -180,15 +182,15 @@ public class AutoSaver
                 _notify.PdfSaved(subPath);
             }
 
-            // After successful local save, optionally upload to SharePoint using the active profile.
-            if (success && ActiveProfile?.EnableSharePointUpload == true && ActiveProfile.SharePointUploadSettings != null)
+            if (success && settings.UploadToSharePoint && ActiveProfile?.SharePointUploadSettings != null)
             {
                 try
                 {
                     var fileName = Path.GetFileName(subPath);
+                    var sharePointSettings = ResolveSharePointSettings(ActiveProfile.SharePointUploadSettings, ctx);
                     var uploader = new SharePointUploadService();
                     var uploadOp = new UploadSharePointOperation(uploader);
-                    if (uploadOp.Start(ActiveProfile.SharePointUploadSettings, subPath, fileName))
+                    if (uploadOp.Start(sharePointSettings, subPath, fileName))
                     {
                         _operationProgress.ShowProgress(uploadOp);
                         await uploadOp.Success;
@@ -200,12 +202,11 @@ public class AutoSaver
                 }
             }
 
-            // After successful local save, optionally upload to SAP ArchiveLink. This is independent from SharePoint.
-            if (success && ActiveProfile?.SapArchiveSettings?.EnableUpload == true)
+            if (success && settings.UploadToSap && ActiveProfile?.SapArchiveSettings != null)
             {
                 try
                 {
-                    await _sapArchivePostScanService.UploadSavedFileAsync(ActiveProfile, subPath, images);
+                    await _sapArchivePostScanService.UploadSavedFileAsync(ActiveProfile, subPath, images, ctx);
                 }
                 catch (Exception ex)
                 {
@@ -232,23 +233,18 @@ public class AutoSaver
         }
     }
 
-    private string ResolveAutoSavePath(string template, AutoSaveSettings settings, Placeholders placeholders, int index,
-        List<ProcessedImage> images)
+    private ScanContext CreateScanContext(string template, int index, List<ProcessedImage> images)
     {
-        if (ActiveProfile == null)
-        {
-            return placeholders.Substitute(template, true, index);
-        }
         var ext = Path.GetExtension(template).TrimStart('.');
         if (string.IsNullOrWhiteSpace(ext))
         {
             ext = "pdf";
         }
-        var ctx = new ScanContext
+        return new ScanContext
         {
             Timestamp = DateTime.Now,
             SequenceIndex = index,
-            Profile = ActiveProfile,
+            Profile = ActiveProfile ?? new ScanProfile(),
             Images = images,
             Barcodes = new BarcodeExtractor().Extract(images),
             SeparatorBarcodeValue = images.FirstOrDefault()?.PostProcessingData.Barcode.IsPatchT == true
@@ -257,6 +253,33 @@ public class AutoSaver
             OutputExtension = ext,
             FileFormat = ext
         };
+    }
+
+    private string ResolveAutoSavePath(string template, Placeholders placeholders, ScanContext ctx)
+    {
+        if (ActiveProfile == null)
+        {
+            return placeholders.Substitute(template, true, ctx.SequenceIndex);
+        }
         return new FileNamePlaceholders().SubstitutePlaceholders(template, ctx, autoIncrement: true);
+    }
+
+    private static SharePointUploadSettings ResolveSharePointSettings(SharePointUploadSettings settings, ScanContext ctx)
+    {
+        var placeholders = new FileNamePlaceholders();
+        return new SharePointUploadSettings
+        {
+            SiteUrl = SubstituteUploadSetting(settings.SiteUrl, placeholders, ctx),
+            LibraryNameOrPath = SubstituteUploadSetting(settings.LibraryNameOrPath, placeholders, ctx),
+            FolderPath = SubstituteUploadSetting(settings.FolderPath, placeholders, ctx),
+            TenantId = settings.TenantId,
+            ClientId = settings.ClientId,
+            ClientSecret = settings.ClientSecret
+        };
+    }
+
+    private static string? SubstituteUploadSetting(string? value, FileNamePlaceholders placeholders, ScanContext ctx)
+    {
+        return string.IsNullOrWhiteSpace(value) ? value : placeholders.SubstitutePlaceholders(value, ctx);
     }
 }

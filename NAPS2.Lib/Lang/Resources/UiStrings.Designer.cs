@@ -320,6 +320,216 @@ namespace NAPS2.Lang.Resources {
                 return ResourceManager.GetString("AutoSaveSettingsFormTitle", resourceCulture);
             }
         }
+
+        internal static string Code39RegexOptionalLabel {
+            get {
+                return ResourceManager.GetString("Code39RegexOptionalLabel", resourceCulture);
+            }
+        }
+
+        internal static string SeparateByCode39Barcode {
+            get {
+                return ResourceManager.GetString("SeparateByCode39Barcode", resourceCulture);
+            }
+        }
+
+        internal static string InvalidCode39Regex {
+            get {
+                return ResourceManager.GetString("InvalidCode39Regex", resourceCulture);
+            }
+        }
+
+        internal static string UploadAutoSavedDocumentToSharePoint {
+            get {
+                return ResourceManager.GetString("UploadAutoSavedDocumentToSharePoint", resourceCulture);
+            }
+        }
+
+        internal static string UploadAutoSavedDocumentToSap {
+            get {
+                return ResourceManager.GetString("UploadAutoSavedDocumentToSap", resourceCulture);
+            }
+        }
+
+        internal static string ProfileScannerSection {
+            get {
+                return ResourceManager.GetString("ProfileScannerSection", resourceCulture);
+            }
+        }
+
+        internal static string ProfileAutoSaveUploadsSection {
+            get {
+                return ResourceManager.GetString("ProfileAutoSaveUploadsSection", resourceCulture);
+            }
+        }
+
+        internal static string ProfileSharePointSection {
+            get {
+                return ResourceManager.GetString("ProfileSharePointSection", resourceCulture);
+            }
+        }
+
+        internal static string ProfileSapSection {
+            get {
+                return ResourceManager.GetString("ProfileSapSection", resourceCulture);
+            }
+        }
+
+        internal static string UploadRequiresAutoSaveInfo {
+            get {
+                return ResourceManager.GetString("UploadRequiresAutoSaveInfo", resourceCulture);
+            }
+        }
+
+        internal static string EnableSharePointUpload {
+            get {
+                return ResourceManager.GetString("EnableSharePointUpload", resourceCulture);
+            }
+        }
+
+        internal static string SharePointUpload {
+            get {
+                return ResourceManager.GetString("SharePointUpload", resourceCulture);
+            }
+        }
+
+        internal static string SharePointSiteUrlLabel {
+            get {
+                return ResourceManager.GetString("SharePointSiteUrlLabel", resourceCulture);
+            }
+        }
+
+        internal static string SharePointLibraryPathLabel {
+            get {
+                return ResourceManager.GetString("SharePointLibraryPathLabel", resourceCulture);
+            }
+        }
+
+        internal static string SharePointFolderPathLabel {
+            get {
+                return ResourceManager.GetString("SharePointFolderPathLabel", resourceCulture);
+            }
+        }
+
+        internal static string AzureAdTenantIdLabel {
+            get {
+                return ResourceManager.GetString("AzureAdTenantIdLabel", resourceCulture);
+            }
+        }
+
+        internal static string AzureAdClientIdLabel {
+            get {
+                return ResourceManager.GetString("AzureAdClientIdLabel", resourceCulture);
+            }
+        }
+
+        internal static string AzureAdClientSecretLabel {
+            get {
+                return ResourceManager.GetString("AzureAdClientSecretLabel", resourceCulture);
+            }
+        }
+
+        internal static string SapHostLabel {
+            get {
+                return ResourceManager.GetString("SapHostLabel", resourceCulture);
+            }
+        }
+
+        internal static string SapServiceNameLabel {
+            get {
+                return ResourceManager.GetString("SapServiceNameLabel", resourceCulture);
+            }
+        }
+
+        internal static string SapClientLabel {
+            get {
+                return ResourceManager.GetString("SapClientLabel", resourceCulture);
+            }
+        }
+
+        internal static string SapLanguageLabel {
+            get {
+                return ResourceManager.GetString("SapLanguageLabel", resourceCulture);
+            }
+        }
+
+        internal static string SapUserLabel {
+            get {
+                return ResourceManager.GetString("SapUserLabel", resourceCulture);
+            }
+        }
+
+        internal static string SapPasswordLabel {
+            get {
+                return ResourceManager.GetString("SapPasswordLabel", resourceCulture);
+            }
+        }
+
+        internal static string SapIgnoreSslCertificateCheck {
+            get {
+                return ResourceManager.GetString("SapIgnoreSslCertificateCheck", resourceCulture);
+            }
+        }
+
+        internal static string SapArObjectLabel {
+            get {
+                return ResourceManager.GetString("SapArObjectLabel", resourceCulture);
+            }
+        }
+
+        internal static string SapObjectLabel {
+            get {
+                return ResourceManager.GetString("SapObjectLabel", resourceCulture);
+            }
+        }
+
+        internal static string SapObjectIdLabel {
+            get {
+                return ResourceManager.GetString("SapObjectIdLabel", resourceCulture);
+            }
+        }
+
+        internal static string SapObjectIdPlaceholder {
+            get {
+                return ResourceManager.GetString("SapObjectIdPlaceholder", resourceCulture);
+            }
+        }
+
+        internal static string SapTestUpload {
+            get {
+                return ResourceManager.GetString("SapTestUpload", resourceCulture);
+            }
+        }
+
+        internal static string SapTestUploadNoObjectKey {
+            get {
+                return ResourceManager.GetString("SapTestUploadNoObjectKey", resourceCulture);
+            }
+        }
+
+        internal static string SapTestUploadSucceeded {
+            get {
+                return ResourceManager.GetString("SapTestUploadSucceeded", resourceCulture);
+            }
+        }
+
+        internal static string SapTestUploadFailed {
+            get {
+                return ResourceManager.GetString("SapTestUploadFailed", resourceCulture);
+            }
+        }
+
+        internal static string SharePointSiteUrlHttpsRequired {
+            get {
+                return ResourceManager.GetString("SharePointSiteUrlHttpsRequired", resourceCulture);
+            }
+        }
+
+        internal static string SharePointCredentialsRequired {
+            get {
+                return ResourceManager.GetString("SharePointCredentialsRequired", resourceCulture);
+            }
+        }
         
         /// <summary>
         ///   Looks up a localized string similar to Next Scan.

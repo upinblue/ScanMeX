@@ -447,6 +447,111 @@
   <data name="AutoSaveSettingsFormTitle" xml:space="preserve">
     <value>Auto Save Settings</value>
   </data>
+  <data name="Code39RegexOptionalLabel" xml:space="preserve">
+    <value>Code 39 regex (optional):</value>
+  </data>
+  <data name="SeparateByCode39Barcode" xml:space="preserve">
+    <value>Separate by Code 39 barcode</value>
+  </data>
+  <data name="InvalidCode39Regex" xml:space="preserve">
+    <value>Invalid Code 39 regex.</value>
+  </data>
+  <data name="UploadAutoSavedDocumentToSharePoint" xml:space="preserve">
+    <value>Upload auto-saved document to SharePoint</value>
+  </data>
+  <data name="UploadAutoSavedDocumentToSap" xml:space="preserve">
+    <value>Upload auto-saved document to SAP ArchiveLink</value>
+  </data>
+  <data name="ProfileScannerSection" xml:space="preserve">
+    <value>Scanner</value>
+  </data>
+  <data name="ProfileAutoSaveUploadsSection" xml:space="preserve">
+    <value>Auto Save &amp; Uploads</value>
+  </data>
+  <data name="ProfileSharePointSection" xml:space="preserve">
+    <value>SharePoint</value>
+  </data>
+  <data name="ProfileSapSection" xml:space="preserve">
+    <value>SAP ArchiveLink</value>
+  </data>
+  <data name="UploadRequiresAutoSaveInfo" xml:space="preserve">
+    <value>SharePoint and SAP uploads run after Auto Save. Configure the output filename and separator in Auto Save Settings.</value>
+  </data>
+  <data name="EnableSharePointUpload" xml:space="preserve">
+    <value>Configure SharePoint upload</value>
+  </data>
+  <data name="SharePointUpload" xml:space="preserve">
+    <value>SharePoint Upload</value>
+  </data>
+  <data name="SharePointSiteUrlLabel" xml:space="preserve">
+    <value>SharePoint site URL:</value>
+  </data>
+  <data name="SharePointLibraryPathLabel" xml:space="preserve">
+    <value>Document library / path:</value>
+  </data>
+  <data name="SharePointFolderPathLabel" xml:space="preserve">
+    <value>Folder path (optional):</value>
+  </data>
+  <data name="AzureAdTenantIdLabel" xml:space="preserve">
+    <value>Azure AD Tenant ID:</value>
+  </data>
+  <data name="AzureAdClientIdLabel" xml:space="preserve">
+    <value>Azure AD Client ID:</value>
+  </data>
+  <data name="AzureAdClientSecretLabel" xml:space="preserve">
+    <value>Azure AD Client Secret:</value>
+  </data>
+  <data name="SapHostLabel" xml:space="preserve">
+    <value>SAP Host:</value>
+  </data>
+  <data name="SapServiceNameLabel" xml:space="preserve">
+    <value>Service name:</value>
+  </data>
+  <data name="SapClientLabel" xml:space="preserve">
+    <value>Client:</value>
+  </data>
+  <data name="SapLanguageLabel" xml:space="preserve">
+    <value>Language:</value>
+  </data>
+  <data name="SapUserLabel" xml:space="preserve">
+    <value>SAP user:</value>
+  </data>
+  <data name="SapPasswordLabel" xml:space="preserve">
+    <value>SAP password (leave blank to keep unchanged):</value>
+  </data>
+  <data name="SapIgnoreSslCertificateCheck" xml:space="preserve">
+    <value>Disable SSL certificate validation (test environments only)</value>
+  </data>
+  <data name="SapArObjectLabel" xml:space="preserve">
+    <value>ArObject:</value>
+  </data>
+  <data name="SapObjectLabel" xml:space="preserve">
+    <value>SapObject:</value>
+  </data>
+  <data name="SapObjectIdLabel" xml:space="preserve">
+    <value>ObjectId:</value>
+  </data>
+  <data name="SapObjectIdPlaceholder" xml:space="preserve">
+    <value>May contain placeholders such as $(barcode)</value>
+  </data>
+  <data name="SapTestUpload" xml:space="preserve">
+    <value>Test upload</value>
+  </data>
+  <data name="SapTestUploadNoObjectKey" xml:space="preserve">
+    <value>SAP ArchiveLink test upload canceled: no barcode/object key was provided.</value>
+  </data>
+  <data name="SapTestUploadSucceeded" xml:space="preserve">
+    <value>SAP upload OK - DocId: {0}, Barcode: {1}</value>
+  </data>
+  <data name="SapTestUploadFailed" xml:space="preserve">
+    <value>SAP upload failed - HTTP: {0}, Code: {1}, Message: {2}, TransactionId: {3}</value>
+  </data>
+  <data name="SharePointSiteUrlHttpsRequired" xml:space="preserve">
+    <value>SharePoint site URL must start with https://</value>
+  </data>
+  <data name="SharePointCredentialsRequired" xml:space="preserve">
+    <value>Tenant ID, Client ID and Client Secret are required when SharePoint upload is configured.</value>
+  </data>
   <data name="Advanced" xml:space="preserve">
     <value>Advanced</value>
   </data>

@@ -8,6 +8,9 @@ namespace NAPS2.Tools.Project.Packaging;
 
 public class PackageCommand : ICommand<PackageOptions>
 {
+    private const string WinFormsTargetFramework = "net9.0-windows10.0.17763.0";
+    private const string WindowsTargetFramework = "net9-windows";
+
     public int Run(PackageOptions opts)
     {
         foreach (var target in TargetsHelper.EnumeratePackageTargets(
@@ -59,9 +62,9 @@ public class PackageCommand : ICommand<PackageOptions>
         string arch = platform == Platform.WinArm64 ? "win-arm64" : "win-x64";
 
         foreach (var project in new[]
-                     { "NAPS2.App.WinForms", "NAPS2.App.Console" })
+                     { (Name: "NAPS2.App.WinForms", TargetFramework: WinFormsTargetFramework), (Name: "NAPS2.App.Console", TargetFramework: WindowsTargetFramework) })
         {
-            var buildPath = Path.Combine(Paths.SolutionRoot, project, "bin", "Release", "net9-windows", arch,
+            var buildPath = Path.Combine(Paths.SolutionRoot, project.Name, "bin", "Release", project.TargetFramework, arch,
                 "publish");
             if (!Directory.Exists(buildPath))
             {
@@ -71,11 +74,11 @@ public class PackageCommand : ICommand<PackageOptions>
         }
 
         // Include the 32-bit worker (on both x64 and arm64) for TWAIN support
-        var workerPath = Path.Combine(Paths.SolutionRoot, "NAPS2.App.Worker", "bin", "Release", "net9-windows",
+        var workerPath = Path.Combine(Paths.SolutionRoot, "NAPS2.App.Worker", "bin", "Release", WindowsTargetFramework,
             "win-x86", "publish");
         pkgInfo.AddFile(new PackageFile(workerPath, "lib", "NAPS2.Worker.exe"));
 
-        var appBuildPath = Path.Combine(Paths.SolutionRoot, "NAPS2.App.WinForms", "bin", "Release", "net9-windows",
+        var appBuildPath = Path.Combine(Paths.SolutionRoot, "NAPS2.App.WinForms", "bin", "Release", WinFormsTargetFramework,
             arch, "publish");
         if (platform == Platform.Win64)
         {
