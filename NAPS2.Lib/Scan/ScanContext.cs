@@ -38,6 +38,12 @@ public sealed class ScanContext
     public string? SeparatorBarcodeValue { get; init; }
 
     /// <summary>
+    /// Gets the identification number entered by the operator for this document, if the profile asks for one.
+    /// Available as the <c>$(id)</c> placeholder.
+    /// </summary>
+    public string? DocumentId { get; init; }
+
+    /// <summary>
     /// Gets the output extension without a leading dot.
     /// </summary>
     public string OutputExtension { get; init; } = "pdf";

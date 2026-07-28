@@ -28,17 +28,31 @@ public sealed class BarcodeExtractor
         for (var pageIndex = 0; pageIndex < images.Count; pageIndex++)
         {
             var barcode = images[pageIndex].PostProcessingData.Barcode;
-            if (!barcode.IsDetected || string.IsNullOrWhiteSpace(barcode.DetectedText) || MaxBarcodesPerPage <= 0)
+            if (MaxBarcodesPerPage <= 0)
             {
                 continue;
             }
 
-            result.Add(new DetectedBarcode(
-                barcode.DetectedText,
-                barcode.IsPatchT ? "PATCH_T" : barcode.DetectedFormat ?? string.Empty,
-                pageIndex,
-                barcode.IsPatchT));
+            // The primary detection comes first so $(barcode) keeps resolving to the symbology the
+            // profile selected, followed by the page's remaining barcodes in reading order.
+            var values = barcode.GetAllValues()
+                .Where(x => !string.IsNullOrWhiteSpace(x.Text))
+                .OrderByDescending(x => IsPrimary(barcode, x))
+                .Take(MaxBarcodesPerPage);
+            foreach (var value in values)
+            {
+                var isPatchT = Barcode.IsPatchTText(value.Text);
+                result.Add(new DetectedBarcode(
+                    value.Text!,
+                    isPatchT ? "PATCH_T" : value.Format ?? string.Empty,
+                    pageIndex,
+                    isPatchT));
+            }
         }
         return result;
     }
+
+    private static bool IsPrimary(Barcode barcode, BarcodeValue value) =>
+        barcode.IsDetected && string.Equals(value.Text, barcode.DetectedText, StringComparison.Ordinal) &&
+        string.Equals(value.Format, barcode.DetectedFormat, StringComparison.Ordinal);
 }

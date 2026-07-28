@@ -75,7 +75,7 @@ public sealed class PostScanOrchestrator
 
     private bool ShouldExtractBarcodes(ScanProfile profile)
     {
-        if (profile.BarcodeRecognitionEnabled)
+        if (profile.BarcodeRecognitionEnabled || DocumentWorkflowSettings.ForProfile(profile).RequiresBarcodeDetection())
         {
             return true;
         }
@@ -97,37 +97,12 @@ public sealed class PostScanOrchestrator
         IReadOnlyList<DetectedBarcode> barcodes)
     {
         var now = DateTime.Now;
-        if (profile.AutoSaveSettings?.Separator != SaveSeparator.PatchT)
-        {
-            yield return CreateContext(profile, images, barcodes, now, 0, null, 0);
-            yield break;
-        }
-
-        var segmentImages = new List<ProcessedImage>();
-        string? separatorValue = null;
+        var workflow = DocumentWorkflowSettings.ForProfile(profile);
         var sequenceIndex = 0;
-        var segmentStartPage = 0;
-        for (var pageIndex = 0; pageIndex < images.Count; pageIndex++)
+        foreach (var segment in DocumentSeparator.Separate(images, workflow))
         {
-            var image = images[pageIndex];
-            if (image.PostProcessingData.Barcode.IsPatchT)
-            {
-                if (segmentImages.Count > 0)
-                {
-                    yield return CreateContext(profile, segmentImages, barcodes, now, sequenceIndex++, separatorValue, segmentStartPage);
-                    segmentImages = new List<ProcessedImage>();
-                    segmentStartPage = pageIndex;
-                }
-
-                // The separator sheet starts the new segment and is intentionally kept in the output document.
-                // It often contains the business barcode used to link the archive document in SAP.
-                separatorValue = GetPatchValue(image.PostProcessingData.Barcode);
-            }
-            segmentImages.Add(image);
-        }
-        if (segmentImages.Count > 0)
-        {
-            yield return CreateContext(profile, segmentImages, barcodes, now, sequenceIndex, separatorValue, segmentStartPage);
+            yield return CreateContext(profile, segment.Images, barcodes, now, sequenceIndex++,
+                segment.SeparatorBarcodeValue, segment.StartPageIndex);
         }
     }
 
@@ -171,13 +146,6 @@ public sealed class PostScanOrchestrator
             OutputExtension = ext,
             FileFormat = ext
         };
-    }
-
-    private static string? GetPatchValue(Barcode barcode)
-    {
-        return string.Equals(barcode.DetectedText, "PATCHT", StringComparison.OrdinalIgnoreCase)
-            ? null
-            : barcode.DetectedText;
     }
 
     private static int SinkOrder(IPostScanSink sink) => sink.Name switch

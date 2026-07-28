@@ -9,7 +9,7 @@ namespace NAPS2.ImportExport;
 public sealed class FileNamePlaceholders
 {
     private static readonly Regex TokenPattern = new(
-        @"\$\((barcode:regex=[^)]*\([^)]*\)[^)]*)\)|\$\((barcode(?::[^)]*)?|profile|user|host|ext)\)",
+        @"\$\((barcode:regex=[^)]*\([^)]*\)[^)]*)\)|\$\((barcode(?::[^)]*)?|profile|user|host|ext|id)\)",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     /// <summary>
@@ -77,6 +77,12 @@ public sealed class FileNamePlaceholders
         if (token.Equals("ext", StringComparison.OrdinalIgnoreCase))
         {
             return ctx.OutputExtension ?? string.Empty;
+        }
+        if (token.Equals("id", StringComparison.OrdinalIgnoreCase))
+        {
+            // Falls back to the barcode so a profile can switch between manual entry and barcode
+            // identification without having to rewrite its file name template.
+            return SanitizeForFileName(ctx.DocumentId ?? ResolveBarcode("barcode", ctx) ?? string.Empty);
         }
         if (token.StartsWith("barcode", StringComparison.OrdinalIgnoreCase))
         {

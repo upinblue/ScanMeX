@@ -152,6 +152,14 @@ public class ScanProfile
     /// </summary>
     [XmlElement(IsNullable = true)]
     public SapArchiveProfileSettings? SapArchiveSettings { get; set; }
+
+    /// <summary>
+    /// Optional document separation, identification and upload settings. Null means the settings are
+    /// derived from <see cref="AutoSaveSettings"/>, which keeps profiles saved before this backward-compatible.
+    /// Use <see cref="DocumentWorkflowSettings.ForProfile"/> instead of reading this directly.
+    /// </summary>
+    [XmlElement(IsNullable = true)]
+    public DocumentWorkflowSettings? DocumentWorkflow { get; set; }
 }
 
 /// <summary>

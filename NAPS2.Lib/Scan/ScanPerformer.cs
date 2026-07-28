@@ -241,6 +241,8 @@ internal class ScanPerformer : IScanPerformer
         var separator = scanProfile.AutoSaveSettings?.Separator;
         var sapNeedsBarcode = scanProfile.SapArchiveSettings?.EnableUpload == true &&
                               scanProfile.SapArchiveSettings.BarcodeSource == BarcodeSource.FromScannedBarcode;
+        var workflow = DocumentWorkflowSettings.ForProfile(scanProfile);
+        var symbologies = workflow.GetEffectiveSymbologies().ToList();
 
         var options = new ScanOptions
         {
@@ -283,9 +285,16 @@ internal class ScanPerformer : IScanPerformer
             ExcludeLocalIPs = true,
             BarcodeDetectionOptions =
             {
-                DetectBarcodes = scanParams.DetectPatchT || sapNeedsBarcode || separator is SaveSeparator.PatchT or SaveSeparator.Code39Barcode,
-                // We piggyback PatchTOnly to restrict to CODE_39 for both PatchT and Code39 separation
-                PatchTOnly = scanParams.DetectPatchT || separator is SaveSeparator.PatchT or SaveSeparator.Code39Barcode
+                DetectBarcodes = scanParams.DetectPatchT || sapNeedsBarcode ||
+                                 workflow.RequiresBarcodeDetection() ||
+                                 separator is SaveSeparator.PatchT or SaveSeparator.Code39Barcode,
+                // The profile's symbologies drive which formats ZXing looks for and which barcode wins
+                // when a page carries several. Empty means "anything".
+                Symbologies = symbologies,
+                // Legacy fallback for profiles that only ever asked for patch-t separator sheets.
+                PatchTOnly = symbologies.Count == 0 &&
+                             (scanParams.DetectPatchT ||
+                              separator is SaveSeparator.PatchT or SaveSeparator.Code39Barcode)
             },
             OcrParams = scanParams.OcrParams ?? OcrParams.Empty,
             Brightness = scanProfile.Brightness,

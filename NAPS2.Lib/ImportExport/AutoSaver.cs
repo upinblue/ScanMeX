@@ -93,8 +93,8 @@ public class AutoSaver
             var placeholders = Placeholders.All.WithDate(DateTime.Now);
             int i = 0;
             string? firstFileSaved = null;
-            // Use extended separator that supports Code39 with regex
-            var scans = SaveSeparatorHelper.SeparateScans(new[] { images }, settings).ToList();
+            // Use extended separator that supports barcode separation with an optional regex
+            var scans = SaveSeparatorHelper.SeparateScans(new[] { images }, ActiveProfile, settings).ToList();
             foreach (var imagesToSave in scans)
             {
                 (bool success, string? filePath) =
@@ -141,7 +141,7 @@ public class AutoSaver
         string subPath = ResolveAutoSavePath(settings.FilePath, placeholders, ctx);
         if (subPath.Contains("$(", StringComparison.Ordinal))
         {
-            _errorOutput.DisplayError($"Unaufgelöster Platzhalter: {settings.FilePath}");
+            _errorOutput.DisplayError($"Unaufgelï¿½ster Platzhalter: {settings.FilePath}");
             return (false, null);
         }
         if (settings.PromptForFilePath)
@@ -153,7 +153,7 @@ public class AutoSaver
                 subPath = ResolveAutoSavePath(newPath!, placeholders, ctx);
                 if (subPath.Contains("$(", StringComparison.Ordinal))
                 {
-                    _errorOutput.DisplayError($"Unaufgelöster Platzhalter: {newPath}");
+                    _errorOutput.DisplayError($"Unaufgelï¿½ster Platzhalter: {newPath}");
                     return (false, null);
                 }
             }
