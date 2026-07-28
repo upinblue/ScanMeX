@@ -24,9 +24,8 @@ public class DocumentUploadService
     /// <summary>
     /// Whether the profile sends documents anywhere at all.
     /// </summary>
-    public static bool HasAnyTarget(ScanProfile? profile, AutoSaveSettings? settings) =>
-        (settings?.UploadToSharePoint == true && profile?.SharePointUploadSettings != null) ||
-        (settings?.UploadToSap == true && profile?.SapArchiveSettings != null);
+    public static bool HasAnyTarget(ScanProfile? profile) =>
+        profile?.UploadsToSharePoint() == true || profile?.UploadsToSap() == true;
 
     /// <summary>
     /// Uploads a document to every target its profile enables. Updates the document's status and message,
@@ -34,12 +33,11 @@ public class DocumentUploadService
     /// </summary>
     public async Task<bool> UploadAsync(PendingDocument document)
     {
-        var settings = document.Profile.AutoSaveSettings;
         document.Status = DocumentUploadStatus.Uploading;
         document.Message = null;
 
         var failures = new List<string>();
-        if (settings?.UploadToSharePoint == true && document.Profile.SharePointUploadSettings != null)
+        if (document.Profile.UploadsToSharePoint())
         {
             var error = await UploadToSharePointAsync(document);
             if (error != null)
@@ -47,7 +45,7 @@ public class DocumentUploadService
                 failures.Add(error);
             }
         }
-        if (settings?.UploadToSap == true && document.Profile.SapArchiveSettings != null)
+        if (document.Profile.UploadsToSap())
         {
             var error = await UploadToSapAsync(document);
             if (error != null)

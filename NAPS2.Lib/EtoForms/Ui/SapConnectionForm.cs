@@ -15,10 +15,10 @@ internal class SapConnectionForm : EtoDialogBase
     private readonly DropDownWidget<string> _language = new(scale: false);
     private readonly TextBox _user = new();
     private readonly PasswordBox _password = new();
-    private readonly CheckBox _ignoreCertificateErrors = new() { Text = "SSL-Zertifikatsprüfung deaktivieren (nur Testumgebung!)" };
+    private readonly CheckBox _ignoreCertificateErrors = new() { Text = "SSL-ZertifikatsprÃ¼fung deaktivieren (nur Testumgebung!)" };
     private readonly Label _certificateWarning = new()
     {
-        Text = "Warnung: TLS-Zertifikate werden nicht geprüft.",
+        Text = "Warnung: TLS-Zertifikate werden nicht geprÃ¼ft.",
         TextColor = Colors.Red
     };
     private readonly LayoutVisibility _certificateWarningVis = new(false);

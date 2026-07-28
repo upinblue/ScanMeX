@@ -239,8 +239,8 @@ internal class ScanPerformer : IScanPerformer
         bool isDeviceQuery)
     {
         var separator = scanProfile.AutoSaveSettings?.Separator;
-        var sapNeedsBarcode = scanProfile.SapArchiveSettings?.EnableUpload == true &&
-                              scanProfile.SapArchiveSettings.BarcodeSource == BarcodeSource.FromScannedBarcode;
+        var sapNeedsBarcode = scanProfile.UploadsToSap() &&
+                              scanProfile.SapArchiveSettings!.BarcodeSource == BarcodeSource.FromScannedBarcode;
         var workflow = DocumentWorkflowSettings.ForProfile(scanProfile);
         var symbologies = workflow.GetEffectiveSymbologies().ToList();
 

@@ -96,7 +96,7 @@ public class PostScanOrchestratorTests : ContextualTests
         var result = await sink.ExecuteAsync(ctx, Array.Empty<SavedArtifact>(), CancellationToken.None);
 
         Assert.False(result.Success);
-        Assert.Contains("Unaufgelöster Platzhalter", result.Message);
+        Assert.Contains("UnaufgelÃ¶ster Platzhalter", result.Message);
     }
 
     private ScanProfile Profile(

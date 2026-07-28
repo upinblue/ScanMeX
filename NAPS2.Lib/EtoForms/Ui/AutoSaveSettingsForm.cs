@@ -2,6 +2,7 @@ using Eto.Forms;
 using NAPS2.EtoForms.Layout;
 using NAPS2.EtoForms.Widgets;
 using NAPS2.ImportExport;
+using NAPS2.Sap;
 using NAPS2.Scan;
 using System.Text.RegularExpressions;
 using Eto.Drawing;
@@ -22,8 +23,9 @@ public class AutoSaveSettingsForm : EtoDialogBase
     private readonly TextBox _code39Regex = new();
     private readonly LayoutVisibility _code39RegexVis = new(false);
     private readonly CheckBox _clearAfterSaving = new() { Text = UiStrings.ClearAfterSaving };
-    private readonly CheckBox _uploadToSharePoint = new() { Text = UiStrings.UploadAutoSavedDocumentToSharePoint };
-    private readonly CheckBox _uploadToSap = new() { Text = UiStrings.UploadAutoSavedDocumentToSap };
+    // Which targets are enabled is decided in the profile dialog next to their credentials; this dialog
+    // only controls when the upload happens.
+    private readonly Label _uploadTargetsInfo = C.Label("");
 
     // Barcode separation details, only relevant when separating by barcode.
     private readonly CheckBox _symbologyCode39 = new() { Text = UiStrings.BarcodeTypeCode39 };
@@ -101,9 +103,8 @@ public class AutoSaveSettingsForm : EtoDialogBase
                 _filePerPage.Checked = true;
             }
             _code39Regex.Text = ScanProfile.AutoSaveSettings.Code39SeparationPattern ?? "";
-            _uploadToSharePoint.Checked = ScanProfile.AutoSaveSettings.UploadToSharePoint;
-            _uploadToSap.Checked = ScanProfile.AutoSaveSettings.UploadToSap || ScanProfile.SapArchiveSettings?.EnableUpload == true;
         }
+        _uploadTargetsInfo.Text = DescribeUploadTargets();
 
         // Falls back to values derived from the legacy auto save settings for older profiles.
         var workflow = DocumentWorkflowSettings.ForProfile(ScanProfile);
@@ -156,8 +157,7 @@ public class AutoSaveSettingsForm : EtoDialogBase
             C.Spacer(),
             C.Label(UiStrings.UploadTriggerLabel),
             _uploadTrigger,
-            _uploadToSharePoint,
-            _uploadToSap,
+            _uploadTargetsInfo,
             _keepLocalCopy,
             C.Spacer(),
             _clearAfterSaving,
@@ -196,17 +196,31 @@ public class AutoSaveSettingsForm : EtoDialogBase
         _idPromptLabelVis.IsVisible = _idMode.SelectedItem == DocumentIdMode.ManualInput;
     }
 
-    // Ensure the upload checkbox is enabled only when Auto Save is enabled in the parent form/profile
+    // The upload timing only matters when auto save actually produces a file to upload.
     private void UpdateUploadCheckboxEnabled()
     {
         bool enabled = ScanProfile?.EnableAutoSave == true;
-        _uploadToSharePoint.Enabled = enabled;
-        _uploadToSap.Enabled = enabled;
-        if (!enabled)
+        _uploadTrigger.Enabled = enabled;
+        _keepLocalCopy.Enabled = enabled;
+    }
+
+    /// <summary>
+    /// Names the targets enabled in the profile dialog, so it's clear here what "upload" refers to.
+    /// </summary>
+    private string DescribeUploadTargets()
+    {
+        var targets = new List<string>();
+        if (ScanProfile?.UploadsToSharePoint() == true)
         {
-            _uploadToSharePoint.Checked = false;
-            _uploadToSap.Checked = false;
+            targets.Add(UiStrings.SharePointUpload);
         }
+        if (ScanProfile?.UploadsToSap() == true)
+        {
+            targets.Add(SapUi.ArchiveLink);
+        }
+        return targets.Count > 0
+            ? string.Format(UiStrings.UploadTargetsEnabled, string.Join(", ", targets))
+            : UiStrings.UploadTargetsNone;
     }
 
     private bool Save()
@@ -249,8 +263,9 @@ public class AutoSaveSettingsForm : EtoDialogBase
             ClearImagesAfterSaving = _clearAfterSaving.IsChecked(),
             Separator = separator,
             Code39SeparationPattern = regex,
-            UploadToSharePoint = _uploadToSharePoint.IsChecked(),
-            UploadToSap = _uploadToSap.IsChecked()
+            // Owned by the profile dialog; preserved here so saving this dialog can't turn uploads off.
+            UploadToSharePoint = ScanProfile.AutoSaveSettings?.UploadToSharePoint ?? false,
+            UploadToSap = ScanProfile.AutoSaveSettings?.UploadToSap ?? false
         };
 
         var symbologies = new List<BarcodeSymbology>();

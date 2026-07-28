@@ -27,7 +27,7 @@ public sealed class SapArchiveSink : IPostScanSink
 
     public string Name => PostScanSinkNames.Sap;
 
-    public bool IsEnabledFor(ScanProfile profile) => profile.SapArchiveSettings?.EnableUpload == true;
+    public bool IsEnabledFor(ScanProfile profile) => profile.UploadsToSap();
 
     public async Task<PostScanSinkResult> ExecuteAsync(
         ScanContext ctx,
@@ -54,7 +54,7 @@ public sealed class SapArchiveSink : IPostScanSink
             if (string.IsNullOrWhiteSpace(barcode))
             {
                 return new PostScanSinkResult(Name, false,
-                    "SAP ArchiveLink FEHLER – Barcode konnte nicht aufgelöst werden.", diagnostics);
+                    "SAP ArchiveLink FEHLER â€“ Barcode konnte nicht aufgelÃ¶st werden.", diagnostics);
             }
 
             var objectId = Substitute(settings.ObjectIdTemplate, ctx);
@@ -79,13 +79,13 @@ public sealed class SapArchiveSink : IPostScanSink
             if (!result.Success)
             {
                 return new PostScanSinkResult(Name, false,
-                    $"SAP ArchiveLink FEHLER – HTTP {result.HttpStatusCode} {result.ErrorCode}: {result.ErrorMessage} (TX: {result.TransactionId})",
+                    $"SAP ArchiveLink FEHLER â€“ HTTP {result.HttpStatusCode} {result.ErrorCode}: {result.ErrorMessage} (TX: {result.TransactionId})",
                     diagnostics);
             }
             successes++;
         }
         return new PostScanSinkResult(Name, true,
-            $"SAP ArchiveLink OK – {successes} Datei(en), Archiv: {settings.ArchiveId}", diagnostics);
+            $"SAP ArchiveLink OK â€“ {successes} Datei(en), Archiv: {settings.ArchiveId}", diagnostics);
     }
 
     private SapConnectionConfig ResolveConnection(SapArchiveProfileSettings settings)

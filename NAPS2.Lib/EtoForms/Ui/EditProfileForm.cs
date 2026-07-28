@@ -50,7 +50,7 @@ public class EditProfileForm : EtoDialogBase
     private readonly TextBox _sapLanguage = new();
     private readonly TextBox _sapUser = new();
     private readonly PasswordBox _sapPassword = new();
-    private readonly CheckBox _sapIgnoreSsl = new() { Text = "SSL-Zertifikatspr�fung deaktivieren (nur Testumgebung!)" };
+    private readonly CheckBox _sapIgnoreSsl = new() { Text = "SSL-Zertifikatsprüfung deaktivieren (nur Testumgebung!)" };
     private readonly DropDownWidget<SapObjectTypeCatalogEntry> _sapObjectType = new();
     private readonly TextBox _sapArchiveId = new();
     private readonly TextBox _sapDocumentType = new();
@@ -584,9 +584,18 @@ public class EditProfileForm : EtoDialogBase
             PaperSource = _paperSource.SelectedItem,
 
             EnableAutoSave = _enableAutoSave.IsChecked(),
-            AutoSaveSettings = ScanProfile.AutoSaveSettings,
+            AutoSaveSettings = BuildAutoSaveSettings(),
             SapArchiveSettings = BuildSapArchiveSettings(),
             Quality = ScanProfile.Quality,
+
+            // Settings this dialog doesn't edit. They are only reachable from the auto save dialog or
+            // the advanced dialog, and this method builds a brand new profile, so anything not copied
+            // here is silently reset the next time a profile is opened and confirmed.
+            DocumentWorkflow = ScanProfile.DocumentWorkflow,
+            BarcodeRecognitionEnabled = ScanProfile.BarcodeRecognitionEnabled,
+            RotateDegrees = ScanProfile.RotateDegrees,
+            KeyValueOptions = ScanProfile.KeyValueOptions,
+            UpgradedFrom = ScanProfile.UpgradedFrom,
 
             BrightnessContrastAfterScan = ScanProfile.BrightnessContrastAfterScan,
             AutoDeskew = ScanProfile.AutoDeskew,
@@ -669,6 +678,34 @@ public class EditProfileForm : EtoDialogBase
 
             _suppressChangeEvent = false;
         }
+    }
+
+    /// <summary>
+    /// Keeps the auto save upload flags in step with the enable checkboxes shown next to the credentials.
+    /// The two used to be set in separate dialogs and could contradict each other, so ticking "enable
+    /// SharePoint upload" here had no effect unless the auto save dialog was opened as well.
+    /// </summary>
+    /// <summary>
+    /// Mirrors the enable checkboxes onto the profile object shared with the auto save dialog.
+    /// </summary>
+    private void SyncUploadTargetsToProfile()
+    {
+        ScanProfile.EnableSharePointUpload = _enableSharePointUpload.IsChecked();
+        ScanProfile.AutoSaveSettings = BuildAutoSaveSettings();
+        if (ScanProfile.SapArchiveSettings != null)
+        {
+            ScanProfile.SapArchiveSettings.EnableUpload = _enableSapArchiveUpload.IsChecked();
+        }
+    }
+
+    private AutoSaveSettings BuildAutoSaveSettings()
+    {
+        var settings = ScanProfile.AutoSaveSettings ?? new AutoSaveSettings();
+        return settings with
+        {
+            UploadToSharePoint = _enableSharePointUpload.IsChecked(),
+            UploadToSap = _enableSapArchiveUpload.IsChecked()
+        };
     }
 
     private SapArchiveProfileSettings BuildSapArchiveSettings()
@@ -775,8 +812,8 @@ public class EditProfileForm : EtoDialogBase
         var result = await new HttpSapArchiveUploader(request.Connection).UploadAsync(request, CancellationToken.None);
         MessageBox.Show(this,
             result.Success
-                ? $"SAP-Upload OK � DocId: {result.ArchivDocId}, Barcode: {barcode}"
-                : $"SAP-Upload fehlgeschlagen � HTTP: {result.HttpStatusCode}, Code: {result.ErrorCode}, Message: {result.ErrorMessage}, TransactionId: {result.TransactionId}",
+                ? $"SAP-Upload OK – DocId: {result.ArchivDocId}, Barcode: {barcode}"
+                : $"SAP-Upload fehlgeschlagen – HTTP: {result.HttpStatusCode}, Code: {result.ErrorCode}, Message: {result.ErrorMessage}, TransactionId: {result.TransactionId}",
             "SAP ArchiveLink",
             MessageBoxButtons.OK,
             result.Success ? MessageBoxType.Information : MessageBoxType.Error);
@@ -880,6 +917,9 @@ public class EditProfileForm : EtoDialogBase
         var form = FormFactory.Create<AutoSaveSettingsForm>();
         ScanProfile.DriverName = DeviceDriver.ToString().ToLowerInvariant();
         ScanProfile.EnableAutoSave = _enableAutoSave.IsChecked();
+        // Push the not-yet-saved target selection across so the auto save dialog reports the targets the
+        // operator just ticked here rather than the ones last written to disk.
+        SyncUploadTargetsToProfile();
         form.ScanProfile = ScanProfile;
         form.ShowModal();
     }

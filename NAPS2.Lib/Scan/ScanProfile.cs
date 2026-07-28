@@ -160,6 +160,24 @@ public class ScanProfile
     /// </summary>
     [XmlElement(IsNullable = true)]
     public DocumentWorkflowSettings? DocumentWorkflow { get; set; }
+
+    /// <summary>
+    /// Whether scanned documents go to SharePoint. Enabling this historically lived in two places --
+    /// <see cref="EnableSharePointUpload"/> on the profile and <see cref="AutoSaveSettings.UploadToSharePoint"/>
+    /// on the auto save settings -- which disagreed depending on which dialog was used. Both are now written
+    /// together, and either one counts so profiles saved by older builds keep working.
+    /// </summary>
+    public bool UploadsToSharePoint() =>
+        (EnableSharePointUpload || AutoSaveSettings?.UploadToSharePoint == true) &&
+        SharePointUploadSettings != null;
+
+    /// <summary>
+    /// Whether scanned documents go to SAP ArchiveLink. See <see cref="UploadsToSharePoint"/> for why
+    /// two flags are consulted.
+    /// </summary>
+    public bool UploadsToSap() =>
+        SapArchiveSettings != null &&
+        (SapArchiveSettings.EnableUpload || AutoSaveSettings?.UploadToSap == true);
 }
 
 /// <summary>

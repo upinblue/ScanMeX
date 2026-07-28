@@ -29,7 +29,7 @@ public sealed class AutoSaveSink : IArtifactProducingPostScanSink
         if (resolvedPath.Contains("$(", StringComparison.Ordinal))
         {
             return Task.FromResult(new PostScanSinkResult(Name, false,
-                $"Unaufgelöster Platzhalter: {settings.FilePath}", null));
+                $"UnaufgelÃ¶ster Platzhalter: {settings.FilePath}", null));
         }
 
         // The actual file-writing implementation remains in AutoSaver/SavePdfOperation; this sink is the shared
@@ -41,9 +41,9 @@ public sealed class AutoSaveSink : IArtifactProducingPostScanSink
             SapMimeTypeResolver.Resolve(resolvedPath));
         Artifacts = new[] { artifact };
         return Task.FromResult(new PostScanSinkResult(Name, true,
-            $"Auto-Speichern OK – {artifact.FilePath} ({artifact.SizeBytes})", null));
+            $"Auto-Speichern OK â€“ {artifact.FilePath} ({artifact.SizeBytes})", null));
     }
 
     private static bool HasUploadSink(ScanProfile profile) =>
-        profile.EnableSharePointUpload || profile.SapArchiveSettings?.EnableUpload == true;
+        profile.UploadsToSharePoint() || profile.UploadsToSap();
 }

@@ -38,8 +38,8 @@ internal class UploadSapArchiveOperation : OperationBase
                 Result = await _uploader.UploadAsync(_request, CancelToken);
                 Status.CurrentProgress = 100;
                 Status.StatusText = Result.Success
-                    ? $"SAP-Upload OK – DocId: {Result.ArchivDocId}, Barcode: {_request.Barcode}"
-                    : $"SAP-Upload fehlgeschlagen – HTTP: {Result.HttpStatusCode}, Code: {Result.ErrorCode}, Message: {Result.ErrorMessage}, TransactionId: {Result.TransactionId}";
+                    ? $"SAP-Upload OK â€“ DocId: {Result.ArchivDocId}, Barcode: {_request.Barcode}"
+                    : $"SAP-Upload fehlgeschlagen â€“ HTTP: {Result.HttpStatusCode}, Code: {Result.ErrorCode}, Message: {Result.ErrorMessage}, TransactionId: {Result.TransactionId}";
                 InvokeStatusChanged();
 
                 if (Result.Success)

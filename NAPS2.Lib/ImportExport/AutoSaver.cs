@@ -175,7 +175,7 @@ public class AutoSaver
         string subPath = ResolveAutoSavePath(settings.FilePath, placeholders, ctx);
         if (subPath.Contains("$(", StringComparison.Ordinal))
         {
-            _errorOutput.DisplayError($"Unaufgel�ster Platzhalter: {settings.FilePath}");
+            _errorOutput.DisplayError($"Unaufgelöster Platzhalter: {settings.FilePath}");
             return (false, null);
         }
         if (settings.PromptForFilePath)
@@ -187,7 +187,7 @@ public class AutoSaver
                 subPath = ResolveAutoSavePath(newPath!, placeholders, ctx);
                 if (subPath.Contains("$(", StringComparison.Ordinal))
                 {
-                    _errorOutput.DisplayError($"Unaufgel�ster Platzhalter: {newPath}");
+                    _errorOutput.DisplayError($"Unaufgelöster Platzhalter: {newPath}");
                     return (false, null);
                 }
             }
@@ -261,8 +261,7 @@ public class AutoSaver
     /// </summary>
     private async Task HandleUpload(DocumentWorkflowSettings workflow, ScanContext ctx, string filePath)
     {
-        var settings = ActiveProfile?.AutoSaveSettings;
-        if (ActiveProfile == null || !DocumentUploadService.HasAnyTarget(ActiveProfile, settings))
+        if (ActiveProfile == null || !DocumentUploadService.HasAnyTarget(ActiveProfile))
         {
             return;
         }

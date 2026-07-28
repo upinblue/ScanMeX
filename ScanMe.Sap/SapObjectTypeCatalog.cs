@@ -13,10 +13,10 @@ public static class SapObjectTypeCatalog
     public static readonly IReadOnlyList<SapObjectTypeCatalogEntry> CommonTypes = new[]
     {
         new SapObjectTypeCatalogEntry("BUS2012", "Bestellung", "Einkaufsbelegnummer, meist 10-stellig"),
-        new SapObjectTypeCatalogEntry("BUS2081", "Eingangsrechnung", "Rechnungsbelegnummer/Gesch‰ftsjahr gem‰ﬂ SAP-System"),
-        new SapObjectTypeCatalogEntry("BUS1006", "Gesch‰ftspartner", "Business-Partner-Nummer gem‰ﬂ SAP-Customizing"),
-        new SapObjectTypeCatalogEntry("EQUI", "Equipment", "Equipmentnummer, f¸hrende Nullen systemabh‰ngig"),
-        new SapObjectTypeCatalogEntry("MATERIAL", "Material", "Materialnummer, Format/L‰nge systemabh‰ngig")
+        new SapObjectTypeCatalogEntry("BUS2081", "Eingangsrechnung", "Rechnungsbelegnummer/Gesch√§ftsjahr gem√§√ü SAP-System"),
+        new SapObjectTypeCatalogEntry("BUS1006", "Gesch√§ftspartner", "Business-Partner-Nummer gem√§√ü SAP-Customizing"),
+        new SapObjectTypeCatalogEntry("EQUI", "Equipment", "Equipmentnummer, f√ºhrende Nullen systemabh√§ngig"),
+        new SapObjectTypeCatalogEntry("MATERIAL", "Material", "Materialnummer, Format/L√§nge systemabh√§ngig")
     };
 }
 

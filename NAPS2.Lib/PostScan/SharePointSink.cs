@@ -17,7 +17,7 @@ public sealed class SharePointSink : IPostScanSink
 
     public string Name => PostScanSinkNames.SharePoint;
 
-    public bool IsEnabledFor(ScanProfile profile) => profile.EnableSharePointUpload;
+    public bool IsEnabledFor(ScanProfile profile) => profile.UploadsToSharePoint();
 
     public async Task<PostScanSinkResult> ExecuteAsync(
         ScanContext ctx,
@@ -38,7 +38,7 @@ public sealed class SharePointSink : IPostScanSink
                 await _uploadService.UploadFileAsync(ctx.Profile.SharePointUploadSettings, artifact.FilePath, fileName,
                     cancellationToken: ct);
             }
-            return new PostScanSinkResult(Name, true, $"SharePoint-Upload OK – {artifacts.Count} file(s)", null);
+            return new PostScanSinkResult(Name, true, $"SharePoint-Upload OK â€“ {artifacts.Count} file(s)", null);
         }
         catch (Exception ex)
         {

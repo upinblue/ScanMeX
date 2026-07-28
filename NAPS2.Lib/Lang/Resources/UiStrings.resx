@@ -1194,4 +1194,10 @@
   <data name="UploadSomeFailed" xml:space="preserve">
     <value>{0} of {1} documents could not be uploaded.</value>
   </data>
+  <data name="UploadTargetsEnabled" xml:space="preserve">
+    <value>Enabled upload targets: {0}. Change these in the profile settings.</value>
+  </data>
+  <data name="UploadTargetsNone" xml:space="preserve">
+    <value>No upload target is enabled. Enable SharePoint or SAP ArchiveLink in the profile settings.</value>
+  </data>
 </root>

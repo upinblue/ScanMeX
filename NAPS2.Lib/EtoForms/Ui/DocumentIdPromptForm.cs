@@ -27,11 +27,6 @@ public class DocumentIdPromptForm : EtoDialogBase
 
     public string? DocumentId { get; private set; }
 
-    /// <summary>
-    /// Whether the operator skipped this document rather than entering a value.
-    /// </summary>
-    public bool Skipped { get; private set; }
-
     protected override void BuildLayout()
     {
         LayoutController.Content = L.Column(
@@ -55,7 +50,6 @@ public class DocumentIdPromptForm : EtoDialogBase
             return false;
         }
         DocumentId = _documentId.Text.Trim();
-        Skipped = false;
         return true;
     }
 }

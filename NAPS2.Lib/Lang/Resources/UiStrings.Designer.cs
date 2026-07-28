@@ -3185,5 +3185,23 @@ namespace NAPS2.Lang.Resources {
             }
         }
 
+        /// <summary>
+        ///   Looks up a localized string similar to Enabled upload targets: {0}. Change these in the profile settings..
+        /// </summary>
+        internal static string UploadTargetsEnabled {
+            get {
+                return ResourceManager.GetString("UploadTargetsEnabled", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to No upload target is enabled. Enable SharePoint or SAP ArchiveLink in the profile settings..
+        /// </summary>
+        internal static string UploadTargetsNone {
+            get {
+                return ResourceManager.GetString("UploadTargetsNone", resourceCulture);
+            }
+        }
+
     }
 }
