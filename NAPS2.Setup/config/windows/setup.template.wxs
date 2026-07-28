@@ -14,7 +14,11 @@
     <Icon Id="icon.ico" SourceFile="NAPS2.Lib\Icons\favicon.ico"/>
     <Property Id="ARPPRODUCTICON" Value="icon.ico" />
 
-    <MajorUpgrade DowngradeErrorMessage="A later version of [ProductName] is already installed. Setup will now exit." />
+    <!-- Windows Installer only compares the first three fields of the version, so 1.0.0.1 -> 1.0.0.2
+         would otherwise not be detected as an upgrade and the two would install side by side.
+         AllowSameVersionUpgrades makes those replace the existing installation instead. -->
+    <MajorUpgrade AllowSameVersionUpgrades="yes"
+                  DowngradeErrorMessage="A later version of [ProductName] is already installed. Setup will now exit." />
 
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
     <UIRef Id="WixUI_InstallDir" />

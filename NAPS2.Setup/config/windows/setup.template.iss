@@ -11,6 +11,10 @@
 #define ExeName                  "ScanMe.exe"
 
 [Setup]
+; The AppId is what Inno matches against to detect an existing installation and upgrade it in place.
+; Without it Inno falls back to AppName, so this is the value already used by installed versions --
+; setting it explicitly keeps upgrades working even if the displayed name ever changes.
+AppId=ScanMe
 AppName={#AppLongName}
 AppVersion={#AppVersion}
 AppVerName={#AppShortName} {#AppVersionName}
