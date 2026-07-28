@@ -13,11 +13,12 @@ public class DesktopCommands
     private readonly IIconProvider _iconProvider;
     private readonly Naps2Config _config;
     private readonly DesktopFormProvider _desktopFormProvider;
+    private readonly DocumentUploadController _documentUploadController;
 
     public DesktopCommands(DesktopController desktopController, DesktopScanController desktopScanController,
         IDesktopSubFormController desktopSubFormController, UiImageList imageList, ImageListActions imageListActions,
         ThumbnailController thumbnailController, IIconProvider iconProvider, Naps2Config config,
-        DesktopFormProvider desktopFormProvider)
+        DesktopFormProvider desktopFormProvider, DocumentUploadController documentUploadController)
     {
         _desktopController = desktopController;
         _desktopScanController = desktopScanController;
@@ -28,6 +29,7 @@ public class DesktopCommands
         _iconProvider = iconProvider;
         _config = config;
         _desktopFormProvider = desktopFormProvider;
+        _documentUploadController = documentUploadController;
 
         var hiddenButtons = config.Get(c => c.HiddenButtons);
 
@@ -84,6 +86,13 @@ public class DesktopCommands
         SaveAllPdf = new ActionCommand(imageListActions.SaveAllAsPdf)
         {
             Text = UiStrings.SaveAllAsPdf
+        };
+        // Only does anything for profiles configured to upload manually; documents wait in the queue
+        // until this is pressed.
+        UploadDocuments = new ActionCommand(() => documentUploadController.UploadPendingDocuments())
+        {
+            Text = UiStrings.UploadPendingDocuments,
+            IconName = "arrow_up"
         };
         SaveSelectedPdf = new ActionCommand(imageListActions.SaveSelectedAsPdf)
         {
@@ -338,11 +347,6 @@ public class DesktopCommands
             Text = UiStrings.ToggleSidebar,
             IconName = "application_side_list_small"
         };
-        UploadSharePoint = new ActionCommand(() => desktopController.PlaceholderUploadSharePoint())
-        {
-            Text = "Upload to SharePoint",
-            IconName = "folder_picture" // temporary icon
-        };
     }
 
     public DesktopCommands WithSelection(Func<ListSelection<UiImage>> selectionFunc)
@@ -356,7 +360,8 @@ public class DesktopCommands
             _thumbnailController,
             _iconProvider,
             _config,
-            _desktopFormProvider);
+            _desktopFormProvider,
+            _documentUploadController);
     }
 
     public ImageListActions ImageListActions => _imageListActions;
@@ -372,6 +377,7 @@ public class DesktopCommands
     public ActionCommand SaveSelected { get; set; }
     public ActionCommand SavePdf { get; set; }
     public ActionCommand SaveAllPdf { get; set; }
+    public ActionCommand UploadDocuments { get; set; }
     public ActionCommand SaveSelectedPdf { get; set; }
     public ActionCommand PdfSettings { get; set; }
     public ActionCommand SaveImages { get; set; }
@@ -425,5 +431,4 @@ public class DesktopCommands
     public ActionCommand Undo { get; set; }
     public ActionCommand Redo { get; set; }
     public ActionCommand ToggleSidebar { get; set; }
-    public ActionCommand UploadSharePoint { get; set; }
 }

@@ -40,10 +40,13 @@ public class GtkDesktopForm : DesktopForm
         Lazy<DesktopCommands> commands,
         IDarkModeProvider darkModeProvider,
         Sidebar sidebar,
-        IIconProvider iconProvider)
+        IIconProvider iconProvider,
+        NAPS2.EtoForms.Desktop.DocumentUploadController documentUploadController,
+        NAPS2.PostScan.DocumentUploadQueue documentUploadQueue)
         : base(config, keyboardShortcuts, notificationManager, cultureHelper, colorScheme, profileManager, imageList,
             thumbnailController, thumbnailProvider, desktopController, desktopScanController, imageListActions,
-            imageListViewBehavior, desktopFormProvider, desktopSubFormController, commands, sidebar, iconProvider)
+            imageListViewBehavior, desktopFormProvider, desktopSubFormController, commands, sidebar, iconProvider,
+            documentUploadController, documentUploadQueue)
     {
         ((GtkDarkModeProvider) darkModeProvider).StyleContext =
             Eto.Forms.Gtk3Helpers.ToNative(this).StyleContext;

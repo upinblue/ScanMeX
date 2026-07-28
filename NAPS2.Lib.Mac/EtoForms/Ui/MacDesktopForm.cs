@@ -30,10 +30,13 @@ public class MacDesktopForm : DesktopForm
         IDesktopSubFormController desktopSubFormController,
         Lazy<DesktopCommands> commands,
         Sidebar sidebar,
-        IIconProvider iconProvider)
+        IIconProvider iconProvider,
+        NAPS2.EtoForms.Desktop.DocumentUploadController documentUploadController,
+        NAPS2.PostScan.DocumentUploadQueue documentUploadQueue)
         : base(config, keyboardShortcuts, notificationManager, cultureHelper, colorScheme, profileManager, imageList,
             thumbnailController, thumbnailProvider, desktopController, desktopScanController, imageListActions,
-            imageListViewBehavior, desktopFormProvider, desktopSubFormController, commands, sidebar, iconProvider)
+            imageListViewBehavior, desktopFormProvider, desktopSubFormController, commands, sidebar, iconProvider,
+            documentUploadController, documentUploadQueue)
     {
     }
 
@@ -75,7 +78,7 @@ public class MacDesktopForm : DesktopForm
                         Commands.EmailAll,
                         Commands.EmailSelected,
                         Commands.Print,
-                        Commands.UploadSharePoint,
+                        Commands.UploadDocuments,
                         new SeparatorMenuItem(),
                         Commands.PdfSettings,
                         Commands.ImageSettings,

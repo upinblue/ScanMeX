@@ -8,6 +8,7 @@ using NAPS2.EtoForms.Layout;
 using NAPS2.EtoForms.Notifications;
 using NAPS2.EtoForms.Widgets;
 using NAPS2.EtoForms.WinForms;
+using NAPS2.PostScan;
 using NAPS2.Scan;
 using NAPS2.WinForms;
 using WF = System.Windows.Forms;
@@ -41,10 +42,13 @@ public class WinFormsDesktopForm : DesktopForm
         IDesktopSubFormController desktopSubFormController,
         Lazy<DesktopCommands> commands,
         Sidebar sidebar,
-        IIconProvider iconProvider)
+        IIconProvider iconProvider,
+        DocumentUploadController documentUploadController,
+        DocumentUploadQueue documentUploadQueue)
         : base(config, keyboardShortcuts, notificationManager, cultureHelper, colorScheme, profileManager, imageList,
             thumbnailController, thumbnailProvider, desktopController, desktopScanController, imageListActions,
-            imageListViewBehavior, desktopFormProvider, desktopSubFormController, commands, sidebar, iconProvider)
+            imageListViewBehavior, desktopFormProvider, desktopSubFormController, commands, sidebar, iconProvider,
+            documentUploadController, documentUploadQueue)
     {
         _form = this.ToNative();
         _form.FormClosing += OnFormClosing;

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -1097,5 +1097,101 @@
   </data>
   <data name="StopScannerSharing" xml:space="preserve">
     <value>Stop Scanner Sharing</value>
+  </data>
+  <data name="DocumentIdPromptTitle" xml:space="preserve">
+    <value>Document identification</value>
+  </data>
+  <data name="DocumentIdPrompt" xml:space="preserve">
+    <value>Enter the identification number for this document:</value>
+  </data>
+  <data name="DocumentIdPromptDescription" xml:space="preserve">
+    <value>Document {0}, {1} page(s)</value>
+  </data>
+  <data name="DocumentUploadFailed" xml:space="preserve">
+    <value>Upload of {0} failed: {1}</value>
+  </data>
+  <data name="SharePointUploadFailedShort" xml:space="preserve">
+    <value>SharePoint upload failed.</value>
+  </data>
+  <data name="ProfileDocumentSection" xml:space="preserve">
+    <value>Document separation and upload</value>
+  </data>
+  <data name="SeparationModeLabel" xml:space="preserve">
+    <value>Split documents by</value>
+  </data>
+  <data name="SeparationModeNone" xml:space="preserve">
+    <value>No barcode separation</value>
+  </data>
+  <data name="SeparationModePatchT" xml:space="preserve">
+    <value>Patch-T separator sheet</value>
+  </data>
+  <data name="SeparationModeBarcode" xml:space="preserve">
+    <value>Barcode</value>
+  </data>
+  <data name="BarcodeTypesLabel" xml:space="preserve">
+    <value>Barcode types</value>
+  </data>
+  <data name="BarcodeTypeCode39" xml:space="preserve">
+    <value>Code 39</value>
+  </data>
+  <data name="BarcodeTypeCode128" xml:space="preserve">
+    <value>Code 128</value>
+  </data>
+  <data name="BarcodeTypeEanUpc" xml:space="preserve">
+    <value>EAN / UPC</value>
+  </data>
+  <data name="SeparationPatternLabel" xml:space="preserve">
+    <value>Separation pattern (regex, optional)</value>
+  </data>
+  <data name="SeparationPatternHint" xml:space="preserve">
+    <value>A matching barcode starts a new document. Capturing group 1, or the whole match, becomes $(barcode).</value>
+  </data>
+  <data name="KeepSeparatorPage" xml:space="preserve">
+    <value>Keep the separator page in the document</value>
+  </data>
+  <data name="DocumentIdModeLabel" xml:space="preserve">
+    <value>Document identification</value>
+  </data>
+  <data name="DocumentIdModeNone" xml:space="preserve">
+    <value>None</value>
+  </data>
+  <data name="DocumentIdModeBarcode" xml:space="preserve">
+    <value>From barcode</value>
+  </data>
+  <data name="DocumentIdModeManual" xml:space="preserve">
+    <value>Ask after scanning</value>
+  </data>
+  <data name="DocumentIdPromptLabelLabel" xml:space="preserve">
+    <value>Input box label (optional)</value>
+  </data>
+  <data name="UploadTriggerLabel" xml:space="preserve">
+    <value>Upload</value>
+  </data>
+  <data name="UploadTriggerAutomatic" xml:space="preserve">
+    <value>Automatically after scanning</value>
+  </data>
+  <data name="UploadTriggerManual" xml:space="preserve">
+    <value>Manually via button</value>
+  </data>
+  <data name="KeepLocalCopy" xml:space="preserve">
+    <value>Keep the local file after upload</value>
+  </data>
+  <data name="CleanupAfterCompletion" xml:space="preserve">
+    <value>Remove documents from the window and temp folder when finished</value>
+  </data>
+  <data name="InvalidSeparationPattern" xml:space="preserve">
+    <value>Invalid separation pattern.</value>
+  </data>
+  <data name="UploadPendingDocuments" xml:space="preserve">
+    <value>Upload documents</value>
+  </data>
+  <data name="UploadDocumentsStatus" xml:space="preserve">
+    <value>{0} document(s) waiting for upload</value>
+  </data>
+  <data name="UploadAllSucceeded" xml:space="preserve">
+    <value>All documents uploaded.</value>
+  </data>
+  <data name="UploadSomeFailed" xml:space="preserve">
+    <value>{0} of {1} documents could not be uploaded.</value>
   </data>
 </root>

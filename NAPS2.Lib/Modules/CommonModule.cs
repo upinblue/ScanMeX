@@ -1,12 +1,14 @@
 ﻿using Autofac;
 using Microsoft.Extensions.Logging;
 using NAPS2.EtoForms;
+using NAPS2.EtoForms.Desktop;
 using NAPS2.ImportExport;
 using NAPS2.ImportExport.Email;
 using NAPS2.ImportExport.Email.Mapi;
 using NAPS2.Ocr;
 using NAPS2.Pdf;
 using NAPS2.Platform.Windows;
+using NAPS2.PostScan;
 using NAPS2.Recovery;
 using NAPS2.Remoting;
 using NAPS2.Remoting.Server;
@@ -72,6 +74,10 @@ public class CommonModule : Module
         builder.RegisterType<UiImageList>().AsSelf().SingleInstance();
         builder.RegisterType<StillImage>().AsSelf().SingleInstance();
         builder.RegisterType<AutoSaver>().AsSelf().SingleInstance();
+        // Shared between the automatic and the manual upload trigger, so it has to outlive a single scan.
+        builder.RegisterType<DocumentUploadQueue>().AsSelf().SingleInstance();
+        builder.RegisterType<DocumentUploadService>().AsSelf().SingleInstance();
+        builder.RegisterType<DocumentUploadController>().AsSelf().SingleInstance();
         // TODO: Use PdfiumWorkerCoordinator?
         builder.RegisterType<PdfiumPdfRenderer>().As<IPdfRenderer>();
         builder.RegisterType<OcrOperationManager>().AsSelf().SingleInstance();

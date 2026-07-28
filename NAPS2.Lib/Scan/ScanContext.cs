@@ -5,7 +5,7 @@ namespace NAPS2.Scan;
 /// <summary>
 /// Describes the current scan output segment for shared placeholder and upload processing.
 /// </summary>
-public sealed class ScanContext
+public sealed record ScanContext
 {
     /// <summary>
     /// Gets the timestamp associated with this scan segment.

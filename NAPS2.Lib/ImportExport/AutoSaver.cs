@@ -1,10 +1,10 @@
 using NAPS2.EtoForms;
 using NAPS2.EtoForms.Notifications;
+using NAPS2.EtoForms.Ui;
 using NAPS2.ImportExport.Images;
 using NAPS2.Pdf;
+using NAPS2.PostScan;
 using NAPS2.Scan;
-using NAPS2.SharePoint;
-using NAPS2.Sap;
 
 namespace NAPS2.ImportExport;
 
@@ -19,15 +19,16 @@ public class AutoSaver
     private readonly Naps2Config _config;
     private readonly ImageContext _imageContext;
     private readonly UiImageList _imageList;
-    private readonly SharePointUploadService _sharePointUploadService = new();
-    private readonly SapArchivePostScanService _sapArchivePostScanService;
+    private readonly DocumentUploadService _documentUploadService;
+    private readonly DocumentUploadQueue? _uploadQueue;
 
     // The active ScanProfile associated with the current auto-save session.
     public ScanProfile? ActiveProfile { get; set; }
 
     public AutoSaver(ErrorOutput errorOutput, DialogHelper dialogHelper,
         OperationProgress operationProgress, ISaveNotify notify, PdfExporter pdfExporter,
-        IOverwritePrompt overwritePrompt, Naps2Config config, ImageContext imageContext, UiImageList imageList)
+        IOverwritePrompt overwritePrompt, Naps2Config config, ImageContext imageContext, UiImageList imageList,
+        DocumentUploadQueue? uploadQueue = null)
     {
         _errorOutput = errorOutput;
         _dialogHelper = dialogHelper;
@@ -38,7 +39,8 @@ public class AutoSaver
         _config = config;
         _imageContext = imageContext;
         _imageList = imageList;
-        _sapArchivePostScanService = new SapArchivePostScanService(config, operationProgress);
+        _uploadQueue = uploadQueue;
+        _documentUploadService = new DocumentUploadService(config, operationProgress);
     }
 
     // Overload: pass the ScanProfile explicitly, ensuring SharePoint settings are available.
@@ -93,12 +95,13 @@ public class AutoSaver
             var placeholders = Placeholders.All.WithDate(DateTime.Now);
             int i = 0;
             string? firstFileSaved = null;
-            // Use extended separator that supports barcode separation with an optional regex
-            var scans = SaveSeparatorHelper.SeparateScans(new[] { images }, ActiveProfile, settings).ToList();
-            foreach (var imagesToSave in scans)
+            // Barcode separation carries the pattern-applied value of the barcode that started each
+            // document, so $(barcode) resolves to that rather than to whatever code happens to be first.
+            var scans = SeparateIntoDocuments(settings, images);
+            foreach (var (imagesToSave, separatorValue) in scans)
             {
                 (bool success, string? filePath) =
-                    await SaveOneFile(settings, placeholders, i++, imagesToSave, scans.Count == 1);
+                    await SaveOneFile(settings, placeholders, i++, imagesToSave, scans.Count == 1, separatorValue);
                 if (success)
                 {
                     // Normally we're supposed to take the CurrentState before the save operation starts, but that
@@ -117,7 +120,7 @@ public class AutoSaver
             if (scans.Count > 1 && ok)
             {
                 // Can't just do images.Count because that includes patch codes
-                int imageCount = scans.SelectMany(x => x).Count();
+                int imageCount = scans.Sum(x => x.Images.Count);
                 _notify.ImagesSaved(imageCount, firstFileSaved!);
             }
             return ok;
@@ -130,14 +133,45 @@ public class AutoSaver
         }
     }
 
+    /// <summary>
+    /// Splits the scan into the documents that will each become one file. Barcode-driven separation goes
+    /// through <see cref="DocumentSeparator"/>; everything else keeps the classic auto save separators.
+    /// </summary>
+    private List<(List<ProcessedImage> Images, string? SeparatorValue)> SeparateIntoDocuments(
+        AutoSaveSettings settings, List<ProcessedImage> images)
+    {
+        var workflow = DocumentWorkflowSettings.ForProfile(ActiveProfile);
+        if (workflow.SeparationMode != DocumentSeparationMode.None)
+        {
+            return DocumentSeparator.Separate(images, workflow)
+                .Select(x => (x.Images.ToList(), x.SeparatorBarcodeValue))
+                .ToList();
+        }
+        return SaveSeparatorHelper.SeparateScans(new[] { images }, ActiveProfile, settings)
+            .Select(x => (x, (string?) null))
+            .ToList();
+    }
+
     private async Task<(bool, string?)> SaveOneFile(AutoSaveSettings settings, Placeholders placeholders, int i,
-        List<ProcessedImage> images, bool doNotify)
+        List<ProcessedImage> images, bool doNotify, string? separatorValue = null)
     {
         if (images.Count == 0)
         {
             return (true, null);
         }
-        var ctx = CreateScanContext(settings.FilePath, i, images);
+        var workflow = DocumentWorkflowSettings.ForProfile(ActiveProfile);
+        var ctx = CreateScanContext(settings.FilePath, i, images, separatorValue);
+        // The identification number has to be known before the path is resolved so $(id) can be used
+        // in the file name. Scanning has already finished at this point, so prompting is safe here.
+        if (workflow.IdMode == DocumentIdMode.ManualInput)
+        {
+            var documentId = PromptForDocumentId(workflow, ctx, i);
+            if (documentId == null)
+            {
+                return (false, null);
+            }
+            ctx = ctx with { DocumentId = documentId };
+        }
         string subPath = ResolveAutoSavePath(settings.FilePath, placeholders, ctx);
         if (subPath.Contains("$(", StringComparison.Ordinal))
         {
@@ -149,7 +183,7 @@ public class AutoSaver
             string? newPath = null!;
             if (Invoker.Current.InvokeGet(() => _dialogHelper.PromptToSavePdfOrImage(subPath, out newPath)))
             {
-                ctx = CreateScanContext(newPath!, i, images);
+                ctx = CreateScanContext(newPath!, i, images, separatorValue) with { DocumentId = ctx.DocumentId };
                 subPath = ResolveAutoSavePath(newPath!, placeholders, ctx);
                 if (subPath.Contains("$(", StringComparison.Ordinal))
                 {
@@ -182,37 +216,9 @@ public class AutoSaver
                 _notify.PdfSaved(subPath);
             }
 
-            if (success && settings.UploadToSharePoint && ActiveProfile?.SharePointUploadSettings != null)
+            if (success)
             {
-                try
-                {
-                    var fileName = Path.GetFileName(subPath);
-                    var sharePointSettings = ResolveSharePointSettings(ActiveProfile.SharePointUploadSettings, ctx);
-                    var uploader = new SharePointUploadService();
-                    var uploadOp = new UploadSharePointOperation(uploader);
-                    if (uploadOp.Start(sharePointSettings, subPath, fileName))
-                    {
-                        _operationProgress.ShowProgress(uploadOp);
-                        await uploadOp.Success;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _errorOutput.DisplayError($"Auto Save succeeded, but SharePoint upload failed: {ex.Message}");
-                }
-            }
-
-            if (success && settings.UploadToSap && ActiveProfile?.SapArchiveSettings != null)
-            {
-                try
-                {
-                    await _sapArchivePostScanService.UploadSavedFileAsync(ActiveProfile, subPath, images, ctx);
-                }
-                catch (Exception ex)
-                {
-                    Log.ErrorException("SAP ArchiveLink upload failed", ex);
-                    _errorOutput.DisplayError(SapUi.UploadFailed(ex.Message));
-                }
+                await HandleUpload(workflow, ctx, subPath);
             }
 
             return (success, subPath);
@@ -233,7 +239,57 @@ public class AutoSaver
         }
     }
 
-    private ScanContext CreateScanContext(string template, int index, List<ProcessedImage> images)
+    /// <summary>
+    /// Asks the operator for this document's identification number. Returns null if they cancelled,
+    /// which aborts saving the document rather than filing it under a wrong or empty name.
+    /// </summary>
+    private string? PromptForDocumentId(DocumentWorkflowSettings workflow, ScanContext ctx, int index)
+    {
+        var description = string.Format(UiStrings.DocumentIdPromptDescription, index + 1, ctx.Images.Count);
+        // Pre-fill with the barcode when there is one, so the operator only has to confirm.
+        var suggested = ctx.SeparatorBarcodeValue ?? ctx.Barcodes.FirstOrDefault()?.Value;
+        return Invoker.Current.InvokeGet(() =>
+        {
+            var form = new DocumentIdPromptForm(_config, description, workflow.IdPromptLabel, suggested);
+            form.ShowModal();
+            return form.DocumentId;
+        });
+    }
+
+    /// <summary>
+    /// Sends the document to its targets now, or parks it in the queue for the manual upload button.
+    /// </summary>
+    private async Task HandleUpload(DocumentWorkflowSettings workflow, ScanContext ctx, string filePath)
+    {
+        var settings = ActiveProfile?.AutoSaveSettings;
+        if (ActiveProfile == null || !DocumentUploadService.HasAnyTarget(ActiveProfile, settings))
+        {
+            return;
+        }
+
+        var document = new PendingDocument
+        {
+            Profile = ActiveProfile,
+            Context = ctx,
+            FilePath = filePath,
+            DeleteFileAfterUpload = !workflow.KeepLocalCopy
+        };
+
+        if (workflow.UploadTrigger == UploadTrigger.Manual)
+        {
+            _uploadQueue?.Add(document);
+            return;
+        }
+
+        if (!await _documentUploadService.UploadAsync(document))
+        {
+            _errorOutput.DisplayError(
+                string.Format(UiStrings.DocumentUploadFailed, document.FileName, document.Message ?? ""));
+        }
+    }
+
+    private ScanContext CreateScanContext(string template, int index, List<ProcessedImage> images,
+        string? separatorValue = null)
     {
         var ext = Path.GetExtension(template).TrimStart('.');
         if (string.IsNullOrWhiteSpace(ext))
@@ -247,9 +303,10 @@ public class AutoSaver
             Profile = ActiveProfile ?? new ScanProfile(),
             Images = images,
             Barcodes = new BarcodeExtractor().Extract(images),
-            SeparatorBarcodeValue = images.FirstOrDefault()?.PostProcessingData.Barcode.IsPatchT == true
-                ? images.First().PostProcessingData.Barcode.DetectedText
-                : null,
+            SeparatorBarcodeValue = separatorValue ??
+                                    (images.FirstOrDefault()?.PostProcessingData.Barcode.IsPatchT == true
+                                        ? images.First().PostProcessingData.Barcode.DetectedText
+                                        : null),
             OutputExtension = ext,
             FileFormat = ext
         };
@@ -264,22 +321,4 @@ public class AutoSaver
         return new FileNamePlaceholders().SubstitutePlaceholders(template, ctx, autoIncrement: true);
     }
 
-    private static SharePointUploadSettings ResolveSharePointSettings(SharePointUploadSettings settings, ScanContext ctx)
-    {
-        var placeholders = new FileNamePlaceholders();
-        return new SharePointUploadSettings
-        {
-            SiteUrl = SubstituteUploadSetting(settings.SiteUrl, placeholders, ctx),
-            LibraryNameOrPath = SubstituteUploadSetting(settings.LibraryNameOrPath, placeholders, ctx),
-            FolderPath = SubstituteUploadSetting(settings.FolderPath, placeholders, ctx),
-            TenantId = settings.TenantId,
-            ClientId = settings.ClientId,
-            ClientSecret = settings.ClientSecret
-        };
-    }
-
-    private static string? SubstituteUploadSetting(string? value, FileNamePlaceholders placeholders, ScanContext ctx)
-    {
-        return string.IsNullOrWhiteSpace(value) ? value : placeholders.SubstitutePlaceholders(value, ctx);
-    }
 }

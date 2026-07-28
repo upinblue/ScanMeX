@@ -2897,5 +2897,293 @@ namespace NAPS2.Lang.Resources {
                 return ResourceManager.GetString("ZoomOut", resourceCulture);
             }
         }
+        /// <summary>
+        ///   Looks up a localized string similar to Document identification.
+        /// </summary>
+        internal static string DocumentIdPromptTitle {
+            get {
+                return ResourceManager.GetString("DocumentIdPromptTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Enter the identification number for this document:.
+        /// </summary>
+        internal static string DocumentIdPrompt {
+            get {
+                return ResourceManager.GetString("DocumentIdPrompt", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Document {0}, {1} page(s).
+        /// </summary>
+        internal static string DocumentIdPromptDescription {
+            get {
+                return ResourceManager.GetString("DocumentIdPromptDescription", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Upload of {0} failed: {1}.
+        /// </summary>
+        internal static string DocumentUploadFailed {
+            get {
+                return ResourceManager.GetString("DocumentUploadFailed", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to SharePoint upload failed..
+        /// </summary>
+        internal static string SharePointUploadFailedShort {
+            get {
+                return ResourceManager.GetString("SharePointUploadFailedShort", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Document separation and upload.
+        /// </summary>
+        internal static string ProfileDocumentSection {
+            get {
+                return ResourceManager.GetString("ProfileDocumentSection", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Split documents by.
+        /// </summary>
+        internal static string SeparationModeLabel {
+            get {
+                return ResourceManager.GetString("SeparationModeLabel", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to No barcode separation.
+        /// </summary>
+        internal static string SeparationModeNone {
+            get {
+                return ResourceManager.GetString("SeparationModeNone", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Patch-T separator sheet.
+        /// </summary>
+        internal static string SeparationModePatchT {
+            get {
+                return ResourceManager.GetString("SeparationModePatchT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Barcode.
+        /// </summary>
+        internal static string SeparationModeBarcode {
+            get {
+                return ResourceManager.GetString("SeparationModeBarcode", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Barcode types.
+        /// </summary>
+        internal static string BarcodeTypesLabel {
+            get {
+                return ResourceManager.GetString("BarcodeTypesLabel", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Code 39.
+        /// </summary>
+        internal static string BarcodeTypeCode39 {
+            get {
+                return ResourceManager.GetString("BarcodeTypeCode39", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Code 128.
+        /// </summary>
+        internal static string BarcodeTypeCode128 {
+            get {
+                return ResourceManager.GetString("BarcodeTypeCode128", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to EAN / UPC.
+        /// </summary>
+        internal static string BarcodeTypeEanUpc {
+            get {
+                return ResourceManager.GetString("BarcodeTypeEanUpc", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Separation pattern (regex, optional).
+        /// </summary>
+        internal static string SeparationPatternLabel {
+            get {
+                return ResourceManager.GetString("SeparationPatternLabel", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to A matching barcode starts a new document. Capturing group 1, or the whole match, becomes $(barcode)..
+        /// </summary>
+        internal static string SeparationPatternHint {
+            get {
+                return ResourceManager.GetString("SeparationPatternHint", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Keep the separator page in the document.
+        /// </summary>
+        internal static string KeepSeparatorPage {
+            get {
+                return ResourceManager.GetString("KeepSeparatorPage", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Document identification.
+        /// </summary>
+        internal static string DocumentIdModeLabel {
+            get {
+                return ResourceManager.GetString("DocumentIdModeLabel", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to None.
+        /// </summary>
+        internal static string DocumentIdModeNone {
+            get {
+                return ResourceManager.GetString("DocumentIdModeNone", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to From barcode.
+        /// </summary>
+        internal static string DocumentIdModeBarcode {
+            get {
+                return ResourceManager.GetString("DocumentIdModeBarcode", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Ask after scanning.
+        /// </summary>
+        internal static string DocumentIdModeManual {
+            get {
+                return ResourceManager.GetString("DocumentIdModeManual", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Input box label (optional).
+        /// </summary>
+        internal static string DocumentIdPromptLabelLabel {
+            get {
+                return ResourceManager.GetString("DocumentIdPromptLabelLabel", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Upload.
+        /// </summary>
+        internal static string UploadTriggerLabel {
+            get {
+                return ResourceManager.GetString("UploadTriggerLabel", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Automatically after scanning.
+        /// </summary>
+        internal static string UploadTriggerAutomatic {
+            get {
+                return ResourceManager.GetString("UploadTriggerAutomatic", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Manually via button.
+        /// </summary>
+        internal static string UploadTriggerManual {
+            get {
+                return ResourceManager.GetString("UploadTriggerManual", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Keep the local file after upload.
+        /// </summary>
+        internal static string KeepLocalCopy {
+            get {
+                return ResourceManager.GetString("KeepLocalCopy", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Remove documents from the window and temp folder when finished.
+        /// </summary>
+        internal static string CleanupAfterCompletion {
+            get {
+                return ResourceManager.GetString("CleanupAfterCompletion", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Invalid separation pattern..
+        /// </summary>
+        internal static string InvalidSeparationPattern {
+            get {
+                return ResourceManager.GetString("InvalidSeparationPattern", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Upload documents.
+        /// </summary>
+        internal static string UploadPendingDocuments {
+            get {
+                return ResourceManager.GetString("UploadPendingDocuments", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} document(s) waiting for upload.
+        /// </summary>
+        internal static string UploadDocumentsStatus {
+            get {
+                return ResourceManager.GetString("UploadDocumentsStatus", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to All documents uploaded..
+        /// </summary>
+        internal static string UploadAllSucceeded {
+            get {
+                return ResourceManager.GetString("UploadAllSucceeded", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} of {1} documents could not be uploaded..
+        /// </summary>
+        internal static string UploadSomeFailed {
+            get {
+                return ResourceManager.GetString("UploadSomeFailed", resourceCulture);
+            }
+        }
+
     }
 }

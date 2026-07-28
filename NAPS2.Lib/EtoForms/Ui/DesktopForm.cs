@@ -8,6 +8,7 @@ using NAPS2.EtoForms.Layout;
 using NAPS2.EtoForms.Notifications;
 using NAPS2.EtoForms.Widgets;
 using NAPS2.ImportExport.Images;
+using NAPS2.PostScan;
 using NAPS2.Scan;
 
 namespace NAPS2.EtoForms.Ui;
@@ -29,6 +30,7 @@ public abstract class DesktopForm : EtoFormBase
     private readonly ImageTransfer _imageTransfer = new();
     private readonly Lazy<DesktopCommands> _commands;
     private readonly Sidebar _sidebar;
+    private readonly DocumentUploadController _documentUploadController;
     protected readonly IIconProvider _iconProvider;
 
     protected readonly ListProvider<Command> _scanMenuCommands = new();
@@ -58,7 +60,9 @@ public abstract class DesktopForm : EtoFormBase
         IDesktopSubFormController desktopSubFormController,
         Lazy<DesktopCommands> commands,
         Sidebar sidebar,
-        IIconProvider iconProvider) : base(config)
+        IIconProvider iconProvider,
+        DocumentUploadController documentUploadController,
+        DocumentUploadQueue documentUploadQueue) : base(config)
     {
         Icon = EtoPlatform.Current.IsGtk ? new Icon(1f, Icons.scanner_128.ToEtoImage()) : Icons.favicon.ToEtoIcon();
 
@@ -78,6 +82,10 @@ public abstract class DesktopForm : EtoFormBase
         _sidebar = sidebar;
         _iconProvider = iconProvider;
         _commands = commands;
+        _documentUploadController = documentUploadController;
+        // Documents can be queued while the window is idle, so the button has to react to the queue
+        // rather than only to image list changes.
+        documentUploadQueue.Changed += (_, _) => Invoker.Current.Invoke(UpdateToolbar);
 
         _desktopFormProvider.DesktopForm = this;
         _keyboardShortcuts.Assign(Commands);
@@ -316,7 +324,7 @@ public abstract class DesktopForm : EtoFormBase
         if (!hiddenButtons.HasFlag(ToolbarButtons.Print) && PlatformCompat.System.CanPrint)
             CreateToolbarButton(Commands.Print);
         if (!hiddenButtons.HasFlag(ToolbarButtons.UploadSharePoint))
-            CreateToolbarButton(Commands.UploadSharePoint);
+            CreateToolbarButton(Commands.UploadDocuments);
         CreateToolbarSeparator();
         if (!hiddenButtons.HasFlag(ToolbarButtons.Image))
             CreateToolbarMenu(Commands.ImageMenu, new MenuProvider()
@@ -516,7 +524,10 @@ public abstract class DesktopForm : EtoFormBase
                 Commands.Delete.Enabled = ImageList.Selection.Any();
         Commands.SavePdf.Enabled = Commands.SaveImages.Enabled = Commands.ClearAll.Enabled =
             Commands.ReorderMenu.Enabled =
-                Commands.EmailPdf.Enabled = Commands.Print.Enabled = Commands.UploadSharePoint.Enabled = ImageList.Images.Any();
+                Commands.EmailPdf.Enabled = Commands.Print.Enabled = ImageList.Images.Any();
+        // Driven by the upload queue rather than the image list: documents stay uploadable even after
+        // their pages were cleared from the window.
+        Commands.UploadDocuments.Enabled = _documentUploadController.HasPendingDocuments;
 
         // "All" dropdown items
         Commands.SaveAllPdf.Text = Commands.SaveAllImages.Text = Commands.EmailAll.Text =
