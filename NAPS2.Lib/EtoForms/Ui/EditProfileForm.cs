@@ -43,18 +43,18 @@ public class EditProfileForm : EtoDialogBase
     private readonly PasswordBox _azureAdClientSecret = new();
 
     // SAP ArchiveLink controls
-    private readonly CheckBox _enableSapArchiveUpload = new() { Text = SapUi.EnableUpload };
+    private readonly CheckBox _enableSapArchiveUpload = new() { Text = UiStrings.SapEnableUpload };
     private readonly TextBox _sapHost = new();
     private readonly TextBox _sapServiceName = new();
     private readonly TextBox _sapClient = new();
     private readonly TextBox _sapLanguage = new();
     private readonly TextBox _sapUser = new();
     private readonly PasswordBox _sapPassword = new();
-    private readonly CheckBox _sapIgnoreSsl = new() { Text = "SSL-Zertifikatsprüfung deaktivieren (nur Testumgebung!)" };
+    private readonly CheckBox _sapIgnoreSsl = new() { Text = UiStrings.SapIgnoreSslCertificateCheck };
     private readonly DropDownWidget<SapObjectTypeCatalogEntry> _sapObjectType = new();
     private readonly TextBox _sapArchiveId = new();
     private readonly TextBox _sapDocumentType = new();
-    private readonly RadioButton _sapPromptObjectKey = new() { Text = SapUi.PromptEachScan };
+    private readonly RadioButton _sapPromptObjectKey = new() { Text = UiStrings.SapObjectKeyPromptEachScan };
     private readonly RadioButton _sapBarcodeObjectKey;
     private readonly RadioButton _sapFilenameObjectKey;
     private readonly RadioButton _sapFixedObjectKey;
@@ -101,9 +101,9 @@ public class EditProfileForm : EtoDialogBase
 
         _enableSharePointUpload.CheckedChanged += EnableSharePointUpload_CheckedChanged;
 
-        _sapBarcodeObjectKey = new RadioButton(_sapPromptObjectKey) { Text = SapUi.FromBarcode };
-        _sapFilenameObjectKey = new RadioButton(_sapPromptObjectKey) { Text = SapUi.FromFilename };
-        _sapFixedObjectKey = new RadioButton(_sapPromptObjectKey) { Text = SapUi.FixedValue };
+        _sapBarcodeObjectKey = new RadioButton(_sapPromptObjectKey) { Text = UiStrings.SapObjectKeyFromBarcode };
+        _sapFilenameObjectKey = new RadioButton(_sapPromptObjectKey) { Text = UiStrings.SapObjectKeyFromFilename };
+        _sapFixedObjectKey = new RadioButton(_sapPromptObjectKey) { Text = UiStrings.SapObjectKeyFixedValue };
         _sapObjectType.Format = x => $"{x.Key} - {x.DisplayName}";
         _sapObjectType.Items = SapObjectTypeCatalog.CommonTypes;
         _sapObjectType.SelectedItemChanged += (_, _) => UpdateSapObjectTypeTooltip();
@@ -210,7 +210,7 @@ public class EditProfileForm : EtoDialogBase
         );
 
         var sapSettings = L.GroupBox(
-            SapUi.ArchiveLink,
+            UiStrings.SapArchiveLink,
             L.Column(
                 _enableSapArchiveUpload,
                 L.Row(
@@ -235,7 +235,7 @@ public class EditProfileForm : EtoDialogBase
                 C.Spacer(),
                 L.Row(
                     L.Column(
-                        C.Label(SapUi.ArchiveId),
+                        C.Label(UiStrings.SapArchiveIdLabel),
                         _sapArchiveId,
                         C.Label(UiStrings.SapArObjectLabel),
                         _sapObjectType,
@@ -243,16 +243,16 @@ public class EditProfileForm : EtoDialogBase
                         _sapDocumentType
                     ).Scale(),
                     L.Column(
-                        C.Label(SapUi.ObjectKeySource),
+                        C.Label(UiStrings.SapObjectKeySourceLabel),
                         _sapPromptObjectKey,
                         _sapBarcodeObjectKey,
                         C.Label(UiStrings.Code39RegexOptionalLabel),
                         _sapBarcodeRegex,
                         _sapFilenameObjectKey,
-                        C.Label(SapUi.Regex),
+                        C.Label(UiStrings.SapRegexLabel),
                         _sapFilenameRegex,
                         _sapFixedObjectKey,
-                        C.Label(SapUi.FixedValue),
+                        C.Label(UiStrings.SapObjectKeyFixedValue),
                         _sapFixedObjectKeyValue,
                         C.Label(UiStrings.SapObjectIdLabel),
                         _sapDescriptionTemplate
@@ -534,7 +534,7 @@ public class EditProfileForm : EtoDialogBase
         var sapValidation = BuildSapArchiveSettings().Validate();
         if (sapValidation.Count > 0)
         {
-            _errorOutput.DisplayError(string.Join(Environment.NewLine, sapValidation));
+            _errorOutput.DisplayError(DescribeSapProblems(sapValidation));
             return false;
         }
 
@@ -783,7 +783,7 @@ public class EditProfileForm : EtoDialogBase
         var validation = settings.Validate();
         if (validation.Count > 0)
         {
-            _errorOutput.DisplayError(string.Join(Environment.NewLine, validation));
+            _errorOutput.DisplayError(DescribeSapProblems(validation));
             return;
         }
 
@@ -812,12 +812,32 @@ public class EditProfileForm : EtoDialogBase
         var result = await new HttpSapArchiveUploader(request.Connection).UploadAsync(request, CancellationToken.None);
         MessageBox.Show(this,
             result.Success
-                ? $"SAP-Upload OK – DocId: {result.ArchivDocId}, Barcode: {barcode}"
-                : $"SAP-Upload fehlgeschlagen – HTTP: {result.HttpStatusCode}, Code: {result.ErrorCode}, Message: {result.ErrorMessage}, TransactionId: {result.TransactionId}",
-            "SAP ArchiveLink",
+                ? string.Format(UiStrings.SapTestUploadSucceeded, result.ArchivDocId, barcode)
+                : string.Format(UiStrings.SapTestUploadFailed, result.HttpStatusCode, result.ErrorCode,
+                    result.ErrorMessage, result.TransactionId),
+            UiStrings.SapArchiveLink,
             MessageBoxButtons.OK,
             result.Success ? MessageBoxType.Information : MessageBoxType.Error);
     }
+
+    /// <summary>
+    /// Turns the validation problem codes from ScanMe.Sap into localized messages, one per line.
+    /// </summary>
+    private static string DescribeSapProblems(IReadOnlyList<SapSettingsIssue> issues) =>
+        string.Join(Environment.NewLine, issues.Select(DescribeSapProblem));
+
+    private static string DescribeSapProblem(SapSettingsIssue issue) => issue.Problem switch
+    {
+        SapSettingsProblem.ArchiveIdMissing => UiStrings.SapValidationArchiveIdRequired,
+        SapSettingsProblem.HostMissingOrNotHttps => UiStrings.SapValidationHostRequired,
+        SapSettingsProblem.ServiceNameMissing => UiStrings.SapValidationServiceNameRequired,
+        SapSettingsProblem.ClientNotThreeDigits => UiStrings.SapValidationClientRequired,
+        SapSettingsProblem.UserMissing => UiStrings.SapValidationUserRequired,
+        SapSettingsProblem.FixedBarcodeMissing => UiStrings.SapValidationFixedBarcodeRequired,
+        SapSettingsProblem.BarcodeRegexInvalid =>
+            string.Format(UiStrings.SapValidationBarcodeRegexInvalid, issue.Detail),
+        _ => issue.Problem.ToString()
+    };
 
     private string? PromptForSapTestPdf()
     {
@@ -825,7 +845,7 @@ public class EditProfileForm : EtoDialogBase
         {
             MultiSelect = false,
             CheckFileExists = true,
-            Title = "PDF für SAP-Testupload auswählen"
+            Title = UiStrings.SapTestUploadSelectPdf
         };
         ofd.Filters.Add(new FileFilter("PDF (*.pdf)", ".pdf"));
         EtoPlatform.Current.ConfigureFileDialog(ofd);
@@ -837,12 +857,12 @@ public class EditProfileForm : EtoDialogBase
         var filePath = ofd.Filenames.FirstOrDefault();
         if (string.IsNullOrWhiteSpace(filePath))
         {
-            _errorOutput.DisplayError("Keine PDF-Datei für den SAP-Testupload ausgewählt.");
+            _errorOutput.DisplayError(UiStrings.SapTestUploadNoPdfSelected);
             return null;
         }
         if (!Path.GetExtension(filePath).Equals(".pdf", StringComparison.OrdinalIgnoreCase))
         {
-            _errorOutput.DisplayError("Bitte eine PDF-Datei für den SAP-Testupload auswählen.");
+            _errorOutput.DisplayError(UiStrings.SapTestUploadNotAPdf);
             return null;
         }
         return filePath;

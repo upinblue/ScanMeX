@@ -10,6 +10,11 @@ internal class UploadSapArchiveOperation : OperationBase
 
     public SapUploadResult? Result { get; private set; }
 
+    /// <summary>
+    /// Why the upload failed, for the caller to report. Null while the operation is running or if it succeeded.
+    /// </summary>
+    public string? FailureMessage { get; private set; }
+
     public UploadSapArchiveOperation()
     {
         AllowCancel = true;
@@ -20,10 +25,10 @@ internal class UploadSapArchiveOperation : OperationBase
     {
         _uploader = uploader;
         _request = request;
-        ProgressTitle = SapUi.UploadTitle;
+        ProgressTitle = UiStrings.SapUploadTitle;
         Status = new OperationStatus
         {
-            StatusText = SapUi.UploadPreparing(request.FileName),
+            StatusText = string.Format(UiStrings.SapUploadPreparing, request.FileName),
             MaxProgress = 100
         };
 
@@ -32,14 +37,15 @@ internal class UploadSapArchiveOperation : OperationBase
             try
             {
                 Status.CurrentProgress = 20;
-                Status.StatusText = SapUi.Uploading;
+                Status.StatusText = UiStrings.SapUploading;
                 InvokeStatusChanged();
 
                 Result = await _uploader.UploadAsync(_request, CancelToken);
                 Status.CurrentProgress = 100;
                 Status.StatusText = Result.Success
-                    ? $"SAP-Upload OK – DocId: {Result.ArchivDocId}, Barcode: {_request.Barcode}"
-                    : $"SAP-Upload fehlgeschlagen – HTTP: {Result.HttpStatusCode}, Code: {Result.ErrorCode}, Message: {Result.ErrorMessage}, TransactionId: {Result.TransactionId}";
+                    ? string.Format(UiStrings.SapTestUploadSucceeded, Result.ArchivDocId, _request.Barcode)
+                    : string.Format(UiStrings.SapTestUploadFailed, Result.HttpStatusCode, Result.ErrorCode,
+                        Result.ErrorMessage, Result.TransactionId);
                 InvokeStatusChanged();
 
                 if (Result.Success)
@@ -52,17 +58,21 @@ internal class UploadSapArchiveOperation : OperationBase
                 Log.Logger.LogError("SAP ArchiveLink upload failed for {FileName}. HTTP={HttpStatusCode}, ErrorCode={ErrorCode}, ErrorMessage={ErrorMessage}, TransactionId={TransactionId}, Body={Body}",
                     _request.FileName, Result.HttpStatusCode, Result.ErrorCode, Result.ErrorMessage, Result.TransactionId,
                     Truncate(Result.RawResponseBody));
-                InvokeError(SapUi.UploadTitle, new InvalidOperationException(Status.StatusText));
+                // The caller reports this to the operator. Error is only wired up for operations created
+                // through the operation factory, which this one isn't, so it can't be the only channel.
+                FailureMessage = string.Format(UiStrings.SapUploadErrorDetail, Result.HttpStatusCode,
+                    Result.ErrorCode, Result.ErrorMessage, Result.TransactionId);
                 return false;
             }
             catch (OperationCanceledException)
             {
+                FailureMessage = UiStrings.UploadCancelled;
                 return false;
             }
             catch (Exception ex)
             {
                 Log.ErrorException("SAP ArchiveLink upload failed", ex);
-                InvokeError(SapUi.UploadTitle, ex);
+                FailureMessage = ex.Message;
                 return false;
             }
         });

@@ -1200,4 +1200,136 @@
   <data name="UploadTargetsNone" xml:space="preserve">
     <value>No upload target is enabled. Enable SharePoint or SAP ArchiveLink in the profile settings.</value>
   </data>
+  <data name="UploadNotificationSucceeded" xml:space="preserve">
+    <value>Uploaded to {0}</value>
+  </data>
+  <data name="UploadNotificationFailed" xml:space="preserve">
+    <value>Upload of {0} failed</value>
+  </data>
+  <data name="UploadCancelled" xml:space="preserve">
+    <value>Upload cancelled.</value>
+  </data>
+  <data name="UploadRequiresPdf" xml:space="preserve">
+    <value>Uploading requires PDF output. Change the auto save file name to end in .pdf.</value>
+  </data>
+  <data name="UnresolvedPlaceholder" xml:space="preserve">
+    <value>Unresolved placeholder: {0}</value>
+  </data>
+  <data name="Console" xml:space="preserve">
+    <value>Console</value>
+  </data>
+  <data name="SharePointUploadTitle" xml:space="preserve">
+    <value>Upload to SharePoint</value>
+  </data>
+  <data name="SharePointUploadPreparing" xml:space="preserve">
+    <value>Preparing upload for {0}</value>
+  </data>
+  <data name="SharePointAuthenticating" xml:space="preserve">
+    <value>Authenticating with Microsoft Graph</value>
+  </data>
+  <data name="SharePointResolvingSite" xml:space="preserve">
+    <value>Resolving SharePoint site</value>
+  </data>
+  <data name="SharePointResolvingLibrary" xml:space="preserve">
+    <value>Resolving document library</value>
+  </data>
+  <data name="SharePointUploadingFile" xml:space="preserve">
+    <value>Uploading {0} ({1}%)</value>
+  </data>
+  <data name="SapArchiveLink" xml:space="preserve">
+    <value>SAP ArchiveLink</value>
+  </data>
+  <data name="SapEnableUpload" xml:space="preserve">
+    <value>Enable SAP ArchiveLink upload</value>
+  </data>
+  <data name="SapArchiveIdLabel" xml:space="preserve">
+    <value>Archive ID</value>
+  </data>
+  <data name="SapObjectKeySourceLabel" xml:space="preserve">
+    <value>Object key source</value>
+  </data>
+  <data name="SapObjectKeyPromptEachScan" xml:space="preserve">
+    <value>Prompt for every scan</value>
+  </data>
+  <data name="SapObjectKeyFromBarcode" xml:space="preserve">
+    <value>From barcode</value>
+  </data>
+  <data name="SapObjectKeyFromFilename" xml:space="preserve">
+    <value>From filename</value>
+  </data>
+  <data name="SapObjectKeyFixedValue" xml:space="preserve">
+    <value>Fixed value</value>
+  </data>
+  <data name="SapRegexLabel" xml:space="preserve">
+    <value>Regex</value>
+  </data>
+  <data name="SapTestConnection" xml:space="preserve">
+    <value>Test connection</value>
+  </data>
+  <data name="SapConnectionTitle" xml:space="preserve">
+    <value>SAP connection</value>
+  </data>
+  <data name="SapObjectKeyPromptTitle" xml:space="preserve">
+    <value>SAP object key</value>
+  </data>
+  <data name="SapObjectKeyPromptLabel" xml:space="preserve">
+    <value>Enter object key for SAP ArchiveLink:</value>
+  </data>
+  <data name="SapUploadTitle" xml:space="preserve">
+    <value>Upload to SAP ArchiveLink</value>
+  </data>
+  <data name="SapUploadPreparing" xml:space="preserve">
+    <value>Preparing SAP upload for {0}</value>
+  </data>
+  <data name="SapUploading" xml:space="preserve">
+    <value>Uploading document to SAP ArchiveLink</value>
+  </data>
+  <data name="SapUploadErrorDetail" xml:space="preserve">
+    <value>HTTP {0} {1}: {2} (transaction {3})</value>
+  </data>
+  <data name="SapNoObjectKey" xml:space="preserve">
+    <value>No object key/barcode found.</value>
+  </data>
+  <data name="SapUploadNotStarted" xml:space="preserve">
+    <value>The upload could not be started.</value>
+  </data>
+  <data name="SapCertificateWarning" xml:space="preserve">
+    <value>Warning: TLS certificates are not validated.</value>
+  </data>
+  <data name="SapConnectionTestFailed" xml:space="preserve">
+    <value>Connection test failed.</value>
+  </data>
+  <data name="SapCsrfTokenReceived" xml:space="preserve">
+    <value>CSRF token: {0}</value>
+  </data>
+  <data name="SapTestUploadSelectPdf" xml:space="preserve">
+    <value>Select a PDF for the SAP test upload</value>
+  </data>
+  <data name="SapTestUploadNoPdfSelected" xml:space="preserve">
+    <value>No PDF file was selected for the SAP test upload.</value>
+  </data>
+  <data name="SapTestUploadNotAPdf" xml:space="preserve">
+    <value>Please select a PDF file for the SAP test upload.</value>
+  </data>
+  <data name="SapValidationArchiveIdRequired" xml:space="preserve">
+    <value>The archive ID is required when SAP ArchiveLink upload is enabled.</value>
+  </data>
+  <data name="SapValidationHostRequired" xml:space="preserve">
+    <value>The SAP host is required and must start with https://.</value>
+  </data>
+  <data name="SapValidationServiceNameRequired" xml:space="preserve">
+    <value>The SAP service name is required.</value>
+  </data>
+  <data name="SapValidationClientRequired" xml:space="preserve">
+    <value>The SAP client must be 3 digits.</value>
+  </data>
+  <data name="SapValidationUserRequired" xml:space="preserve">
+    <value>The SAP user is required.</value>
+  </data>
+  <data name="SapValidationFixedBarcodeRequired" xml:space="preserve">
+    <value>A fixed barcode is required when the object key source is a fixed value.</value>
+  </data>
+  <data name="SapValidationBarcodeRegexInvalid" xml:space="preserve">
+    <value>The barcode regex is invalid: {0}</value>
+  </data>
 </root>

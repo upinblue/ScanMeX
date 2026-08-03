@@ -9,4 +9,12 @@ public class SaveNotifyStub : ISaveNotify
     public void ImagesSaved(int imageCount, string path)
     {
     }
+
+    public void DocumentUploaded(string fileName, string targets)
+    {
+    }
+
+    public void DocumentUploadFailed(string fileName, string message)
+    {
+    }
 }

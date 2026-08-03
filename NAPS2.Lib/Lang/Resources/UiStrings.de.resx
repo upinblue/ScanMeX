@@ -885,4 +885,346 @@
   <data name="StopScannerSharing" xml:space="preserve">
     <value>Scanner nicht mehr teilen</value>
   </data>
+  <data name="UploadNotificationSucceeded" xml:space="preserve">
+    <value>Hochgeladen nach {0}</value>
+  </data>
+  <data name="UploadNotificationFailed" xml:space="preserve">
+    <value>Upload von {0} fehlgeschlagen</value>
+  </data>
+  <data name="UploadCancelled" xml:space="preserve">
+    <value>Upload abgebrochen.</value>
+  </data>
+  <data name="UploadRequiresPdf" xml:space="preserve">
+    <value>Der Upload funktioniert nur mit PDF-Ausgabe. Ändern Sie den Auto-Speichern-Dateinamen auf die Endung .pdf.</value>
+  </data>
+  <data name="UnresolvedPlaceholder" xml:space="preserve">
+    <value>Unaufgelöster Platzhalter: {0}</value>
+  </data>
+  <data name="Console" xml:space="preserve">
+    <value>Konsole</value>
+  </data>
+  <data name="Ellipsis" xml:space="preserve">
+    <value>...</value>
+  </data>
+  <data name="SharePointUploadTitle" xml:space="preserve">
+    <value>Upload zu SharePoint</value>
+  </data>
+  <data name="SharePointUploadPreparing" xml:space="preserve">
+    <value>Upload für {0} wird vorbereitet</value>
+  </data>
+  <data name="SharePointAuthenticating" xml:space="preserve">
+    <value>Anmeldung bei Microsoft Graph</value>
+  </data>
+  <data name="SharePointResolvingSite" xml:space="preserve">
+    <value>SharePoint-Website wird ermittelt</value>
+  </data>
+  <data name="SharePointResolvingLibrary" xml:space="preserve">
+    <value>Dokumentbibliothek wird ermittelt</value>
+  </data>
+  <data name="SharePointUploadingFile" xml:space="preserve">
+    <value>{0} wird hochgeladen ({1} %)</value>
+  </data>
+  <data name="SharePointUpload" xml:space="preserve">
+    <value>SharePoint-Upload</value>
+  </data>
+  <data name="EnableSharePointUpload" xml:space="preserve">
+    <value>SharePoint-Upload konfigurieren</value>
+  </data>
+  <data name="SharePointSiteUrlLabel" xml:space="preserve">
+    <value>SharePoint-Website-URL:</value>
+  </data>
+  <data name="SharePointLibraryPathLabel" xml:space="preserve">
+    <value>Dokumentbibliothek / Pfad:</value>
+  </data>
+  <data name="SharePointFolderPathLabel" xml:space="preserve">
+    <value>Ordnerpfad (optional):</value>
+  </data>
+  <data name="SharePointSiteUrlHttpsRequired" xml:space="preserve">
+    <value>Die SharePoint-Website-URL muss mit https:// beginnen.</value>
+  </data>
+  <data name="SharePointCredentialsRequired" xml:space="preserve">
+    <value>Mandanten-ID, Client-ID und Client Secret sind erforderlich, wenn der SharePoint-Upload konfiguriert ist.</value>
+  </data>
+  <data name="AzureAdTenantIdLabel" xml:space="preserve">
+    <value>Azure-AD-Mandanten-ID:</value>
+  </data>
+  <data name="AzureAdClientIdLabel" xml:space="preserve">
+    <value>Azure-AD-Client-ID:</value>
+  </data>
+  <data name="AzureAdClientSecretLabel" xml:space="preserve">
+    <value>Azure-AD-Client-Secret:</value>
+  </data>
+  <data name="SapArchiveLink" xml:space="preserve">
+    <value>SAP ArchiveLink</value>
+  </data>
+  <data name="SapEnableUpload" xml:space="preserve">
+    <value>Upload zu SAP ArchiveLink aktivieren</value>
+  </data>
+  <data name="SapHostLabel" xml:space="preserve">
+    <value>SAP-Host:</value>
+  </data>
+  <data name="SapServiceNameLabel" xml:space="preserve">
+    <value>Service-Name:</value>
+  </data>
+  <data name="SapClientLabel" xml:space="preserve">
+    <value>Mandant:</value>
+  </data>
+  <data name="SapLanguageLabel" xml:space="preserve">
+    <value>Sprache:</value>
+  </data>
+  <data name="SapUserLabel" xml:space="preserve">
+    <value>SAP-Benutzer:</value>
+  </data>
+  <data name="SapPasswordLabel" xml:space="preserve">
+    <value>SAP-Passwort (leer lassen, um es beizubehalten):</value>
+  </data>
+  <data name="SapIgnoreSslCertificateCheck" xml:space="preserve">
+    <value>SSL-Zertifikatsprüfung deaktivieren (nur Testumgebung!)</value>
+  </data>
+  <data name="SapArchiveIdLabel" xml:space="preserve">
+    <value>Archiv-ID</value>
+  </data>
+  <data name="SapArObjectLabel" xml:space="preserve">
+    <value>ArObject:</value>
+  </data>
+  <data name="SapObjectLabel" xml:space="preserve">
+    <value>SapObject:</value>
+  </data>
+  <data name="SapObjectIdLabel" xml:space="preserve">
+    <value>ObjectId:</value>
+  </data>
+  <data name="SapObjectIdPlaceholder" xml:space="preserve">
+    <value>Darf Platzhalter wie $(barcode) enthalten</value>
+  </data>
+  <data name="SapObjectKeySourceLabel" xml:space="preserve">
+    <value>Objektschlüssel-Quelle</value>
+  </data>
+  <data name="SapObjectKeyPromptEachScan" xml:space="preserve">
+    <value>Bei jedem Scan abfragen</value>
+  </data>
+  <data name="SapObjectKeyFromBarcode" xml:space="preserve">
+    <value>Aus Barcode</value>
+  </data>
+  <data name="SapObjectKeyFromFilename" xml:space="preserve">
+    <value>Aus Dateiname</value>
+  </data>
+  <data name="SapObjectKeyFixedValue" xml:space="preserve">
+    <value>Fester Wert</value>
+  </data>
+  <data name="SapRegexLabel" xml:space="preserve">
+    <value>Regex</value>
+  </data>
+  <data name="SapTestConnection" xml:space="preserve">
+    <value>Verbindung testen</value>
+  </data>
+  <data name="SapConnectionTitle" xml:space="preserve">
+    <value>SAP-Verbindung</value>
+  </data>
+  <data name="SapObjectKeyPromptTitle" xml:space="preserve">
+    <value>SAP-Objektschlüssel</value>
+  </data>
+  <data name="SapObjectKeyPromptLabel" xml:space="preserve">
+    <value>Objektschlüssel für SAP ArchiveLink eingeben:</value>
+  </data>
+  <data name="SapUploadTitle" xml:space="preserve">
+    <value>Upload zu SAP ArchiveLink</value>
+  </data>
+  <data name="SapUploadPreparing" xml:space="preserve">
+    <value>SAP-Upload für {0} wird vorbereitet</value>
+  </data>
+  <data name="SapUploading" xml:space="preserve">
+    <value>Dokument wird nach SAP ArchiveLink hochgeladen</value>
+  </data>
+  <data name="SapUploadErrorDetail" xml:space="preserve">
+    <value>HTTP {0} {1}: {2} (Transaktion {3})</value>
+  </data>
+  <data name="SapNoObjectKey" xml:space="preserve">
+    <value>Kein Objektschlüssel/Barcode gefunden.</value>
+  </data>
+  <data name="SapUploadNotStarted" xml:space="preserve">
+    <value>Der Upload konnte nicht gestartet werden.</value>
+  </data>
+  <data name="SapCertificateWarning" xml:space="preserve">
+    <value>Warnung: TLS-Zertifikate werden nicht geprüft.</value>
+  </data>
+  <data name="SapConnectionTestFailed" xml:space="preserve">
+    <value>Verbindungstest fehlgeschlagen.</value>
+  </data>
+  <data name="SapCsrfTokenReceived" xml:space="preserve">
+    <value>CSRF-Token: {0}</value>
+  </data>
+  <data name="SapTestUpload" xml:space="preserve">
+    <value>Testupload</value>
+  </data>
+  <data name="SapTestUploadSelectPdf" xml:space="preserve">
+    <value>PDF für SAP-Testupload auswählen</value>
+  </data>
+  <data name="SapTestUploadNoPdfSelected" xml:space="preserve">
+    <value>Keine PDF-Datei für den SAP-Testupload ausgewählt.</value>
+  </data>
+  <data name="SapTestUploadNotAPdf" xml:space="preserve">
+    <value>Bitte eine PDF-Datei für den SAP-Testupload auswählen.</value>
+  </data>
+  <data name="SapTestUploadNoObjectKey" xml:space="preserve">
+    <value>SAP-ArchiveLink-Testupload abgebrochen: Es wurde kein Barcode/Objektschlüssel angegeben.</value>
+  </data>
+  <data name="SapTestUploadSucceeded" xml:space="preserve">
+    <value>SAP-Upload OK - DocId: {0}, Barcode: {1}</value>
+  </data>
+  <data name="SapTestUploadFailed" xml:space="preserve">
+    <value>SAP-Upload fehlgeschlagen - HTTP: {0}, Code: {1}, Meldung: {2}, TransactionId: {3}</value>
+  </data>
+  <data name="SapValidationArchiveIdRequired" xml:space="preserve">
+    <value>Die Archiv-ID ist erforderlich, wenn der Upload zu SAP ArchiveLink aktiviert ist.</value>
+  </data>
+  <data name="SapValidationHostRequired" xml:space="preserve">
+    <value>Der SAP-Host ist erforderlich und muss mit https:// beginnen.</value>
+  </data>
+  <data name="SapValidationServiceNameRequired" xml:space="preserve">
+    <value>Der SAP-Service-Name ist erforderlich.</value>
+  </data>
+  <data name="SapValidationClientRequired" xml:space="preserve">
+    <value>Der SAP-Mandant muss 3-stellig sein.</value>
+  </data>
+  <data name="SapValidationUserRequired" xml:space="preserve">
+    <value>Der SAP-Benutzer ist erforderlich.</value>
+  </data>
+  <data name="SapValidationFixedBarcodeRequired" xml:space="preserve">
+    <value>Ein fester Barcode ist erforderlich, wenn die Objektschlüssel-Quelle ein fester Wert ist.</value>
+  </data>
+  <data name="SapValidationBarcodeRegexInvalid" xml:space="preserve">
+    <value>Der Barcode-Regex ist ungültig: {0}</value>
+  </data>
+  <data name="Code39RegexOptionalLabel" xml:space="preserve">
+    <value>Code-39-Regex (optional):</value>
+  </data>
+  <data name="SeparateByCode39Barcode" xml:space="preserve">
+    <value>Nach Code-39-Barcode trennen</value>
+  </data>
+  <data name="InvalidCode39Regex" xml:space="preserve">
+    <value>Ungültiger Code-39-Regex.</value>
+  </data>
+  <data name="UploadAutoSavedDocumentToSharePoint" xml:space="preserve">
+    <value>Automatisch gespeichertes Dokument nach SharePoint hochladen</value>
+  </data>
+  <data name="UploadAutoSavedDocumentToSap" xml:space="preserve">
+    <value>Automatisch gespeichertes Dokument nach SAP ArchiveLink hochladen</value>
+  </data>
+  <data name="ProfileScannerSection" xml:space="preserve">
+    <value>Scanner</value>
+  </data>
+  <data name="ProfileAutoSaveUploadsSection" xml:space="preserve">
+    <value>Automatisch speichern &amp; Uploads</value>
+  </data>
+  <data name="ProfileSharePointSection" xml:space="preserve">
+    <value>SharePoint</value>
+  </data>
+  <data name="ProfileSapSection" xml:space="preserve">
+    <value>SAP ArchiveLink</value>
+  </data>
+  <data name="ProfileDocumentSection" xml:space="preserve">
+    <value>Dokumententrennung und Upload</value>
+  </data>
+  <data name="UploadRequiresAutoSaveInfo" xml:space="preserve">
+    <value>SharePoint- und SAP-Uploads laufen nach dem automatischen Speichern. Dateiname und Trennung stellen Sie in den Einstellungen für automatisches Speichern ein.</value>
+  </data>
+  <data name="DocumentIdPromptTitle" xml:space="preserve">
+    <value>Dokumentkennzeichnung</value>
+  </data>
+  <data name="DocumentIdPrompt" xml:space="preserve">
+    <value>Kennzeichnungsnummer für dieses Dokument eingeben:</value>
+  </data>
+  <data name="DocumentIdPromptDescription" xml:space="preserve">
+    <value>Dokument {0}, {1} Seite(n)</value>
+  </data>
+  <data name="DocumentUploadFailed" xml:space="preserve">
+    <value>Upload von {0} fehlgeschlagen: {1}</value>
+  </data>
+  <data name="SeparationModeLabel" xml:space="preserve">
+    <value>Dokumente trennen nach</value>
+  </data>
+  <data name="SeparationModeNone" xml:space="preserve">
+    <value>Keine Barcode-Trennung</value>
+  </data>
+  <data name="SeparationModePatchT" xml:space="preserve">
+    <value>Patch-T-Trennblatt</value>
+  </data>
+  <data name="SeparationModeBarcode" xml:space="preserve">
+    <value>Barcode</value>
+  </data>
+  <data name="BarcodeTypesLabel" xml:space="preserve">
+    <value>Barcode-Typen</value>
+  </data>
+  <data name="BarcodeTypeCode39" xml:space="preserve">
+    <value>Code 39</value>
+  </data>
+  <data name="BarcodeTypeCode128" xml:space="preserve">
+    <value>Code 128</value>
+  </data>
+  <data name="BarcodeTypeEanUpc" xml:space="preserve">
+    <value>EAN / UPC</value>
+  </data>
+  <data name="SeparationPatternLabel" xml:space="preserve">
+    <value>Trennmuster (Regex, optional)</value>
+  </data>
+  <data name="SeparationPatternHint" xml:space="preserve">
+    <value>Ein passender Barcode beginnt ein neues Dokument. Gruppe 1 oder der gesamte Treffer wird zu $(barcode).</value>
+  </data>
+  <data name="InvalidSeparationPattern" xml:space="preserve">
+    <value>Ungültiges Trennmuster.</value>
+  </data>
+  <data name="KeepSeparatorPage" xml:space="preserve">
+    <value>Trennseite im Dokument behalten</value>
+  </data>
+  <data name="DocumentIdModeLabel" xml:space="preserve">
+    <value>Dokumentkennzeichnung</value>
+  </data>
+  <data name="DocumentIdModeNone" xml:space="preserve">
+    <value>Keine</value>
+  </data>
+  <data name="DocumentIdModeBarcode" xml:space="preserve">
+    <value>Aus Barcode</value>
+  </data>
+  <data name="DocumentIdModeManual" xml:space="preserve">
+    <value>Nach dem Scannen abfragen</value>
+  </data>
+  <data name="DocumentIdPromptLabelLabel" xml:space="preserve">
+    <value>Beschriftung des Eingabefelds (optional)</value>
+  </data>
+  <data name="UploadTriggerLabel" xml:space="preserve">
+    <value>Upload</value>
+  </data>
+  <data name="UploadTriggerAutomatic" xml:space="preserve">
+    <value>Automatisch nach dem Scannen</value>
+  </data>
+  <data name="UploadTriggerManual" xml:space="preserve">
+    <value>Manuell über Schaltfläche</value>
+  </data>
+  <data name="KeepLocalCopy" xml:space="preserve">
+    <value>Lokale Datei nach dem Upload behalten</value>
+  </data>
+  <data name="CleanupAfterCompletion" xml:space="preserve">
+    <value>Dokumente nach Abschluss aus dem Fenster und dem Temp-Ordner entfernen</value>
+  </data>
+  <data name="UploadPendingDocuments" xml:space="preserve">
+    <value>Dokumente hochladen</value>
+  </data>
+  <data name="UploadDocumentsStatus" xml:space="preserve">
+    <value>{0} Dokument(e) warten auf den Upload</value>
+  </data>
+  <data name="UploadAllSucceeded" xml:space="preserve">
+    <value>Alle Dokumente hochgeladen.</value>
+  </data>
+  <data name="UploadTargetsEnabled" xml:space="preserve">
+    <value>Aktivierte Upload-Ziele: {0}. Änderbar in den Profileinstellungen.</value>
+  </data>
+  <data name="UploadTargetsNone" xml:space="preserve">
+    <value>Es ist kein Upload-Ziel aktiviert. Aktivieren Sie SharePoint oder SAP ArchiveLink in den Profileinstellungen.</value>
+  </data>
+  <data name="SharePointUploadFailedShort" xml:space="preserve">
+    <value>SharePoint-Upload fehlgeschlagen.</value>
+  </data>
+  <data name="UploadSomeFailed" xml:space="preserve">
+    <value>{0} von {1} Dokumenten konnten nicht hochgeladen werden.</value>
+  </data>
 </root>

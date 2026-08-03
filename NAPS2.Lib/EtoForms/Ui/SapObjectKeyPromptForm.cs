@@ -13,7 +13,7 @@ internal class SapObjectKeyPromptForm : EtoDialogBase
     {
         _fileName = fileName;
         _objectKey.Text = suggestedValue ?? "";
-        Title = SapUi.ObjectKeyPromptTitle;
+        Title = UiStrings.SapObjectKeyPromptTitle;
         FormStateController.FixedHeightLayout = true;
     }
 
@@ -22,7 +22,7 @@ internal class SapObjectKeyPromptForm : EtoDialogBase
     protected override void BuildLayout()
     {
         LayoutController.Content = L.Column(
-            C.Label(SapUi.ObjectKeyPrompt),
+            C.Label(UiStrings.SapObjectKeyPromptLabel),
             C.Label(_fileName),
             _objectKey,
             C.Filler(),

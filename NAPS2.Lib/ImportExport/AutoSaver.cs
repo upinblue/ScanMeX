@@ -28,7 +28,7 @@ public class AutoSaver
     public AutoSaver(ErrorOutput errorOutput, DialogHelper dialogHelper,
         OperationProgress operationProgress, ISaveNotify notify, PdfExporter pdfExporter,
         IOverwritePrompt overwritePrompt, Naps2Config config, ImageContext imageContext, UiImageList imageList,
-        DocumentUploadQueue? uploadQueue = null)
+        DocumentUploadQueue? uploadQueue = null, DocumentUploadService? documentUploadService = null)
     {
         _errorOutput = errorOutput;
         _dialogHelper = dialogHelper;
@@ -40,7 +40,8 @@ public class AutoSaver
         _imageContext = imageContext;
         _imageList = imageList;
         _uploadQueue = uploadQueue;
-        _documentUploadService = new DocumentUploadService(config, operationProgress);
+        _documentUploadService = documentUploadService ??
+                                 new DocumentUploadService(config, operationProgress, notify);
     }
 
     // Overload: pass the ScanProfile explicitly, ensuring SharePoint settings are available.
@@ -143,13 +144,22 @@ public class AutoSaver
         var workflow = DocumentWorkflowSettings.ForProfile(ActiveProfile);
         if (workflow.SeparationMode != DocumentSeparationMode.None)
         {
-            return DocumentSeparator.Separate(images, workflow)
+            var separated = DocumentSeparator.Separate(images, workflow)
                 .Select(x => (x.Images.ToList(), x.SeparatorBarcodeValue))
                 .ToList();
+            ScanConsole.Document(
+                $"{workflow.SeparationMode} separation split {images.Count} page(s) into {separated.Count} document(s): " +
+                string.Join(", ", separated.Select((x, i) =>
+                    $"#{i + 1}={x.Item1.Count}p/'{x.SeparatorBarcodeValue ?? "(no barcode)"}'")));
+            return separated;
         }
-        return SaveSeparatorHelper.SeparateScans(new[] { images }, ActiveProfile, settings)
+        var scans = SaveSeparatorHelper.SeparateScans(new[] { images }, ActiveProfile, settings)
             .Select(x => (x, (string?) null))
             .ToList();
+        ScanConsole.Document(
+            $"No barcode separation; auto save separator '{settings.Separator}' produced {scans.Count} document(s) " +
+            $"from {images.Count} page(s).");
+        return scans;
     }
 
     private async Task<(bool, string?)> SaveOneFile(AutoSaveSettings settings, Placeholders placeholders, int i,
@@ -157,6 +167,7 @@ public class AutoSaver
     {
         if (images.Count == 0)
         {
+            ScanConsole.Document($"Document {i + 1} has no pages; nothing saved or uploaded.");
             return (true, null);
         }
         var workflow = DocumentWorkflowSettings.ForProfile(ActiveProfile);
@@ -168,16 +179,22 @@ public class AutoSaver
             var documentId = PromptForDocumentId(workflow, ctx, i);
             if (documentId == null)
             {
+                ScanConsole.Document($"Document {i + 1}: identification cancelled, document not saved.");
                 return (false, null);
             }
             ctx = ctx with { DocumentId = documentId };
+            ScanConsole.Document($"Document {i + 1}: identification '{documentId}' entered.");
         }
         string subPath = ResolveAutoSavePath(settings.FilePath, placeholders, ctx);
         if (subPath.Contains("$(", StringComparison.Ordinal))
         {
-            _errorOutput.DisplayError($"Unaufgelöster Platzhalter: {settings.FilePath}");
+            ScanConsole.Document(
+                $"Document {i + 1}: unresolved placeholder in '{settings.FilePath}' (resolved to '{subPath}'); not saved.");
+            _errorOutput.DisplayError(string.Format(UiStrings.UnresolvedPlaceholder, settings.FilePath));
             return (false, null);
         }
+        ScanConsole.Document(
+            $"Document {i + 1}: {images.Count} page(s), barcode '{ctx.SeparatorBarcodeValue ?? "(none)"}' -> '{subPath}'");
         if (settings.PromptForFilePath)
         {
             string? newPath = null!;
@@ -187,7 +204,7 @@ public class AutoSaver
                 subPath = ResolveAutoSavePath(newPath!, placeholders, ctx);
                 if (subPath.Contains("$(", StringComparison.Ordinal))
                 {
-                    _errorOutput.DisplayError($"Unaufgelöster Platzhalter: {newPath}");
+                    _errorOutput.DisplayError(string.Format(UiStrings.UnresolvedPlaceholder, newPath));
                     return (false, null);
                 }
             }
@@ -211,7 +228,13 @@ public class AutoSaver
                 _operationProgress.ShowProgress(op);
             }
             bool success = await op.Success;
-            if (success && doNotify)
+            ScanConsole.Document(success
+                ? $"Saved PDF '{subPath}'."
+                : $"Saving PDF '{subPath}' failed or was cancelled.");
+            // A file that only exists to be uploaded is deleted again afterwards, so a "saved" notification
+            // would point at a path that no longer exists. The upload notification reports it instead.
+            bool isStagingCopy = !workflow.KeepLocalCopy && DocumentUploadService.HasAnyTarget(ActiveProfile);
+            if (success && doNotify && !isStagingCopy)
             {
                 _notify.PdfSaved(subPath);
             }
@@ -231,9 +254,20 @@ public class AutoSaver
                 _operationProgress.ShowProgress(op);
             }
             bool success = await op.Success;
+            ScanConsole.Document(success
+                ? $"Saved image file(s), first is '{op.FirstFileSaved}'."
+                : $"Saving image file(s) to '{subPath}' failed or was cancelled.");
             if (success && doNotify && op.FirstFileSaved != null)
             {
                 _notify.ImagesSaved(images.Count, op.FirstFileSaved);
+            }
+            if (success && DocumentUploadService.HasAnyTarget(ActiveProfile))
+            {
+                // Uploading only covers the PDF output, since image output writes one file per page and
+                // that doesn't map to one document. Say so rather than silently skipping the upload.
+                ScanConsole.Upload(
+                    "Upload skipped: the profile writes image files, and uploading only supports PDF output.");
+                _notify.DocumentUploadFailed(Path.GetFileName(subPath), UiStrings.UploadRequiresPdf);
             }
             return (success, subPath);
         }
@@ -263,6 +297,7 @@ public class AutoSaver
     {
         if (ActiveProfile == null || !DocumentUploadService.HasAnyTarget(ActiveProfile))
         {
+            ScanConsole.Upload($"No upload target enabled for '{Path.GetFileName(filePath)}'; the file stays local.");
             return;
         }
 
@@ -276,15 +311,14 @@ public class AutoSaver
 
         if (workflow.UploadTrigger == UploadTrigger.Manual)
         {
+            ScanConsole.Upload($"'{document.FileName}' queued for the manual upload button.");
             _uploadQueue?.Add(document);
             return;
         }
 
-        if (!await _documentUploadService.UploadAsync(document))
-        {
-            _errorOutput.DisplayError(
-                string.Format(UiStrings.DocumentUploadFailed, document.FileName, document.Message ?? ""));
-        }
+        // Success and failure are both reported by DocumentUploadService as a notification, the same way
+        // a saved file is, so there's nothing left to do with the result here.
+        await _documentUploadService.UploadAsync(document);
     }
 
     private ScanContext CreateScanContext(string template, int index, List<ProcessedImage> images,

@@ -12,6 +12,14 @@ public class StubNotify : INotify
     {
     }
 
+    public void DocumentUploaded(string fileName, string targets)
+    {
+    }
+
+    public void DocumentUploadFailed(string fileName, string message)
+    {
+    }
+
     public void DonatePrompt()
     {
     }

@@ -24,7 +24,7 @@ internal class SettingsForm : EtoDialogBase
     private readonly ActionCommand _imageSettingsCommand;
     private readonly ActionCommand _emailSettingsCommand;
     private readonly ActionCommand _keyboardShortcutsCommand;
-    private readonly Button _sapConnection = new() { Text = SapUi.SapConnection };
+    private readonly Button _sapConnection = new() { Text = UiStrings.SapConnectionTitle };
     private readonly Button _restoreDefaults = new() { Text = UiStrings.RestoreDefaults };
 
     public SettingsForm(Naps2Config config, DesktopSubFormController desktopSubFormController,

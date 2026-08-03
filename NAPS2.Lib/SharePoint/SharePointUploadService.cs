@@ -38,7 +38,7 @@ public class SharePointUploadService
     {
         if (profile?.AutoSaveSettings?.UploadToSharePoint != true && profile?.EnableSharePointUpload != true)
         {
-            Debug.WriteLine("[SP] Upload skipped: SharePoint upload not enabled in profile flags.");
+            ScanConsole.Upload("[SP] Upload skipped: SharePoint upload not enabled in profile flags.");
             return Task.CompletedTask; // Not enabled
         }
         var sp = profile.SharePointUploadSettings ?? throw new InvalidOperationException("SharePoint settings are incomplete. (SharePointUploadSettings is null)");
@@ -128,10 +128,10 @@ public class SharePointUploadService
         }
 
         Report(0);
-        Debug.WriteLine("[SP] Starting upload");
-        Debug.WriteLine($"[SP] localFilePath='{localFilePath}', exists={File.Exists(localFilePath)}");
-        Debug.WriteLine($"[SP] fileName='{fileName}'");
-        Debug.WriteLine($"[SP] Settings: SiteUrl='{sp.SiteUrl}', Library='{sp.LibraryNameOrPath}', Folder='{sp.FolderPath}', TenantId='{Mask(sp.TenantId)}', ClientId='{Mask(sp.ClientId)}', ClientSecretLen={(sp.ClientSecret?.Length ?? 0)}");
+        ScanConsole.Upload("[SP] Starting upload");
+        ScanConsole.Upload($"[SP] localFilePath='{localFilePath}', exists={File.Exists(localFilePath)}");
+        ScanConsole.Upload($"[SP] fileName='{fileName}'");
+        ScanConsole.Upload($"[SP] Settings: SiteUrl='{sp.SiteUrl}', Library='{sp.LibraryNameOrPath}', Folder='{sp.FolderPath}', TenantId='{Mask(sp.TenantId)}', ClientId='{Mask(sp.ClientId)}', ClientSecretLen={(sp.ClientSecret?.Length ?? 0)}");
 
         var missing = new List<string>();
         if (string.IsNullOrWhiteSpace(sp.SiteUrl)) missing.Add(nameof(sp.SiteUrl));
@@ -149,9 +149,9 @@ public class SharePointUploadService
         }
 
         var tokenUrl = $"https://login.microsoftonline.com/{sp.TenantId}/oauth2/v2.0/token";
-        Debug.WriteLine($"[SP] Acquiring token at: {tokenUrl}");
+        ScanConsole.Upload($"[SP] Acquiring token at: {tokenUrl}");
         string token = await AcquireTokenAsync(sp.TenantId!, sp.ClientId!, sp.ClientSecret!, cancellationToken);
-        Debug.WriteLine($"[SP] Token acquired. Length={token.Length}");
+        ScanConsole.Upload($"[SP] Token acquired. Length={token.Length}");
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         Report(10);
 
@@ -162,17 +162,17 @@ public class SharePointUploadService
         if (string.IsNullOrEmpty(sitePath)) sitePath = "sites/root"; // fallback
 
         var siteEndpoint = $"https://graph.microsoft.com/v1.0/sites/{hostname}:/{sitePath}";
-        Debug.WriteLine($"[SP] Resolving site: {siteEndpoint}");
+        ScanConsole.Upload($"[SP] Resolving site: {siteEndpoint}");
         var siteResp = await _httpClient.GetAsync(siteEndpoint, cancellationToken);
         if (!siteResp.IsSuccessStatusCode)
         {
             var msg = await FormatGraphFailureAsync(siteResp, siteEndpoint, cancellationToken);
-            Debug.WriteLine($"[SP] Site resolve failed: {msg}");
+            ScanConsole.Upload($"[SP] Site resolve failed: {msg}");
             throw new InvalidOperationException($"SharePoint site resolution failed: {msg}");
         }
         using var siteJson = JsonDocument.Parse(await siteResp.Content.ReadAsStringAsync(cancellationToken));
         string siteId = siteJson.RootElement.GetProperty("id").GetString()!;
-        Debug.WriteLine($"[SP] Site resolved. siteId='{siteId}'");
+        ScanConsole.Upload($"[SP] Site resolved. siteId='{siteId}'");
         Report(30);
 
         // Parse library and optional subpath from LibraryNameOrPath
@@ -185,16 +185,16 @@ public class SharePointUploadService
             libraryName = libInput.Substring(0, slashIdx).Trim();
             librarySubPath = libInput.Substring(slashIdx + 1).Trim('/');
         }
-        Debug.WriteLine($"[SP] Parsed library='{libraryName}', librarySubPath='{librarySubPath ?? ""}'");
+        ScanConsole.Upload($"[SP] Parsed library='{libraryName}', librarySubPath='{librarySubPath ?? ""}'");
 
         // Resolve drive (document library)
         var drivesEndpoint = $"https://graph.microsoft.com/v1.0/sites/{siteId}/drives";
-        Debug.WriteLine("[SP] Listing document libraries...");
+        ScanConsole.Upload("[SP] Listing document libraries...");
         var drivesResp = await _httpClient.GetAsync(drivesEndpoint, cancellationToken);
         if (!drivesResp.IsSuccessStatusCode)
         {
             var msg = await FormatGraphFailureAsync(drivesResp, drivesEndpoint, cancellationToken);
-            Debug.WriteLine($"[SP] Drives list failed: {msg}");
+            ScanConsole.Upload($"[SP] Drives list failed: {msg}");
             throw new InvalidOperationException($"SharePoint drives list failed: {msg}");
         }
         using var drivesJson = JsonDocument.Parse(await drivesResp.Content.ReadAsStringAsync(cancellationToken));
@@ -246,7 +246,7 @@ public class SharePointUploadService
                 driveId = drive.GetProperty("id").GetString();
                 driveName = drive.TryGetProperty("name", out var n) ? n.GetString() : null;
                 driveWebUrl = drive.TryGetProperty("webUrl", out var w) ? w.GetString() : null;
-                Debug.WriteLine($"[SP] Library '{libraryName}' not found. Defaulting to the only available library: '{driveName}' ({driveWebUrl})");
+                ScanConsole.Upload($"[SP] Library '{libraryName}' not found. Defaulting to the only available library: '{driveName}' ({driveWebUrl})");
             }
             else if (drives.Count > 1)
             {
@@ -264,11 +264,11 @@ public class SharePointUploadService
                     var w = d.TryGetProperty("webUrl", out var wp) ? wp.GetString() : "?";
                     return $"{n} ({w})";
                 }));
-                Debug.WriteLine($"[SP] Library '{libraryName}' not matched. Falling back to first: '{driveName}'. Available libraries: {available}");
+                ScanConsole.Upload($"[SP] Library '{libraryName}' not matched. Falling back to first: '{driveName}'. Available libraries: {available}");
             }
         }
 
-        Debug.WriteLine($"[SP] Drive selected id='{driveId}', name='{driveName}', webUrl='{driveWebUrl}'");
+        ScanConsole.Upload($"[SP] Drive selected id='{driveId}', name='{driveName}', webUrl='{driveWebUrl}'");
         if (string.IsNullOrEmpty(driveId))
         {
             throw new InvalidOperationException("Could not resolve target document library.");
@@ -280,7 +280,7 @@ public class SharePointUploadService
         string folderSegment = string.IsNullOrWhiteSpace(combinedFolder) ? "root" : $"root:/{EncodePath(combinedFolder!)}";
         var encodedFileName = Uri.EscapeDataString(fileName);
         string uploadUrl = $"https://graph.microsoft.com/v1.0/sites/{siteId}/drives/{driveId}/{folderSegment}:/{encodedFileName}:/content";
-        Debug.WriteLine($"[SP] Upload URL: {uploadUrl}");
+        ScanConsole.Upload($"[SP] Upload URL: {uploadUrl}");
 
         using var fs = File.OpenRead(localFilePath);
         var content = new ProgressStreamContent(fs, "application/pdf", fs.Length, percent =>
@@ -293,7 +293,7 @@ public class SharePointUploadService
         if (!putResp.IsSuccessStatusCode)
         {
             var msg = await FormatGraphFailureAsync(putResp, uploadUrl, cancellationToken);
-            Debug.WriteLine($"[SP] Upload failed: {msg}");
+            ScanConsole.Upload($"[SP] Upload failed: {msg}");
             throw new InvalidOperationException($"SharePoint upload failed: {msg}");
         }
 
@@ -307,11 +307,11 @@ public class SharePointUploadService
 
         if (!string.IsNullOrEmpty(itemWebUrl))
         {
-            Debug.WriteLine($"[SP] Upload succeeded. Item webUrl: {itemWebUrl}");
+            ScanConsole.Upload($"[SP] Upload succeeded. Item webUrl: {itemWebUrl}");
         }
         else
         {
-            Debug.WriteLine("[SP] Upload succeeded");
+            ScanConsole.Upload("[SP] Upload succeeded");
         }
 
         progress?.Report(100);

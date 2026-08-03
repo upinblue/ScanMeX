@@ -1,4 +1,5 @@
 using NAPS2.EtoForms;
+using NAPS2.EtoForms.Notifications;
 using NAPS2.ImportExport;
 using NAPS2.Sap;
 using NAPS2.Scan;
@@ -12,12 +13,16 @@ namespace NAPS2.PostScan;
 /// </summary>
 public class DocumentUploadService
 {
+    private const string SharePointTargetName = "SharePoint";
+
     private readonly OperationProgress _operationProgress;
+    private readonly ISaveNotify _notify;
     private readonly SapArchivePostScanService _sapArchivePostScanService;
 
-    public DocumentUploadService(Naps2Config config, OperationProgress operationProgress)
+    public DocumentUploadService(Naps2Config config, OperationProgress operationProgress, ISaveNotify notify)
     {
         _operationProgress = operationProgress;
+        _notify = notify;
         _sapArchivePostScanService = new SapArchivePostScanService(config, operationProgress);
     }
 
@@ -29,20 +34,27 @@ public class DocumentUploadService
 
     /// <summary>
     /// Uploads a document to every target its profile enables. Updates the document's status and message,
-    /// and removes the staging file when the profile doesn't keep a local copy.
+    /// notifies the operator of the outcome, and removes the staging file when the profile doesn't keep
+    /// a local copy.
     /// </summary>
     public async Task<bool> UploadAsync(PendingDocument document)
     {
         document.Status = DocumentUploadStatus.Uploading;
         document.Message = null;
+        ScanConsole.Upload($"Uploading '{document.FileName}' ({document.PageCount} page(s)).");
 
         var failures = new List<string>();
+        var reachedTargets = new List<string>();
         if (document.Profile.UploadsToSharePoint())
         {
             var error = await UploadToSharePointAsync(document);
             if (error != null)
             {
-                failures.Add(error);
+                failures.Add($"{SharePointTargetName}: {error}");
+            }
+            else
+            {
+                reachedTargets.Add(SharePointTargetName);
             }
         }
         if (document.Profile.UploadsToSap())
@@ -50,7 +62,11 @@ public class DocumentUploadService
             var error = await UploadToSapAsync(document);
             if (error != null)
             {
-                failures.Add(error);
+                failures.Add($"{UiStrings.SapArchiveLink}: {error}");
+            }
+            else
+            {
+                reachedTargets.Add(UiStrings.SapArchiveLink);
             }
         }
 
@@ -58,13 +74,22 @@ public class DocumentUploadService
         {
             document.Status = DocumentUploadStatus.Failed;
             document.Message = string.Join(" | ", failures);
+            ScanConsole.Upload($"FAILED '{document.FileName}': {document.Message}");
+            // Uploading is the last step of a scan, so its outcome has to be as visible as a saved file.
+            _notify.DocumentUploadFailed(document.FileName, document.Message);
             return false;
         }
 
         document.Status = DocumentUploadStatus.Uploaded;
         document.Message = null;
+        if (reachedTargets.Count > 0)
+        {
+            ScanConsole.Upload($"OK '{document.FileName}' -> {string.Join(", ", reachedTargets)}");
+            _notify.DocumentUploaded(document.FileName, string.Join(", ", reachedTargets));
+        }
         if (document.DeleteFileAfterUpload)
         {
+            ScanConsole.Upload($"Removing staged file '{document.FilePath}' (profile keeps no local copy).");
             TryDeleteFile(document.FilePath);
         }
         return true;
@@ -75,13 +100,16 @@ public class DocumentUploadService
         try
         {
             var settings = ResolveSharePointSettings(document.Profile.SharePointUploadSettings!, document.Context);
+            ScanConsole.Upload(
+                $"SharePoint target: Site='{settings.SiteUrl}', Library='{settings.LibraryNameOrPath}', " +
+                $"Folder='{settings.FolderPath}'");
             var uploadOp = new UploadSharePointOperation(new SharePointUploadService());
             if (uploadOp.Start(settings, document.FilePath, document.FileName))
             {
                 _operationProgress.ShowProgress(uploadOp);
                 if (!await uploadOp.Success)
                 {
-                    return UiStrings.SharePointUploadFailedShort;
+                    return uploadOp.FailureMessage ?? UiStrings.SharePointUploadFailedShort;
                 }
             }
             return null;
@@ -97,9 +125,8 @@ public class DocumentUploadService
     {
         try
         {
-            var ok = await _sapArchivePostScanService.UploadSavedFileAsync(
+            return await _sapArchivePostScanService.UploadSavedFileAsync(
                 document.Profile, document.FilePath, document.Context.Images, document.Context);
-            return ok ? null : SapUi.UploadFailed(string.Empty);
         }
         catch (Exception ex)
         {

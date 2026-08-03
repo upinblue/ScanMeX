@@ -24,6 +24,18 @@ public class Notify : INotify
         _notificationManager.Show(new SaveNotification(title, path));
     }
 
+    public void DocumentUploaded(string fileName, string targets)
+    {
+        _notificationManager.Show(new UploadNotification(
+            string.Format(UiStrings.UploadNotificationSucceeded, targets), fileName, false));
+    }
+
+    public void DocumentUploadFailed(string fileName, string message)
+    {
+        _notificationManager.Show(new UploadNotification(
+            string.Format(UiStrings.UploadNotificationFailed, fileName), message, true));
+    }
+
     public void DonatePrompt()
     {
         _notificationManager.Show(new DonateNotification());

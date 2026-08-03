@@ -1,4 +1,7 @@
 ﻿using System.Text;
+// Explicit rather than relying on the implicit using, because NAPS2.App.Worker compiles this file in
+// and does not import LibUsers.targets.
+using NAPS2.Logging;
 using NLog;
 using NLog.Config;
 using NLog.Extensions.Logging;
@@ -34,12 +37,20 @@ public static class NLogConfig
             MaxArchiveFiles = 1,
             ConcurrentWrites = true
         };
+        // Feeds the console window. Unlike the debug log file this is never filtered by the debug logging
+        // setting -- the console is opened on demand, so it has to be able to show what already happened.
+        var consoleTarget = new ConsoleLogTarget
+        {
+            Layout = "${level:uppercase=true} ${message} ${exception:format=tostring}"
+        };
         config.AddTarget("errorlogfile", target);
         config.AddTarget("debuglogfile", debugTarget);
+        config.AddTarget("scanmeconsole", consoleTarget);
         config.LoggingRules.Add(new LoggingRule("*", LogLevel.Info, target));
         var debugRule = new LoggingRule("*", LogLevel.Trace, debugTarget);
         debugRule.Filters.Add(new WhenMethodFilter(_ => enableDebugLogging() ? FilterResult.Log : FilterResult.Ignore));
         config.LoggingRules.Add(debugRule);
+        config.LoggingRules.Add(new LoggingRule("*", LogLevel.Trace, consoleTarget));
         LogManager.Configuration = config;
         return new NLogLoggerFactory().CreateLogger("ScanMe");
     }

@@ -99,8 +99,11 @@ internal class ScanPerformer : IScanPerformer
         if (!await PopulateDevice(scanProfile, options))
         {
             // User cancelled out of a dialog
+            ScanConsole.Scan($"Scan aborted: no device selected (profile '{scanProfile.DisplayName}').");
             yield break;
         }
+
+        LogScanStart(scanProfile, options);
 
         var controller = CreateScanController(scanParams);
         var op = new ScanOperation(options);
@@ -133,11 +136,19 @@ internal class ScanPerformer : IScanPerformer
         ShowOperation(op, options, scanParams);
         cancelToken.Register(op.Cancel);
 
-        var images = controller.Scan(options, op.CancelToken);
+        // Logged before auto save, because a profile that clears images after saving produces nothing
+        // downstream -- the console still has to show that pages were scanned.
+        var images = LogPages(controller.Scan(options, op.CancelToken));
 
         if (scanProfile.EnableAutoSave && scanProfile.AutoSaveSettings != null && !scanParams.NoAutoSave)
         {
             images = _autoSaver.Save(scanProfile, scanProfile.AutoSaveSettings, images);
+        }
+        else
+        {
+            ScanConsole.Profile(scanProfile.EnableAutoSave
+                ? "Auto save is enabled but has no settings, so nothing is saved or uploaded."
+                : "Auto save is disabled, so this scan is not saved or uploaded automatically.");
         }
 
         int pageCount = 0;
@@ -164,6 +175,69 @@ internal class ScanPerformer : IScanPerformer
                 });
             }
         }
+    }
+
+    /// <summary>
+    /// Writes the scan's starting conditions to the console. Most "nothing happened" reports come down to
+    /// a profile setting, so the settings that decide whether anything is saved, separated or uploaded are
+    /// recorded before the first page arrives.
+    /// </summary>
+    private static void LogScanStart(ScanProfile scanProfile, ScanOptions options)
+    {
+        ScanConsole.Scan(
+            $"Scan started. Profile='{scanProfile.DisplayName}', Device='{scanProfile.Device?.Name ?? "(none)"}', " +
+            $"Driver={options.Driver}, Source={options.PaperSource}, {options.Dpi} dpi, BitDepth={options.BitDepth}");
+
+        var workflow = DocumentWorkflowSettings.ForProfile(scanProfile);
+        var symbologies = workflow.GetEffectiveSymbologies();
+        ScanConsole.Profile(
+            $"Separation={workflow.SeparationMode}, Symbologies={(symbologies.Count == 0 ? "(none)" : string.Join("+", symbologies))}, " +
+            $"Pattern='{workflow.SeparationPattern ?? ""}', IdMode={workflow.IdMode}, " +
+            $"UploadTrigger={workflow.UploadTrigger}, KeepLocalCopy={workflow.KeepLocalCopy}");
+        ScanConsole.Profile(
+            $"BarcodeDetection={options.BarcodeDetectionOptions.DetectBarcodes}, " +
+            $"AutoSave={scanProfile.EnableAutoSave}, AutoSavePath='{scanProfile.AutoSaveSettings?.FilePath ?? ""}'");
+
+        var targets = new List<string>();
+        if (scanProfile.UploadsToSharePoint()) targets.Add("SharePoint");
+        if (scanProfile.UploadsToSap()) targets.Add("SAP ArchiveLink");
+        ScanConsole.Profile(targets.Count == 0
+            ? "No upload target is enabled for this profile."
+            : $"Upload targets: {string.Join(", ", targets)}");
+    }
+
+    /// <summary>
+    /// Passes pages through unchanged while reporting each one, including whether a barcode was found.
+    /// A page without a barcode is reported explicitly -- that is the case operators most often need to
+    /// see when separation or SAP object keys don't come out as expected.
+    /// </summary>
+    private static async IAsyncEnumerable<ProcessedImage> LogPages(IAsyncEnumerable<ProcessedImage> images)
+    {
+        var pageNumber = 0;
+        await foreach (var image in images)
+        {
+            pageNumber++;
+            var barcode = image.PostProcessingData.Barcode;
+            if (!barcode.IsDetected)
+            {
+                ScanConsole.Barcode(barcode.IsDetectionAttempted
+                    ? $"Page {pageNumber}: no barcode detected."
+                    : $"Page {pageNumber}: barcode detection not enabled.");
+            }
+            else
+            {
+                var all = barcode.GetAllValues();
+                var extra = all.Count > 1
+                    ? $" (all: {string.Join(", ", all.Select(x => $"{x.Format}:{x.Text}"))})"
+                    : "";
+                ScanConsole.Barcode(
+                    $"Page {pageNumber}: {barcode.DetectedFormat ?? "?"} '{barcode.DetectedText}'" +
+                    $"{(barcode.IsPatchT ? " [patch-T]" : "")}{extra}");
+            }
+            ScanConsole.Scan($"Page {pageNumber} received.");
+            yield return image;
+        }
+        ScanConsole.Scan($"Scanner finished after {pageNumber} page(s).");
     }
 
     private ScanController CreateScanController(ScanParams scanParams)

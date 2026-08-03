@@ -248,12 +248,14 @@ public class SapArchiveProfileSettings
     public string? DescriptionTemplate { get; set; }
 
     /// <summary>
-    /// Validates the profile settings for configuration completeness and consistency.
+    /// Validates the profile settings for configuration completeness and consistency. Problems are
+    /// returned as codes rather than text, because this assembly has no localized resources -- the UI
+    /// layer turns them into messages in the operator's language.
     /// </summary>
     /// <returns>A list of validation problems. An empty list indicates success.</returns>
-    public IReadOnlyList<string> Validate()
+    public IReadOnlyList<SapSettingsIssue> Validate()
     {
-        var problems = new List<string>();
+        var problems = new List<SapSettingsIssue>();
         if (!EnableUpload)
         {
             return problems;
@@ -261,31 +263,31 @@ public class SapArchiveProfileSettings
 
         if (string.IsNullOrWhiteSpace(ArchiveId))
         {
-            problems.Add("ArchiveId is required when SAP ArchiveLink upload is enabled.");
+            problems.Add(new SapSettingsIssue(SapSettingsProblem.ArchiveIdMissing));
         }
         var connection = Connection;
         if (connection != null)
         {
             if (string.IsNullOrWhiteSpace(connection.Host) || !connection.Host.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
             {
-                problems.Add("SAP Host is required and must start with https://.");
+                problems.Add(new SapSettingsIssue(SapSettingsProblem.HostMissingOrNotHttps));
             }
             if (string.IsNullOrWhiteSpace(connection.ServiceName))
             {
-                problems.Add("SAP ServiceName is required.");
+                problems.Add(new SapSettingsIssue(SapSettingsProblem.ServiceNameMissing));
             }
             if (string.IsNullOrWhiteSpace(connection.Client) || connection.Client.Length != 3)
             {
-                problems.Add("SAP Client must be 3 digits.");
+                problems.Add(new SapSettingsIssue(SapSettingsProblem.ClientNotThreeDigits));
             }
             if (string.IsNullOrWhiteSpace(connection.User))
             {
-                problems.Add("SAP User is required.");
+                problems.Add(new SapSettingsIssue(SapSettingsProblem.UserMissing));
             }
         }
         if (BarcodeSource == BarcodeSource.Fixed && string.IsNullOrWhiteSpace(FixedBarcode))
         {
-            problems.Add("FixedBarcode is required when BarcodeSource is Fixed.");
+            problems.Add(new SapSettingsIssue(SapSettingsProblem.FixedBarcodeMissing));
         }
         if (!string.IsNullOrWhiteSpace(BarcodeRegex))
         {
@@ -295,9 +297,40 @@ public class SapArchiveProfileSettings
             }
             catch (ArgumentException ex)
             {
-                problems.Add($"BarcodeRegex is invalid: {ex.Message}");
+                problems.Add(new SapSettingsIssue(SapSettingsProblem.BarcodeRegexInvalid, ex.Message));
             }
         }
         return problems;
     }
+}
+
+/// <summary>
+/// A configuration problem found by <see cref="SapArchiveProfileSettings.Validate"/>.
+/// </summary>
+public enum SapSettingsProblem
+{
+    ArchiveIdMissing,
+    HostMissingOrNotHttps,
+    ServiceNameMissing,
+    ClientNotThreeDigits,
+    UserMissing,
+    FixedBarcodeMissing,
+    BarcodeRegexInvalid
+}
+
+/// <summary>
+/// One validation problem, plus any detail that only the check itself knows (such as the regex parser's
+/// complaint). The UI turns this into a localized message.
+/// </summary>
+public class SapSettingsIssue
+{
+    public SapSettingsIssue(SapSettingsProblem problem, string? detail = null)
+    {
+        Problem = problem;
+        Detail = detail;
+    }
+
+    public SapSettingsProblem Problem { get; }
+
+    public string? Detail { get; }
 }

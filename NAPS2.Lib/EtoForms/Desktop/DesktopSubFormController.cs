@@ -10,6 +10,8 @@ public class DesktopSubFormController : IDesktopSubFormController
     private readonly DesktopImagesController _desktopImagesController;
     private readonly TesseractLanguageManager _tesseractLanguageManager;
 
+    private static ConsoleForm? _consoleForm;
+
     public DesktopSubFormController(IFormFactory formFactory, UiImageList imageList,
         DesktopImagesController desktopImagesController, TesseractLanguageManager tesseractLanguageManager)
     {
@@ -123,6 +125,26 @@ public class DesktopSubFormController : IDesktopSubFormController
     public void ShowSettingsForm()
     {
         _formFactory.Create<SettingsForm>().ShowModal();
+    }
+
+    /// <summary>
+    /// Opens the diagnostic console, or brings the existing one forward. Static because
+    /// <see cref="WithSelection"/> hands out new controller instances, and there must only ever be one
+    /// console window.
+    /// </summary>
+    public void ShowConsoleForm()
+    {
+        if (_consoleForm != null)
+        {
+            _consoleForm.BringToFront();
+            return;
+        }
+        var form = _formFactory.Create<ConsoleForm>();
+        form.Closed += (_, _) => _consoleForm = null;
+        form.Show();
+        // Only remember it once it actually opened. Remembering a form that failed to show would leave
+        // the button permanently dead, because every later click would take the "already open" branch.
+        _consoleForm = form;
     }
 
     public void ShowAboutForm()

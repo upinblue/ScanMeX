@@ -3203,5 +3203,401 @@ namespace NAPS2.Lang.Resources {
             }
         }
 
+        /// <summary>
+        ///   Looks up a localized string similar to Uploaded to {0}.
+        /// </summary>
+        internal static string UploadNotificationSucceeded {
+            get {
+                return ResourceManager.GetString("UploadNotificationSucceeded", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Upload of {0} failed.
+        /// </summary>
+        internal static string UploadNotificationFailed {
+            get {
+                return ResourceManager.GetString("UploadNotificationFailed", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Upload cancelled..
+        /// </summary>
+        internal static string UploadCancelled {
+            get {
+                return ResourceManager.GetString("UploadCancelled", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Uploading requires PDF output. Change the auto save file name to end in .pdf..
+        /// </summary>
+        internal static string UploadRequiresPdf {
+            get {
+                return ResourceManager.GetString("UploadRequiresPdf", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Unresolved placeholder: {0}.
+        /// </summary>
+        internal static string UnresolvedPlaceholder {
+            get {
+                return ResourceManager.GetString("UnresolvedPlaceholder", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Console.
+        /// </summary>
+        internal static string Console {
+            get {
+                return ResourceManager.GetString("Console", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Upload to SharePoint.
+        /// </summary>
+        internal static string SharePointUploadTitle {
+            get {
+                return ResourceManager.GetString("SharePointUploadTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Preparing upload for {0}.
+        /// </summary>
+        internal static string SharePointUploadPreparing {
+            get {
+                return ResourceManager.GetString("SharePointUploadPreparing", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Authenticating with Microsoft Graph.
+        /// </summary>
+        internal static string SharePointAuthenticating {
+            get {
+                return ResourceManager.GetString("SharePointAuthenticating", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Resolving SharePoint site.
+        /// </summary>
+        internal static string SharePointResolvingSite {
+            get {
+                return ResourceManager.GetString("SharePointResolvingSite", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Resolving document library.
+        /// </summary>
+        internal static string SharePointResolvingLibrary {
+            get {
+                return ResourceManager.GetString("SharePointResolvingLibrary", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Uploading {0} ({1}%).
+        /// </summary>
+        internal static string SharePointUploadingFile {
+            get {
+                return ResourceManager.GetString("SharePointUploadingFile", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to SAP ArchiveLink.
+        /// </summary>
+        internal static string SapArchiveLink {
+            get {
+                return ResourceManager.GetString("SapArchiveLink", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Enable SAP ArchiveLink upload.
+        /// </summary>
+        internal static string SapEnableUpload {
+            get {
+                return ResourceManager.GetString("SapEnableUpload", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Archive ID.
+        /// </summary>
+        internal static string SapArchiveIdLabel {
+            get {
+                return ResourceManager.GetString("SapArchiveIdLabel", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Object key source.
+        /// </summary>
+        internal static string SapObjectKeySourceLabel {
+            get {
+                return ResourceManager.GetString("SapObjectKeySourceLabel", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Prompt for every scan.
+        /// </summary>
+        internal static string SapObjectKeyPromptEachScan {
+            get {
+                return ResourceManager.GetString("SapObjectKeyPromptEachScan", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to From barcode.
+        /// </summary>
+        internal static string SapObjectKeyFromBarcode {
+            get {
+                return ResourceManager.GetString("SapObjectKeyFromBarcode", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to From filename.
+        /// </summary>
+        internal static string SapObjectKeyFromFilename {
+            get {
+                return ResourceManager.GetString("SapObjectKeyFromFilename", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Fixed value.
+        /// </summary>
+        internal static string SapObjectKeyFixedValue {
+            get {
+                return ResourceManager.GetString("SapObjectKeyFixedValue", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Regex.
+        /// </summary>
+        internal static string SapRegexLabel {
+            get {
+                return ResourceManager.GetString("SapRegexLabel", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Test connection.
+        /// </summary>
+        internal static string SapTestConnection {
+            get {
+                return ResourceManager.GetString("SapTestConnection", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to SAP connection.
+        /// </summary>
+        internal static string SapConnectionTitle {
+            get {
+                return ResourceManager.GetString("SapConnectionTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to SAP object key.
+        /// </summary>
+        internal static string SapObjectKeyPromptTitle {
+            get {
+                return ResourceManager.GetString("SapObjectKeyPromptTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Enter object key for SAP ArchiveLink:.
+        /// </summary>
+        internal static string SapObjectKeyPromptLabel {
+            get {
+                return ResourceManager.GetString("SapObjectKeyPromptLabel", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Upload to SAP ArchiveLink.
+        /// </summary>
+        internal static string SapUploadTitle {
+            get {
+                return ResourceManager.GetString("SapUploadTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Preparing SAP upload for {0}.
+        /// </summary>
+        internal static string SapUploadPreparing {
+            get {
+                return ResourceManager.GetString("SapUploadPreparing", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Uploading document to SAP ArchiveLink.
+        /// </summary>
+        internal static string SapUploading {
+            get {
+                return ResourceManager.GetString("SapUploading", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to HTTP {0} {1}: {2} (transaction {3}).
+        /// </summary>
+        internal static string SapUploadErrorDetail {
+            get {
+                return ResourceManager.GetString("SapUploadErrorDetail", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to No object key/barcode found..
+        /// </summary>
+        internal static string SapNoObjectKey {
+            get {
+                return ResourceManager.GetString("SapNoObjectKey", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The upload could not be started..
+        /// </summary>
+        internal static string SapUploadNotStarted {
+            get {
+                return ResourceManager.GetString("SapUploadNotStarted", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Warning: TLS certificates are not validated..
+        /// </summary>
+        internal static string SapCertificateWarning {
+            get {
+                return ResourceManager.GetString("SapCertificateWarning", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Connection test failed..
+        /// </summary>
+        internal static string SapConnectionTestFailed {
+            get {
+                return ResourceManager.GetString("SapConnectionTestFailed", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to CSRF token: {0}.
+        /// </summary>
+        internal static string SapCsrfTokenReceived {
+            get {
+                return ResourceManager.GetString("SapCsrfTokenReceived", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Select a PDF for the SAP test upload.
+        /// </summary>
+        internal static string SapTestUploadSelectPdf {
+            get {
+                return ResourceManager.GetString("SapTestUploadSelectPdf", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to No PDF file was selected for the SAP test upload..
+        /// </summary>
+        internal static string SapTestUploadNoPdfSelected {
+            get {
+                return ResourceManager.GetString("SapTestUploadNoPdfSelected", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Please select a PDF file for the SAP test upload..
+        /// </summary>
+        internal static string SapTestUploadNotAPdf {
+            get {
+                return ResourceManager.GetString("SapTestUploadNotAPdf", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The archive ID is required when SAP ArchiveLink upload is enabled..
+        /// </summary>
+        internal static string SapValidationArchiveIdRequired {
+            get {
+                return ResourceManager.GetString("SapValidationArchiveIdRequired", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The SAP host is required and must start with https://..
+        /// </summary>
+        internal static string SapValidationHostRequired {
+            get {
+                return ResourceManager.GetString("SapValidationHostRequired", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The SAP service name is required..
+        /// </summary>
+        internal static string SapValidationServiceNameRequired {
+            get {
+                return ResourceManager.GetString("SapValidationServiceNameRequired", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The SAP client must be 3 digits..
+        /// </summary>
+        internal static string SapValidationClientRequired {
+            get {
+                return ResourceManager.GetString("SapValidationClientRequired", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The SAP user is required..
+        /// </summary>
+        internal static string SapValidationUserRequired {
+            get {
+                return ResourceManager.GetString("SapValidationUserRequired", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to A fixed barcode is required when the object key source is a fixed value..
+        /// </summary>
+        internal static string SapValidationFixedBarcodeRequired {
+            get {
+                return ResourceManager.GetString("SapValidationFixedBarcodeRequired", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The barcode regex is invalid: {0}.
+        /// </summary>
+        internal static string SapValidationBarcodeRegexInvalid {
+            get {
+                return ResourceManager.GetString("SapValidationBarcodeRegexInvalid", resourceCulture);
+            }
+        }
+
     }
 }

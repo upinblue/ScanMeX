@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Threading;
 using Eto.Drawing;
 using Eto.Forms;
@@ -93,6 +94,7 @@ public class DesktopController
     {
         if (_initialized) return;
         _initialized = true;
+        LogStartupBanner();
         _sharedDeviceManager.StartSharing();
         StartProcessCoordinator();
         ShowStartupMessages();
@@ -102,6 +104,19 @@ public class DesktopController
         await RunStillImageEvents();
         SetFirstRunDate();
         ShowUpdatePrompt();
+    }
+
+    /// <summary>
+    /// The first lines in the console, so a screenshot of it is enough to know which build and language
+    /// produced everything below.
+    /// </summary>
+    private void LogStartupBanner()
+    {
+        ScanConsole.App(
+            $"ScanMe {AssemblyHelper.Version} started. Culture={CultureInfo.CurrentUICulture.Name}, " +
+            $"OS={Environment.OSVersion}, Data folder='{Paths.AppData}'");
+        ScanConsole.App($"Debug logging to file is {(_config.Get(c => c.EnableDebugLogging) ? "on" : "off")}. " +
+                        "The console always records everything regardless of that setting.");
     }
 
     private void ShowDonationOrReviewPrompt()

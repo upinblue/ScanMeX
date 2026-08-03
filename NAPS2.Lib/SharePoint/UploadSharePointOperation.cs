@@ -1,6 +1,5 @@
 using NAPS2.ImportExport;
 using NAPS2.Scan;
-using Eto.Forms;
 
 namespace NAPS2.SharePoint;
 
@@ -18,16 +17,21 @@ internal class UploadSharePointOperation : OperationBase
         AllowBackground = true;
     }
 
+    /// <summary>
+    /// Why the upload failed, for the caller to report. Null while the operation is running or if it succeeded.
+    /// </summary>
+    public string? FailureMessage { get; private set; }
+
     public bool Start(SharePointUploadSettings settings, string localFilePath, string fileName)
     {
         _settings = settings;
         _localFilePath = localFilePath;
         _fileName = fileName;
 
-        ProgressTitle = "Upload to SharePoint";
+        ProgressTitle = UiStrings.SharePointUploadTitle;
         Status = new OperationStatus
         {
-            StatusText = $"Preparing upload for {_fileName}",
+            StatusText = string.Format(UiStrings.SharePointUploadPreparing, _fileName),
             MaxProgress = 100
         };
 
@@ -41,54 +45,42 @@ internal class UploadSharePointOperation : OperationBase
                     Status.CurrentProgress = percent;
                     if (percent < 10)
                     {
-                        Status.StatusText = "Authenticating with Microsoft Graph";
+                        Status.StatusText = UiStrings.SharePointAuthenticating;
                     }
                     else if (percent < 30)
                     {
-                        Status.StatusText = "Resolving SharePoint site";
+                        Status.StatusText = UiStrings.SharePointResolvingSite;
                     }
                     else if (percent < 40)
                     {
-                        Status.StatusText = "Resolving document library";
+                        Status.StatusText = UiStrings.SharePointResolvingLibrary;
                     }
                     else if (percent < 100)
                     {
-                        Status.StatusText = $"Uploading {_fileName} ({percent}%)";
+                        Status.StatusText = string.Format(UiStrings.SharePointUploadingFile, _fileName, percent);
                     }
-                    Debug.WriteLine($"[SP][OP] progress={percent}, status='{Status.StatusText}'");
+                    // Deliberately not logged per percent -- the stage changes below are what matters,
+                    // and a line per percent would bury everything else in the console.
                     InvokeStatusChanged();
                 });
 
                 await _uploadService.UploadFileAsync(_settings, _localFilePath, _fileName, progress, CancelToken);
-                Debug.WriteLine("[SP][OP] Upload succeeded");
+                ScanConsole.Upload("[SP] Upload succeeded");
                 return true;
             }
             catch (OperationCanceledException)
             {
-                Debug.WriteLine("[SP][OP] Upload canceled");
+                ScanConsole.Upload("[SP] Upload canceled");
+                FailureMessage = UiStrings.UploadCancelled;
                 return false;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[SP][OP] Upload failed: {ex.Message}\n{ex}");
-                InvokeError("SharePoint upload failed", ex);
-                // Also show an immediate UI error prompt for clarity on the UI thread
-                try
-                {
-                    Invoker.Current.Invoke(() =>
-                    {
-                        if (Application.Instance?.MainForm != null)
-                        {
-                            MessageBox.Show(Application.Instance.MainForm,
-                                $"SharePoint upload failed: {ex.Message}",
-                                "Upload to SharePoint", MessageBoxButtons.OK, MessageBoxType.Error);
-                        }
-                    });
-                }
-                catch
-                {
-                    // Ignore UI errors
-                }
+                ScanConsole.Upload($"[SP] Upload failed: {ex.Message}");
+                // The caller reports this to the operator; raising Error too would show a second message
+                // for the same failure whenever the operation is created through the operation factory.
+                FailureMessage = ex.Message;
+                Log.ErrorException("SharePoint upload failed", ex);
                 return false;
             }
         });

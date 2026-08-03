@@ -37,6 +37,11 @@
   <ItemGroup>
     <Compile Include="../NAPS2.Lib/Paths.cs" />
     <Compile Include="../NAPS2.Lib/NLogConfig.cs" />
+    <!-- Pulled in because NLogConfig registers the console target. The worker has no console window of
+         its own, so its buffer is simply never read; keeping the logging setup identical is worth more
+         than the few unused kilobytes. -->
+    <Compile Include="../NAPS2.Lib/Logging/ConsoleLog.cs" />
+    <Compile Include="../NAPS2.Lib/Logging/ConsoleLogTarget.cs" />
     <Compile Include="../NAPS2.Lib/EntryPoints/CoreWorkerEntryPoint.cs" />
   </ItemGroup>
 </Project>

@@ -216,7 +216,7 @@ public class AutoSaveSettingsForm : EtoDialogBase
         }
         if (ScanProfile?.UploadsToSap() == true)
         {
-            targets.Add(SapUi.ArchiveLink);
+            targets.Add(UiStrings.SapArchiveLink);
         }
         return targets.Count > 0
             ? string.Format(UiStrings.UploadTargetsEnabled, string.Join(", ", targets))

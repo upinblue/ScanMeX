@@ -20,33 +20,42 @@ internal class SapArchivePostScanService
         _operationProgress = operationProgress;
     }
 
-    public async Task<bool> UploadSavedFileAsync(ScanProfile profile, string filePath, IReadOnlyList<ProcessedImage> images,
-        ScanContext ctx)
+    /// <summary>
+    /// Uploads a saved file to SAP ArchiveLink. Returns null on success, otherwise the reason it failed
+    /// so the caller can tell the operator what went wrong rather than just that something did.
+    /// </summary>
+    public async Task<string?> UploadSavedFileAsync(ScanProfile profile, string filePath,
+        IReadOnlyList<ProcessedImage> images, ScanContext ctx)
     {
         var settings = profile.SapArchiveSettings;
         if (settings == null)
         {
-            return true;
+            ScanConsole.Upload("SAP ArchiveLink skipped: the profile has no SAP settings.");
+            return null;
         }
 
         var barcode = ResolveBarcode(settings, filePath, images, ctx);
+        ScanConsole.Upload(
+            $"SAP object key from {settings.BarcodeSource}: '{barcode ?? "(none)"}' " +
+            $"(Archive='{settings.ArchiveId}', ArObject='{settings.ArObject}', DocType='{settings.ArDocType}')");
         if (string.IsNullOrWhiteSpace(barcode))
         {
             if (settings.BarcodeSource == BarcodeSource.PromptUser)
             {
                 barcode = PromptForObjectKey(filePath);
+                ScanConsole.Upload($"SAP object key entered by the operator: '{barcode ?? "(cancelled)"}'");
             }
             else
             {
                 Log.Logger.LogError("SAP ArchiveLink upload skipped for {FilePath}: no barcode found for source {BarcodeSource}",
                     filePath, settings.BarcodeSource);
-                return false;
+                return UiStrings.SapNoObjectKey;
             }
         }
         if (string.IsNullOrWhiteSpace(barcode))
         {
             Log.Logger.LogWarning("SAP ArchiveLink upload skipped for {FilePath}: no barcode", filePath);
-            return false;
+            return UiStrings.SapNoObjectKey;
         }
 
         var connection = settings.Connection ?? _config.Get(c => c.SapConnection);
@@ -61,14 +70,26 @@ internal class SapArchivePostScanService
             fileName,
             SapMimeTypeResolver.Resolve(filePath));
 
+        ScanConsole.Upload(
+            $"SAP request: Host='{connection.Host}', Service='{connection.ServiceName}', Client='{connection.Client}', " +
+            $"User='{connection.User}', File='{fileName}', ObjectId='{objectId ?? "(none)"}'");
+
         var uploader = new HttpSapArchiveUploader(connection);
         var op = new UploadSapArchiveOperation();
-        if (op.Start(uploader, request))
+        if (!op.Start(uploader, request))
         {
-            _operationProgress.ShowProgress(op);
-            return await op.Success;
+            ScanConsole.Upload("SAP upload could not be started.");
+            return UiStrings.SapUploadNotStarted;
         }
-        return false;
+        _operationProgress.ShowProgress(op);
+        if (await op.Success)
+        {
+            ScanConsole.Upload($"SAP upload OK. ArchivDocId='{op.Result?.ArchivDocId}'");
+            return null;
+        }
+        var failure = op.FailureMessage ?? UiStrings.SapUploadNotStarted;
+        ScanConsole.Upload($"SAP upload failed: {failure}");
+        return failure;
     }
 
     private string? ResolveBarcode(SapArchiveProfileSettings settings, string filePath, IReadOnlyList<ProcessedImage> images,

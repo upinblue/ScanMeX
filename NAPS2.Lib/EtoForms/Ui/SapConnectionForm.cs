@@ -15,19 +15,19 @@ internal class SapConnectionForm : EtoDialogBase
     private readonly DropDownWidget<string> _language = new(scale: false);
     private readonly TextBox _user = new();
     private readonly PasswordBox _password = new();
-    private readonly CheckBox _ignoreCertificateErrors = new() { Text = "SSL-Zertifikatsprüfung deaktivieren (nur Testumgebung!)" };
+    private readonly CheckBox _ignoreCertificateErrors = new() { Text = UiStrings.SapIgnoreSslCertificateCheck };
     private readonly Label _certificateWarning = new()
     {
-        Text = "Warnung: TLS-Zertifikate werden nicht geprüft.",
+        Text = UiStrings.SapCertificateWarning,
         TextColor = Colors.Red
     };
     private readonly LayoutVisibility _certificateWarningVis = new(false);
-    private readonly Button _testConnection = new() { Text = SapUi.TestConnection };
+    private readonly Button _testConnection = new() { Text = UiStrings.SapTestConnection };
     private readonly Label _testResult = new();
 
     public SapConnectionForm(Naps2Config config) : base(config)
     {
-        Title = SapUi.SapConnection;
+        Title = UiStrings.SapConnectionTitle;
         IconName = "cog_small";
         _language.Items = new[] { "DE", "EN", "FR", "IT", "ES" };
         _ignoreCertificateErrors.CheckedChanged += (_, _) =>
@@ -42,13 +42,13 @@ internal class SapConnectionForm : EtoDialogBase
         FormStateController.FixedHeightLayout = true;
 
         LayoutController.Content = L.Column(
-            L.GroupBox(SapUi.SapConnection, L.Column(
-                C.Label("Host"), _host,
-                C.Label("Service-Name"), _serviceName,
-                C.Label("Mandant"), _client,
-                C.Label("Sprache"), _language,
-                C.Label("Benutzer"), _user,
-                C.Label("Passwort"), _password,
+            L.GroupBox(UiStrings.SapConnectionTitle, L.Column(
+                C.Label(UiStrings.SapHostLabel), _host,
+                C.Label(UiStrings.SapServiceNameLabel), _serviceName,
+                C.Label(UiStrings.SapClientLabel), _client,
+                C.Label(UiStrings.SapLanguageLabel), _language,
+                C.Label(UiStrings.SapUserLabel), _user,
+                C.Label(UiStrings.SapPasswordLabel), _password,
                 _ignoreCertificateErrors,
                 _certificateWarning.Visible(_certificateWarningVis),
                 L.Row(_testConnection, _testResult)
@@ -94,19 +94,22 @@ internal class SapConnectionForm : EtoDialogBase
     {
         if (string.IsNullOrWhiteSpace(config.Host) || !config.Host.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
         {
-            MessageBox.Show(this, "Host muss mit https:// beginnen.", SapUi.SapConnection, MessageBoxButtons.OK, MessageBoxType.Error);
+            MessageBox.Show(this, UiStrings.SapValidationHostRequired, UiStrings.SapConnectionTitle,
+                MessageBoxButtons.OK, MessageBoxType.Error);
             _host.Focus();
             return false;
         }
         if (string.IsNullOrWhiteSpace(config.ServiceName))
         {
-            MessageBox.Show(this, "Service-Name ist erforderlich.", SapUi.SapConnection, MessageBoxButtons.OK, MessageBoxType.Error);
+            MessageBox.Show(this, UiStrings.SapValidationServiceNameRequired, UiStrings.SapConnectionTitle,
+                MessageBoxButtons.OK, MessageBoxType.Error);
             _serviceName.Focus();
             return false;
         }
         if (config.Client?.Length != 3 || !config.Client.All(char.IsDigit))
         {
-            MessageBox.Show(this, "Mandant muss 3-stellig sein.", SapUi.SapConnection, MessageBoxButtons.OK, MessageBoxType.Error);
+            MessageBox.Show(this, UiStrings.SapValidationClientRequired, UiStrings.SapConnectionTitle,
+                MessageBoxButtons.OK, MessageBoxType.Error);
             _client.Focus();
             return false;
         }
@@ -120,12 +123,12 @@ internal class SapConnectionForm : EtoDialogBase
         {
             return;
         }
-        _testResult.Text = "...";
+        _testResult.Text = UiStrings.Ellipsis;
         var result = await new HttpSapArchiveUploader(config).TestConnectionAsync(CancellationToken.None);
         _testResult.TextColor = result.Success ? Colors.Green : Colors.Red;
         _testResult.Text = result.Success
-            ? $"? CSRF-Token: {Shorten(result.CsrfToken)}"
-            : result.ErrorMessage ?? "Verbindungstest fehlgeschlagen.";
+            ? string.Format(UiStrings.SapCsrfTokenReceived, Shorten(result.CsrfToken))
+            : result.ErrorMessage ?? UiStrings.SapConnectionTestFailed;
     }
 
     private void Save()

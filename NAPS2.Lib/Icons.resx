@@ -373,6 +373,12 @@
   <data name="large_tiles_small" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\large_tiles-small.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
+  <data name="console" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\console.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="console_hires" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\console-hires.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
   <data name="control_play_blue" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\control_play_blue.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>

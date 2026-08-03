@@ -365,6 +365,8 @@ public abstract class DesktopForm : EtoFormBase
         if (!hiddenButtons.HasFlag(ToolbarButtons.Clear))
             CreateToolbarButton(Commands.ClearAll);
         CreateToolbarSeparator();
+        if (!hiddenButtons.HasFlag(ToolbarButtons.Console))
+            CreateToolbarButton(Commands.Console);
         if (!hiddenButtons.HasFlag(ToolbarButtons.Language))
             CreateToolbarMenu(Commands.LanguageMenu, GetLanguageMenuProvider());
         MaybeCreateToolbarStackedButtons(

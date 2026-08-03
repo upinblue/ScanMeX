@@ -296,6 +296,11 @@ public class DesktopCommands
             Text = UiStrings.Language,
             IconName = "world"
         };
+        Console = new ActionCommand(desktopSubFormController.ShowConsoleForm)
+        {
+            Text = UiStrings.Console,
+            IconName = "console"
+        };
         Settings = new ActionCommand(desktopSubFormController.ShowSettingsForm)
         {
             Text = UiStrings.Settings,
@@ -421,6 +426,7 @@ public class DesktopCommands
     public ActionCommand Delete { get; set; }
     public ActionCommand ClearAll { get; set; }
     public ActionCommand LanguageMenu { get; set; }
+    public ActionCommand Console { get; set; }
     public ActionCommand Settings { get; set; }
     public ActionCommand About { get; set; }
     public ActionCommand ZoomIn { get; set; }
