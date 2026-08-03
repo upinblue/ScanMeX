@@ -81,7 +81,10 @@ internal class SapArchivePostScanService
             ScanConsole.Upload("SAP upload could not be started.");
             return UiStrings.SapUploadNotStarted;
         }
-        _operationProgress.ShowProgress(op);
+        // Background rather than modal: a batch produces one upload per document, and a modal dialog per
+        // document would block the window throughout. The progress notification still opens the full
+        // dialog when clicked.
+        _operationProgress.ShowBackgroundProgress(op);
         if (await op.Success)
         {
             ScanConsole.Upload($"SAP upload OK. ArchivDocId='{op.Result?.ArchivDocId}'");
@@ -108,36 +111,25 @@ internal class SapArchivePostScanService
         ScanContext ctx)
     {
         var pattern = Substitute(settings.BarcodeRegex, ctx);
-        var matches = images
-            .Select(x => x.PostProcessingData.Barcode.DetectedText)
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Select(x => ExtractWithRegex(x!, pattern))
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        return matches.Count == 1 ? matches[0] : null;
+        var key = SapObjectKeyResolver.FromScannedBarcodes(
+            ctx.SeparatorBarcodeValue,
+            images.Select(x => x.PostProcessingData.Barcode.DetectedText),
+            pattern);
+
+        if (!string.IsNullOrWhiteSpace(ctx.SeparatorBarcodeValue) && key == ctx.SeparatorBarcodeValue?.Trim())
+        {
+            ScanConsole.Upload($"SAP object key taken from the document's separator barcode: '{key}'");
+        }
+        else if (!string.IsNullOrWhiteSpace(ctx.SeparatorBarcodeValue))
+        {
+            ScanConsole.Upload(
+                $"Separator barcode '{ctx.SeparatorBarcodeValue}' with SAP regex '{pattern}' gave '{key ?? "(none)"}'.");
+        }
+        return key;
     }
 
-    private static string? ExtractWithRegex(string value, string? pattern)
-    {
-        if (string.IsNullOrWhiteSpace(pattern))
-        {
-            return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-        }
-        var match = Regex.Match(value, pattern, RegexOptions.CultureInvariant);
-        if (!match.Success)
-        {
-            return null;
-        }
-        for (var i = 1; i < match.Groups.Count; i++)
-        {
-            if (match.Groups[i].Success)
-            {
-                return match.Groups[i].Value.Trim();
-            }
-        }
-        return match.Value.Trim();
-    }
+    private static string? ExtractWithRegex(string value, string? pattern) =>
+        SapObjectKeyResolver.ExtractWithRegex(value, pattern);
 
     private string? PromptForObjectKey(string filePath)
     {

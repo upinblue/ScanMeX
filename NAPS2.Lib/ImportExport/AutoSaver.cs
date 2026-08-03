@@ -195,6 +195,15 @@ public class AutoSaver
         }
         ScanConsole.Document(
             $"Document {i + 1}: {images.Count} page(s), barcode '{ctx.SeparatorBarcodeValue ?? "(none)"}' -> '{subPath}'");
+        if (workflow.SeparationMode != DocumentSeparationMode.None && ctx.SeparatorBarcodeValue == null)
+        {
+            // Pages that arrived before the first separator page. Usually a misfeed or a cover sheet that
+            // didn't read, and the upload will fail for lack of an object key, so name the cause here
+            // rather than letting it surface as a puzzling archive error.
+            ScanConsole.Document(
+                $"WARNING: document {i + 1} has no separator barcode. These {images.Count} page(s) came " +
+                "before the first barcode page and cannot be archived under an object key.");
+        }
         if (settings.PromptForFilePath)
         {
             string? newPath = null!;
@@ -331,9 +340,15 @@ public class AutoSaver
             return;
         }
 
-        // Success and failure are both reported by DocumentUploadService as a notification, the same way
-        // a saved file is, so there's nothing left to do with the result here.
-        await _documentUploadService.UploadAsync(document);
+        // DocumentUploadService reports the outcome as a notification. A failed automatic upload
+        // additionally goes into the queue: without that, a SAP outage or a network glitch left the
+        // document saved locally with nothing recording that it never reached the archive. In the queue
+        // it keeps the upload button enabled and can be retried once the cause is fixed.
+        if (!await _documentUploadService.UploadAsync(document))
+        {
+            ScanConsole.Upload($"'{document.FileName}' queued for retry via the upload button.");
+            _uploadQueue?.Add(document);
+        }
     }
 
     private ScanContext CreateScanContext(string template, int index, List<ProcessedImage> images,

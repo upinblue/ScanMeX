@@ -79,10 +79,14 @@ public class DocumentUploadController
         }
 
         // Mark as saved first so closing the window doesn't warn about unsaved pages, then drop them.
-        _imageList.MarkSaved(_imageList.CurrentState, cleanupWanted.SelectMany(x => x.Context.Images).ToList());
-        if (cleanupWanted.Count == uploaded.Count && !_queue.HasPending)
+        var cleanedPages = cleanupWanted.SelectMany(x => x.Context.Images).ToList();
+        _imageList.MarkSaved(_imageList.CurrentState, cleanedPages);
+        // Only clear the window when it holds nothing beyond the archived documents. The queue can now
+        // also contain documents whose automatic upload failed, and those may be retried long after the
+        // operator has started scanning something else -- which must not be thrown away here.
+        if (cleanupWanted.Count == uploaded.Count && !_queue.HasPending &&
+            _imageList.Images.Count <= cleanedPages.Count)
         {
-            // Everything in the window belongs to documents that are now archived.
             Invoker.Current.Invoke(() => _imageListActions.DeleteAll());
         }
     }

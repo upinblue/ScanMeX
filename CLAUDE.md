@@ -67,6 +67,17 @@ up in the same console.
 
 ---
 
+## Archiving invariants
+
+- **The barcode that separated a document is the value it is archived under.** It names the file *and*
+  supplies the SAP object key (`SapObjectKeyResolver.FromScannedBarcodes` prefers it over the pages'
+  primary barcodes). Deriving the key separately lets the file name and the archive key drift apart,
+  which is unnoticeable after the fact — don't reintroduce a second derivation path.
+- **A document that fails to upload goes into `DocumentUploadQueue`**, whether the trigger was manual or
+  automatic, so it can be retried from the upload button. A failed upload must never be a dead end.
+- Uploads use `ShowBackgroundProgress`, not `ShowProgress`: a batch produces one upload per document and
+  modal dialogs would block the window throughout.
+
 ## Localization
 
 All user-visible strings go through `NAPS2.Lib/Lang/Resources/UiStrings.resx`, with a German translation

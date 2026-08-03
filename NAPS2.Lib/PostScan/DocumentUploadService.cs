@@ -106,7 +106,9 @@ public class DocumentUploadService
             var uploadOp = new UploadSharePointOperation(new SharePointUploadService());
             if (uploadOp.Start(settings, document.FilePath, document.FileName))
             {
-                _operationProgress.ShowProgress(uploadOp);
+                // See the note in SapArchivePostScanService: one upload per document must not mean one
+                // modal dialog per document.
+                _operationProgress.ShowBackgroundProgress(uploadOp);
                 if (!await uploadOp.Success)
                 {
                     return uploadOp.FailureMessage ?? UiStrings.SharePointUploadFailedShort;

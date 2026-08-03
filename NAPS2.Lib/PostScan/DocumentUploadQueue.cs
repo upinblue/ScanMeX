@@ -1,8 +1,9 @@
 namespace NAPS2.PostScan;
 
 /// <summary>
-/// Holds documents that have been scanned and saved but not yet uploaded. Only used by profiles with
-/// <see cref="NAPS2.Scan.UploadTrigger.Manual"/>; automatic profiles upload straight away and never enqueue.
+/// Holds documents that have been scanned and saved but not yet archived: everything waiting for the
+/// manual upload button, plus documents whose automatic upload failed, so a target system that was
+/// unreachable at scan time can be retried instead of leaving the document silently unarchived.
 /// </summary>
 public class DocumentUploadQueue
 {
