@@ -178,6 +178,11 @@ internal class ScanPerformer : IScanPerformer
     }
 
     /// <summary>
+    /// The lowest scan resolution at which barcode separation can be expected to work.
+    /// </summary>
+    private const int MinReliableBarcodeDpi = 240;
+
+    /// <summary>
     /// Writes the scan's starting conditions to the console. Most "nothing happened" reports come down to
     /// a profile setting, so the settings that decide whether anything is saved, separated or uploaded are
     /// recorded before the first page arrives.
@@ -197,6 +202,16 @@ internal class ScanPerformer : IScanPerformer
         ScanConsole.Profile(
             $"BarcodeDetection={options.BarcodeDetectionOptions.DetectBarcodes}, " +
             $"AutoSave={scanProfile.EnableAutoSave}, AutoSavePath='{scanProfile.AutoSaveSettings?.FilePath ?? ""}'");
+
+        // Measured against real Code 39 production papers: nothing decodes below 200 dpi, and detection
+        // only becomes reliable from 240 dpi. Scanning at a lower resolution with separation enabled looks
+        // like a broken detector, so say plainly that the resolution is the reason.
+        if (options.BarcodeDetectionOptions.DetectBarcodes && options.Dpi < MinReliableBarcodeDpi)
+        {
+            ScanConsole.Profile(
+                $"WARNING: barcode detection is on but the profile scans at {options.Dpi} dpi. " +
+                $"Barcodes are rarely readable below {MinReliableBarcodeDpi} dpi; use 300 dpi for separation.");
+        }
 
         var targets = new List<string>();
         if (scanProfile.UploadsToSharePoint()) targets.Add("SharePoint");

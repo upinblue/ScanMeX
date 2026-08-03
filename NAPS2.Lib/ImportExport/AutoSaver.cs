@@ -230,7 +230,7 @@ public class AutoSaver
             bool success = await op.Success;
             ScanConsole.Document(success
                 ? $"Saved PDF '{subPath}'."
-                : $"Saving PDF '{subPath}' failed or was cancelled.");
+                : $"Saving PDF '{subPath}' failed: {DescribeFailure(op)}");
             // A file that only exists to be uploaded is deleted again afterwards, so a "saved" notification
             // would point at a path that no longer exists. The upload notification reports it instead.
             bool isStagingCopy = !workflow.KeepLocalCopy && DocumentUploadService.HasAnyTarget(ActiveProfile);
@@ -256,7 +256,7 @@ public class AutoSaver
             bool success = await op.Success;
             ScanConsole.Document(success
                 ? $"Saved image file(s), first is '{op.FirstFileSaved}'."
-                : $"Saving image file(s) to '{subPath}' failed or was cancelled.");
+                : $"Saving image file(s) to '{subPath}' failed: {DescribeFailure(op)}");
             if (success && doNotify && op.FirstFileSaved != null)
             {
                 _notify.ImagesSaved(images.Count, op.FirstFileSaved);
@@ -271,6 +271,21 @@ public class AutoSaver
             }
             return (success, subPath);
         }
+    }
+
+    /// <summary>
+    /// Why a save operation ended without success. A failed save is the single most common reason a scan
+    /// never reaches SharePoint or SAP, so the console has to name the cause rather than just the outcome.
+    /// Operations that fail before starting (an overwrite prompt the operator declined, a file held open
+    /// by another program) never raise an error, which is why the status text is used as a fallback.
+    /// </summary>
+    private static string DescribeFailure(OperationBase op)
+    {
+        if (op.LastError != null)
+        {
+            return $"{op.LastError.ErrorMessage} ({op.LastError.Exception.Message})";
+        }
+        return $"cancelled or declined at '{op.Status?.StatusText}'";
     }
 
     /// <summary>

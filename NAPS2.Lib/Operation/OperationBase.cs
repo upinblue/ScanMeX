@@ -40,7 +40,11 @@ public abstract class OperationBase : IOperation
 
     public event EventHandler<OperationErrorEventArgs>? Error;
 
-    protected OperationErrorEventArgs? LastError { get; private set; }
+    /// <summary>
+    /// The last error raised by this operation, kept so a caller that didn't subscribe to
+    /// <see cref="Error"/> can still report why the operation failed.
+    /// </summary>
+    public OperationErrorEventArgs? LastError { get; private set; }
 
     protected CancellationToken CancelToken => _cts.Token;
 

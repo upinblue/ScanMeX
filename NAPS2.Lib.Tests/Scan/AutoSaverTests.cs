@@ -76,6 +76,24 @@ public class AutoSaverTests : ContextualTests
     }
 
     [Fact]
+    public async Task SinglePdf_InMissingSubfolder_CreatesTheFolder()
+    {
+        // Auto save paths routinely use date placeholders as a subfolder, so on the first scan of each
+        // day the target folder does not exist yet.
+        var settings = new AutoSaveSettings
+        {
+            FilePath = Path.Combine(FolderPath, "$(YYYY)-$(MM)-$(DD)", "test$(n).pdf")
+        };
+
+        var scanned = CreateScannedImages(ImageResources.dog);
+        await _autoSaver.Save(settings, scanned.ToAsyncEnumerable()).ToListAsync();
+
+        var dated = Path.Combine(FolderPath, DateTime.Now.ToString("yyyy-MM-dd"));
+        Assert.True(Directory.Exists(dated), "the dated subfolder should have been created");
+        PdfAsserts.AssertImages(Path.Combine(dated, "test1.pdf"), ImageResources.dog);
+    }
+
+    [Fact]
     public async Task SingleJpeg()
     {
         var settings = new AutoSaveSettings
