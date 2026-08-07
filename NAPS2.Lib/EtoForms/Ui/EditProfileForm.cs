@@ -29,6 +29,9 @@ public class EditProfileForm : EtoDialogBase
     private readonly EnumDropDownWidget<ScanScale> _scale = new();
     private readonly CheckBox _enableAutoSave = new() { Text = UiStrings.EnableAutoSave };
     private readonly LinkButton _autoSaveSettings = C.Link(UiStrings.AutoSaveSettings);
+    // Ticking an upload target without auto save leaves a profile that scans and then does nothing at
+    // all, which nothing in the scan window reports. This line says so where the mistake is made.
+    private readonly Label _uploadNeedsAutoSave = C.Label("");
     private readonly Button _advanced = new() { Text = UiStrings.Advanced };
     private readonly SliderWithTextBox _brightnessSlider = new();
     private readonly SliderWithTextBox _contrastSlider = new();
@@ -49,7 +52,9 @@ public class EditProfileForm : EtoDialogBase
     private readonly TextBox _sapClient = new();
     private readonly TextBox _sapLanguage = new();
     private readonly TextBox _sapUser = new();
-    private readonly PasswordBox _sapPassword = new();
+    // Always starts empty and only overwrites the stored password when something is typed, so the box
+    // being blank has to read as "unchanged" rather than "no password set".
+    private readonly PasswordBox _sapPassword = new() { ToolTip = UiStrings.SapPasswordKeepHint };
     private readonly CheckBox _sapIgnoreSsl = new() { Text = UiStrings.SapIgnoreSslCertificateCheck };
     private readonly DropDownWidget<SapObjectTypeCatalogEntry> _sapObjectType = new();
     private readonly TextBox _sapArchiveId = new();
@@ -58,8 +63,11 @@ public class EditProfileForm : EtoDialogBase
     private readonly RadioButton _sapBarcodeObjectKey;
     private readonly RadioButton _sapFilenameObjectKey;
     private readonly RadioButton _sapFixedObjectKey;
-    private readonly TextBox _sapBarcodeRegex = new();
-    private readonly TextBox _sapFilenameRegex = new();
+    // One regex, one text box. The profile stores a single BarcodeRegex, and showing it twice -- once
+    // under "from barcode" and once under "from file name" -- meant an operator could type a pattern into
+    // the box that wasn't the one their selected source read from, and lose it on save.
+    private readonly TextBox _sapObjectKeyRegex = new();
+    private readonly Label _sapObjectKeyRegexLabel = C.Label(UiStrings.SapObjectKeyRegexBarcodeLabel);
     private readonly TextBox _sapFixedObjectKeyValue = new();
     private readonly TextBox _sapDescriptionTemplate = new() { PlaceholderText = UiStrings.SapObjectIdPlaceholder };
     private readonly Button _sapTestConnection = new() { Text = UiStrings.SapTestUpload };
@@ -186,7 +194,8 @@ public class EditProfileForm : EtoDialogBase
                     _enableAutoSave,
                     _autoSaveSettings
                 ),
-                C.Label(UiStrings.UploadRequiresAutoSaveInfo)
+                C.Label(UiStrings.UploadRequiresAutoSaveInfo),
+                _uploadNeedsAutoSave
             )
         );
 
@@ -229,6 +238,7 @@ public class EditProfileForm : EtoDialogBase
                         _sapUser,
                         C.Label(UiStrings.SapPasswordLabel),
                         _sapPassword,
+                        C.Label(UiStrings.SapPasswordKeepHint),
                         _sapIgnoreSsl
                     ).Scale()
                 ),
@@ -246,14 +256,14 @@ public class EditProfileForm : EtoDialogBase
                         C.Label(UiStrings.SapObjectKeySourceLabel),
                         _sapPromptObjectKey,
                         _sapBarcodeObjectKey,
-                        C.Label(UiStrings.Code39RegexOptionalLabel),
-                        _sapBarcodeRegex,
                         _sapFilenameObjectKey,
-                        C.Label(UiStrings.SapRegexLabel),
-                        _sapFilenameRegex,
                         _sapFixedObjectKey,
-                        C.Label(UiStrings.SapObjectKeyFixedValue),
                         _sapFixedObjectKeyValue,
+                        C.Spacer(),
+                        _sapObjectKeyRegexLabel,
+                        _sapObjectKeyRegex,
+                        C.Label(UiStrings.SapObjectKeyFromSeparatorInfo),
+                        C.Spacer(),
                         C.Label(UiStrings.SapObjectIdLabel),
                         _sapDescriptionTemplate
                     ).Scale()
@@ -479,8 +489,7 @@ public class EditProfileForm : EtoDialogBase
         _sapArchiveId.Text = sap.ArchiveId ?? "";
         _sapDocumentType.Text = sap.SapObject ?? "";
         _sapDescriptionTemplate.Text = sap.ObjectId ?? "";
-        _sapBarcodeRegex.Text = sap.BarcodeRegex ?? "";
-        _sapFilenameRegex.Text = sap.BarcodeRegex ?? "";
+        _sapObjectKeyRegex.Text = sap.BarcodeRegex ?? "";
         _sapFixedObjectKeyValue.Text = sap.FixedBarcode ?? "";
         var selectedType = SapObjectTypeCatalog.CommonTypes.FirstOrDefault(x => x.Key == sap.ArObject) ?? SapObjectTypeCatalog.CommonTypes.FirstOrDefault();
         if (selectedType != null)
@@ -738,9 +747,21 @@ public class EditProfileForm : EtoDialogBase
                 : _sapFilenameObjectKey.Checked ? BarcodeSource.FromFilename
                 : _sapFixedObjectKey.Checked ? BarcodeSource.Fixed
                 : BarcodeSource.PromptUser,
-            BarcodeRegex = _sapBarcodeObjectKey.Checked ? _sapBarcodeRegex.Text.Trim() : _sapFilenameRegex.Text.Trim(),
+            BarcodeRegex = _sapObjectKeyRegex.Text.Trim(),
             FixedBarcode = _sapFixedObjectKeyValue.Text.Trim()
         };
+    }
+
+    /// <summary>
+    /// Shows the warning only for the combination it is about, so it doesn't become another line of
+    /// standing text the operator learns to read past.
+    /// </summary>
+    private void UpdateUploadNeedsAutoSave()
+    {
+        var anyTarget = _enableSharePointUpload.IsChecked() || _enableSapArchiveUpload.IsChecked();
+        _uploadNeedsAutoSave.Text = anyTarget && !_enableAutoSave.IsChecked()
+            ? UiStrings.UploadNeedsAutoSaveWarning
+            : "";
     }
 
     private void UpdateSapObjectTypeTooltip()
@@ -770,11 +791,20 @@ public class EditProfileForm : EtoDialogBase
         _sapBarcodeObjectKey.Enabled = enabled;
         _sapFilenameObjectKey.Enabled = enabled;
         _sapFixedObjectKey.Enabled = enabled;
-        _sapBarcodeRegex.Enabled = enabled && _sapBarcodeObjectKey.Checked;
-        _sapFilenameRegex.Enabled = enabled && _sapFilenameObjectKey.Checked;
+        // The regex is only read for the two sources that have something to apply it to. It stays visible
+        // for the other two so its value is never silently out of reach, just not editable.
+        var regexApplies = _sapBarcodeObjectKey.Checked || _sapFilenameObjectKey.Checked;
+        _sapObjectKeyRegex.Enabled = enabled && regexApplies;
+        _sapObjectKeyRegexLabel.Enabled = enabled && regexApplies;
+        _sapObjectKeyRegexLabel.Text = _sapBarcodeObjectKey.Checked
+            ? UiStrings.SapObjectKeyRegexBarcodeLabel
+            : _sapFilenameObjectKey.Checked
+                ? UiStrings.SapObjectKeyRegexFilenameLabel
+                : UiStrings.SapObjectKeyRegexUnusedLabel;
         _sapFixedObjectKeyValue.Enabled = enabled && _sapFixedObjectKey.Checked;
         _sapDescriptionTemplate.Enabled = enabled;
         _sapTestConnection.Enabled = enabled;
+        UpdateUploadNeedsAutoSave();
     }
 
     private async void SapTestConnection_Click(object? sender, EventArgs e)
@@ -908,6 +938,7 @@ public class EditProfileForm : EtoDialogBase
 
     private void UpdateSharePointControlsEnabled()
     {
+        UpdateUploadNeedsAutoSave();
         bool enabled = _enableSharePointUpload.IsChecked() && !_scanProfile.IsLocked;
         _sharePointSiteUrl.Enabled = enabled;
         _sharePointLibraryPath.Enabled = enabled;
@@ -971,5 +1002,6 @@ public class EditProfileForm : EtoDialogBase
             }
         }
         _autoSaveSettings.Enabled = _enableAutoSave.IsChecked();
+        UpdateUploadNeedsAutoSave();
     }
 }

@@ -73,10 +73,40 @@ up in the same console.
   supplies the SAP object key (`SapObjectKeyResolver.FromScannedBarcodes` prefers it over the pages'
   primary barcodes). Deriving the key separately lets the file name and the archive key drift apart,
   which is unnoticeable after the fact — don't reintroduce a second derivation path.
+- **A page's *primary* barcode is not "the" barcode of the page.** It is only the first decoded barcode
+  matching the profile's symbologies, so on a sheet with several Code 39 codes it comes down to reading
+  order. Whenever a regex is configured, it — not the primary — decides which barcode is meant, and the
+  code has to look at `Barcode.GetAllValues()` rather than `DetectedText`. `DocumentSeparator`,
+  `FileNamePlaceholders.$(barcode)` and `SapObjectKeyResolver` all follow this rule; keep it that way.
+- **A repeated separator barcode continues the document; it does not start a copy of it.** The papers of
+  one process order carry the order barcode on every cover sheet they contain — accompanying document,
+  route cards, manufacturing instruction, storage slip — so splitting at each of them yields several
+  files with identical names, which is indistinguishable from a duplicate scan afterwards.
+  `DocumentWorkflowSettings.NewDocumentOnlyOnValueChange` (default on) is what prevents that, and a stack
+  of several orders still splits where the order number changes. Patch-T sheets carry no value to compare
+  and always separate.
 - **A document that fails to upload goes into `DocumentUploadQueue`**, whether the trigger was manual or
   automatic, so it can be retried from the upload button. A failed upload must never be a dead end.
 - Uploads use `ShowBackgroundProgress`, not `ShowProgress`: a batch produces one upload per document and
   modal dialogs would block the window throughout.
+
+## Barcode detection
+
+`BarcodeDetector.Detect` decodes every page **twice** — once at full size and once on a copy scaled to
+60% — and merges the results. This is not belt-and-braces: a real supplier invoice in the customer's
+samples (`Examples_of_Barcoded_Paperwork.pdf`, page 2, Code 39 `C10108930`) yields nothing at all at
+2550×3300 and decodes cleanly on the smaller copy, while other pages need the full resolution for their
+narrow bars. Neither pass dominates the other, so don't turn one into a fallback for the other.
+
+The merge scales the smaller pass's coordinates back up before sorting, because the merged list is in
+page reading order and its first entry becomes the page's primary barcode — an appended result would
+silently change which barcode a profile without a regex picks.
+
+The failure is a property of the whole page, not of the barcode: cropping the barcode out of that page
+makes it decode at full resolution, and clean synthetic pages of any size always decode. There is
+therefore **no unit test that fails without the second pass** — the merge logic is covered in
+`MultiBarcodeDetectionTests`, and the end-to-end behaviour was verified against the sample PDFs, which
+live outside the repo (customer documents, not committed).
 
 ## Localization
 
@@ -94,12 +124,20 @@ showing English is not a bug.
 ## Versioning and release
 
 - The single source of truth for the version is `NAPS2.Setup/targets/VersionTargets.targets`.
-- The MSI is built with the `NAPS2.Tools` CLI (`dotnet run --project NAPS2.Tools -- package msi`), which
-  needs WiX Toolset v3.14. Output lands in `NAPS2.Setup/publish/<version>/`.
+- The MSI is built with the `NAPS2.Tools` CLI (`dotnet run --project NAPS2.Tools -- pkg msi`), which
+  needs WiX Toolset v3.14. Output lands in `NAPS2.Setup/publish/<version>/` and is named
+  `ScanMe-<version>-<platform>.msi` — the `naps2-` prefix comes from `ProjectHelper.GetPackagePath`, which
+  every packager and verifier routes through, so change it there and nowhere else.
+- `pkg msi` publishes NAPS2.App.WinForms, NAPS2.App.Console and NAPS2.App.Worker itself, so it is all you
+  need. Do **not** run `build msi` first on Windows: it runs `dotnet build -c Release-Msi` over the whole
+  solution, which pulls in NAPS2.App.Mac and fails with NETSDK1147 unless the `macos` workload is
+  installed. The same applies to building `ScanMe.sln` as a whole — build the individual projects.
 
 ## Tests
 
 `dotnet test NAPS2.Lib.Tests` currently has 5 pre-existing failures unrelated to ScanMe changes
 (`Naps2ConfigTests`, `CommandLineIntegrationTests.ScanPdfSettings_*`,
-`DesktopControllerTests.Initialize_IfRun30DaysAgo_ShowsDonatePrompt`). Compare against `master` before
-assuming a failure is yours.
+`DesktopControllerTests.Initialize_IfRun30DaysAgo_ShowsDonatePrompt`). `dotnet test NAPS2.Sdk.Tests`
+likewise fails `PageSizeTests.InchesToString` and `PageSizeTests.CentimetresToString` on a German
+locale, because they assume a `.` decimal separator. Compare against `master` before assuming a failure
+is yours.

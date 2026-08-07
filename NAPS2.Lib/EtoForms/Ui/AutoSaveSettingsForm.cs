@@ -32,6 +32,8 @@ public class AutoSaveSettingsForm : EtoDialogBase
     private readonly CheckBox _symbologyCode128 = new() { Text = UiStrings.BarcodeTypeCode128 };
     private readonly CheckBox _symbologyEanUpc = new() { Text = UiStrings.BarcodeTypeEanUpc };
     private readonly CheckBox _keepSeparatorPage = new() { Text = UiStrings.KeepSeparatorPage };
+    private readonly CheckBox _newDocumentOnlyOnValueChange =
+        new() { Text = UiStrings.NewDocumentOnlyOnValueChange };
     private readonly LayoutVisibility _barcodeOptionsVis = new(false);
 
     // How each document is identified and when it gets uploaded.
@@ -73,6 +75,18 @@ public class AutoSaveSettingsForm : EtoDialogBase
         _separateByCode39.CheckedChanged += SeparationOption_CheckedChanged;
         _filePerPage.CheckedChanged += SeparationOption_CheckedChanged;
         _filePerScan.CheckedChanged += SeparationOption_CheckedChanged;
+        _clearAfterSaving.CheckedChanged += (_, _) => UpdateCleanupEnabled();
+    }
+
+    /// <summary>
+    /// "Clear images after saving" consumes the pages before they ever reach the scan window, so there is
+    /// nothing for "remove when finished" to remove. Leaving both tickable suggests they combine.
+    /// </summary>
+    private void UpdateCleanupEnabled()
+    {
+        _cleanupAfterCompletion.Enabled = !_clearAfterSaving.IsChecked();
+        _cleanupAfterCompletion.ToolTip =
+            _clearAfterSaving.IsChecked() ? UiStrings.CleanupAfterCompletionUnavailableHint : "";
     }
 
     public ScanProfile? ScanProfile { get; set; }
@@ -117,6 +131,7 @@ public class AutoSaveSettingsForm : EtoDialogBase
         _symbologyCode128.Checked = workflow.BarcodeSymbologies.Contains(BarcodeSymbology.Code128);
         _symbologyEanUpc.Checked = workflow.BarcodeSymbologies.Contains(BarcodeSymbology.EanUpc);
         _keepSeparatorPage.Checked = workflow.KeepSeparatorPage;
+        _newDocumentOnlyOnValueChange.Checked = workflow.NewDocumentOnlyOnValueChange;
         _idMode.SelectedItem = workflow.IdMode;
         _idPromptLabel.Text = workflow.IdPromptLabel ?? "";
         _uploadTrigger.SelectedItem = workflow.UploadTrigger;
@@ -141,7 +156,9 @@ public class AutoSaveSettingsForm : EtoDialogBase
             L.Column(
                 C.Label(UiStrings.BarcodeTypesLabel),
                 L.Row(_symbologyCode39, _symbologyCode128, _symbologyEanUpc),
-                _keepSeparatorPage
+                _keepSeparatorPage,
+                _newDocumentOnlyOnValueChange,
+                C.Label(UiStrings.NewDocumentOnlyOnValueChangeHint)
             ).Visible(_barcodeOptionsVis),
             L.Column(
                 _code39RegexLabel,
@@ -174,6 +191,7 @@ public class AutoSaveSettingsForm : EtoDialogBase
         UpdateRegexVisibility();
         UpdateIdPromptVisibility();
         UpdateUploadCheckboxEnabled();
+        UpdateCleanupEnabled();
     }
 
     private void SeparationOption_CheckedChanged(object? sender, EventArgs e)
@@ -235,6 +253,17 @@ public class AutoSaveSettingsForm : EtoDialogBase
             : _separateByCode39.Checked ? SaveSeparator.Code39Barcode
             : SaveSeparator.FilePerPage;
 
+        // With no symbology selected the detector reads anything it can, and a dense production sheet
+        // yields codes that are not on the paper at all (the samples produce phantom EAN and UPC reads).
+        // One of those becoming a document boundary and a file name is not something anyone spots later.
+        if (_separateByCode39.Checked && !_symbologyCode39.IsChecked() && !_symbologyCode128.IsChecked() &&
+            !_symbologyEanUpc.IsChecked())
+        {
+            MessageBox.Show(this, UiStrings.BarcodeTypeRequired, MessageBoxType.Warning);
+            _symbologyCode39.Focus();
+            return false;
+        }
+
         // Minimal regex validation when barcode separation is selected and the pattern is non-empty
         string? regex = null;
         if (separator == SaveSeparator.Code39Barcode)
@@ -281,6 +310,7 @@ public class AutoSaveSettingsForm : EtoDialogBase
             BarcodeSymbologies = symbologies,
             SeparationPattern = regex,
             KeepSeparatorPage = _keepSeparatorPage.IsChecked(),
+            NewDocumentOnlyOnValueChange = _newDocumentOnlyOnValueChange.IsChecked(),
             IdMode = _idMode.SelectedItem,
             IdPromptLabel = string.IsNullOrWhiteSpace(_idPromptLabel.Text) ? null : _idPromptLabel.Text!.Trim(),
             UploadTrigger = _uploadTrigger.SelectedItem,

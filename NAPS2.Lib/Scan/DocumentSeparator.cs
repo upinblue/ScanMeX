@@ -85,6 +85,11 @@ public static class DocumentSeparator
         catch (ArgumentException ex)
         {
             _logger.Warn(ex, $"Ignoring invalid separation pattern '{pattern}'");
+            // Falling back to "every barcode separates" without saying so looks exactly like the pattern
+            // being ignored on purpose, which is the hardest kind of misconfiguration to spot.
+            ScanConsole.Barcode(
+                $"WARNING: the separation pattern '{pattern}' is not a valid regex ({ex.Message}) and is " +
+                "ignored, so every barcode starts a new document.");
             return null;
         }
     }
@@ -94,12 +99,37 @@ public static class DocumentSeparator
     {
         var current = new List<ProcessedImage>();
         string? currentValue = null;
+        // current.Count is not the same question: with KeepSeparatorPage off a document that has only had
+        // its separator sheet so far is open but still empty, and a repeat of its barcode must not be
+        // treated as the start of a new one.
+        var documentIsOpen = false;
         var startPageIndex = 0;
 
         for (var pageIndex = 0; pageIndex < pages.Count; pageIndex++)
         {
             var page = pages[pageIndex];
-            var separatorValue = GetSeparatorValue(page, settings, pattern);
+            var separatorValue = GetSeparatorValue(page, settings, pattern, pageIndex + 1);
+
+            // The paperwork for one order repeats the order barcode on each of the cover sheets it
+            // contains, so a page carrying the value the current document was started with continues that
+            // document instead of starting a copy of it under the same name. An empty value (a patch-T
+            // sheet) has nothing to compare and always separates.
+            if (separatorValue is { Length: > 0 } && settings.NewDocumentOnlyOnValueChange &&
+                documentIsOpen && separatorValue == currentValue)
+            {
+                ScanConsole.Document(
+                    $"Page {pageIndex + 1} carries '{separatorValue}' again, which is the value the " +
+                    "current document was started with, so it continues that document rather than " +
+                    "starting a new one.");
+                if (!settings.KeepSeparatorPage)
+                {
+                    page.Dispose();
+                    continue;
+                }
+                current.Add(page);
+                continue;
+            }
+
             if (separatorValue != null)
             {
                 if (current.Count > 0)
@@ -109,6 +139,7 @@ public static class DocumentSeparator
                 }
                 startPageIndex = pageIndex;
                 currentValue = separatorValue == string.Empty ? null : separatorValue;
+                documentIsOpen = true;
 
                 if (!settings.KeepSeparatorPage)
                 {
@@ -132,7 +163,7 @@ public static class DocumentSeparator
     /// an empty string when it does but carries no usable value (a plain patch-T sheet).
     /// </summary>
     private static string? GetSeparatorValue(
-        ProcessedImage page, DocumentWorkflowSettings settings, Regex? pattern)
+        ProcessedImage page, DocumentWorkflowSettings settings, Regex? pattern, int pageNumber)
     {
         var barcode = page.PostProcessingData.Barcode;
         if (settings.SeparationMode == DocumentSeparationMode.PatchT)
@@ -141,12 +172,24 @@ public static class DocumentSeparator
         }
 
         var symbologies = settings.GetEffectiveSymbologies();
-        foreach (var value in barcode.GetAllValues())
+        var all = barcode.GetAllValues().Where(x => !string.IsNullOrWhiteSpace(x.Text)).ToList();
+        // A page carrying several barcodes is the case this whole selection exists for, so say what was
+        // on the page before saying which one won. Without this the operator cannot tell a barcode that
+        // was never decoded from one that was decoded and then rejected by the pattern.
+        if (all.Count > 1)
         {
-            if (string.IsNullOrWhiteSpace(value.Text))
-            {
-                continue;
-            }
+            ScanConsole.Barcode(
+                $"Page {pageNumber} carries {all.Count} barcodes: " +
+                string.Join(", ", all.Select(x => $"{x.Format ?? "?"}:'{x.Text}'")) + "; " +
+                (pattern != null
+                    ? $"the separation pattern '{settings.SeparationPattern}' decides which one is used."
+                    : "no separation pattern is set, so the first one in reading order is used."));
+        }
+
+        var rejectedBySymbology = new List<string>();
+        var rejectedByPattern = new List<string>();
+        foreach (var value in all)
+        {
             // An empty symbology list means the operator didn't restrict the type, so any barcode counts.
             // Some scan and import paths don't populate the format, and we can't rule those out by
             // symbology, so an unknown format is accepted rather than silently dropping the separator.
@@ -154,6 +197,7 @@ public static class DocumentSeparator
             if (symbologies.Count > 0 && !formatIsUnknown &&
                 !symbologies.Any(x => x.Matches(value.Format, value.Text)))
             {
+                rejectedBySymbology.Add($"{value.Format}:'{value.Text}'");
                 continue;
             }
             var applied = ApplyPattern(value.Text, pattern);
@@ -161,8 +205,34 @@ public static class DocumentSeparator
             {
                 _logger.Debug(
                     $"Document boundary: text='{value.Text}' format='{value.Format ?? "<unknown>"}' value='{applied}'");
+                if (all.Count > 1)
+                {
+                    ScanConsole.Barcode(
+                        $"Page {pageNumber}: barcode '{value.Text}' is the one used" +
+                        (pattern != null ? " (it matches the separation pattern)" : "") +
+                        $"; it starts a new document as '{applied}'.");
+                }
                 return applied;
             }
+            rejectedByPattern.Add($"'{value.Text}'");
+        }
+
+        // Nothing on this page separates. That is a normal, expected outcome for a page in the middle of
+        // a document, but it is also what a wrong pattern looks like, so name the values that were turned
+        // down rather than returning in silence.
+        if (rejectedByPattern.Count > 0)
+        {
+            ScanConsole.Barcode(
+                $"Page {pageNumber}: no barcode matches the separation pattern " +
+                $"'{settings.SeparationPattern ?? ""}'; rejected {string.Join(", ", rejectedByPattern)}. " +
+                "The page does not start a new document.");
+        }
+        else if (rejectedBySymbology.Count > 0)
+        {
+            ScanConsole.Barcode(
+                $"Page {pageNumber}: {string.Join(", ", rejectedBySymbology)} " +
+                $"do not belong to the selected symbologies ({string.Join("+", symbologies)}), " +
+                "so the page does not start a new document.");
         }
         return null;
     }

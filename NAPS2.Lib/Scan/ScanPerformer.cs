@@ -219,6 +219,16 @@ internal class ScanPerformer : IScanPerformer
         ScanConsole.Profile(targets.Count == 0
             ? "No upload target is enabled for this profile."
             : $"Upload targets: {string.Join(", ", targets)}");
+
+        // Uploading is driven by auto save: it is the step that produces the file. With auto save off the
+        // ticked upload targets do nothing at all, and nothing else in the scan reports that, so a whole
+        // batch can be scanned before anyone notices nothing was archived.
+        if (targets.Count > 0 && !scanProfile.EnableAutoSave)
+        {
+            ScanConsole.Profile(
+                $"WARNING: {string.Join(" and ", targets)} upload is enabled but auto save is off for this " +
+                "profile. Uploading runs on the file auto save writes, so nothing will be saved or uploaded.");
+        }
     }
 
     /// <summary>
@@ -233,15 +243,24 @@ internal class ScanPerformer : IScanPerformer
         {
             pageNumber++;
             var barcode = image.PostProcessingData.Barcode;
-            if (!barcode.IsDetected)
+            var all = barcode.GetAllValues();
+            if (!barcode.IsDetected && all.Count == 0)
             {
                 ScanConsole.Barcode(barcode.IsDetectionAttempted
                     ? $"Page {pageNumber}: no barcode detected."
                     : $"Page {pageNumber}: barcode detection not enabled.");
             }
+            else if (!barcode.IsDetected)
+            {
+                // Decoded, but none of them belongs to a symbology the profile selected, so the page has
+                // no primary barcode. Reporting this as "no barcode detected" would send the operator
+                // looking at the scanner and the paper when the profile is what turned the values down.
+                ScanConsole.Barcode(
+                    $"Page {pageNumber}: {all.Count} barcode(s) decoded but none matches the profile's " +
+                    $"selected symbologies: {string.Join(", ", all.Select(x => $"{x.Format ?? "?"}:'{x.Text}'"))}");
+            }
             else
             {
-                var all = barcode.GetAllValues();
                 var extra = all.Count > 1
                     ? $" (all: {string.Join(", ", all.Select(x => $"{x.Format}:{x.Text}"))})"
                     : "";

@@ -1168,7 +1168,7 @@
     <value>Trennmuster (Regex, optional)</value>
   </data>
   <data name="SeparationPatternHint" xml:space="preserve">
-    <value>Ein passender Barcode beginnt ein neues Dokument. Gruppe 1 oder der gesamte Treffer wird zu $(barcode).</value>
+    <value>Ein passender Barcode beginnt ein neues Dokument. Gruppe 1 oder der gesamte Treffer wird zu $(barcode). Beispiel: ^\d{8}$ nimmt nur die achtstellige Auftragsnummer und ignoriert die längeren Codes daneben.</value>
   </data>
   <data name="InvalidSeparationPattern" xml:space="preserve">
     <value>Ungültiges Trennmuster.</value>
@@ -1226,5 +1226,35 @@
   </data>
   <data name="UploadSomeFailed" xml:space="preserve">
     <value>{0} von {1} Dokumenten konnten nicht hochgeladen werden.</value>
+  </data>
+  <data name="NewDocumentOnlyOnValueChange" xml:space="preserve">
+    <value>Neues Dokument nur bei Wechsel des Barcode-Werts</value>
+  </data>
+  <data name="NewDocumentOnlyOnValueChangeHint" xml:space="preserve">
+    <value>Die Papiere eines Auftrags tragen denselben Barcode auf jedem enthaltenen Deckblatt. Ohne diese Option beginnt jedes dieser Blätter eine weitere Datei gleichen Namens.</value>
+  </data>
+  <data name="BarcodeTypeRequired" xml:space="preserve">
+    <value>Wählen Sie mindestens einen Barcode-Typ aus. Ohne Einschränkung gilt jeder Code auf der Seite als Trenner, auch solche, die der Scanner aus dichtem Druck fälschlich herausliest.</value>
+  </data>
+  <data name="SapObjectKeyRegexBarcodeLabel" xml:space="preserve">
+    <value>Muster für den Barcode (Regex, optional)</value>
+  </data>
+  <data name="SapObjectKeyRegexFilenameLabel" xml:space="preserve">
+    <value>Muster für den Dateinamen (Regex, optional)</value>
+  </data>
+  <data name="SapObjectKeyRegexUnusedLabel" xml:space="preserve">
+    <value>Muster (Regex) – wird nur von den beiden Optionen darüber verwendet</value>
+  </data>
+  <data name="SapObjectKeyFromSeparatorInfo" xml:space="preserve">
+    <value>Wenn das Profil Dokumente nach Barcode trennt, ist der trennende Barcode der Objektschlüssel – Dateiname und Schlüssel stimmen so immer überein.</value>
+  </data>
+  <data name="SapPasswordKeepHint" xml:space="preserve">
+    <value>Leer lassen, um das gespeicherte Passwort zu behalten</value>
+  </data>
+  <data name="CleanupAfterCompletionUnavailableHint" xml:space="preserve">
+    <value>Nicht verfügbar, solange „Entferne Bilder nach dem Speichern“ aktiv ist: Die Seiten erreichen das Fenster gar nicht, es bleibt nichts zu entfernen.</value>
+  </data>
+  <data name="UploadNeedsAutoSaveWarning" xml:space="preserve">
+    <value>Automatisches Speichern ist aus, daher wird nichts geschrieben und die aktivierten Upload-Ziele laufen nie. Schalten Sie automatisches Speichern ein, um hochzuladen.</value>
   </data>
 </root>

@@ -88,6 +88,15 @@ public record DocumentWorkflowSettings
     /// </summary>
     public bool KeepSeparatorPage { get; init; } = true;
 
+    /// <summary>
+    /// Whether a page only starts a new document when its barcode differs from the one the current
+    /// document was started with. The paperwork for one process order repeats the order barcode on every
+    /// cover sheet it contains -- accompanying document, route card, storage slip -- so treating each of
+    /// them as a boundary would split one order into several files that all carry the same name. With
+    /// this on, a stack of several orders still splits, but only where the order number actually changes.
+    /// </summary>
+    public bool NewDocumentOnlyOnValueChange { get; init; } = true;
+
     public DocumentIdMode IdMode { get; init; } = DocumentIdMode.None;
 
     /// <summary>
@@ -133,6 +142,9 @@ public record DocumentWorkflowSettings
             SeparationPattern = autoSave?.Code39SeparationPattern,
             // Legacy Code 39 separation kept the barcode page, legacy patch-T dropped it.
             KeepSeparatorPage = autoSave?.Separator != SaveSeparator.PatchT,
+            // A patch-T sheet carries no value to compare, so every sheet has to keep separating. Barcode
+            // separation gets the same default as a new profile.
+            NewDocumentOnlyOnValueChange = autoSave?.Separator != SaveSeparator.PatchT,
             IdMode = DocumentIdMode.None,
             UploadTrigger = UploadTrigger.Automatic,
             KeepLocalCopy = true,

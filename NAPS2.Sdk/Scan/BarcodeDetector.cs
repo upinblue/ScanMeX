@@ -1,4 +1,5 @@
 using NAPS2.Images.Bitwise;
+using NAPS2.Images.Transforms;
 using ZXing;
 using ZXing.Common;
 
@@ -11,6 +12,20 @@ namespace NAPS2.Scan;
 internal static class BarcodeDetector
 {
     private static readonly BarcodeFormat PATCH_T_FORMAT = BarcodeFormat.CODE_39;
+
+    /// <summary>
+    /// The page is decoded a second time at this fraction of its size. Print noise between the bars of a
+    /// 300 dpi scan can defeat the local binarizer at full resolution while averaging away here; a real
+    /// invoice in the customer's samples decodes only on the smaller copy. Shrinking too far would lose
+    /// narrow bars instead, so this stays close to full size.
+    /// </summary>
+    private const double RETRY_SCALE = 0.6;
+
+    /// <summary>
+    /// Below this width the page is already small enough that a downscaled retry would drop bars rather
+    /// than noise, so the second pass is skipped.
+    /// </summary>
+    private const int MIN_WIDTH_FOR_RETRY = 1200;
 
     public static Barcode Detect(IMemoryImage image, BarcodeDetectionOptions options)
     {
@@ -31,23 +46,68 @@ internal static class BarcodeDetector
 
         // A page may carry several barcodes (e.g. an order and an article code), so we keep all of them
         // and let the profile's symbology selection decide which one is the primary.
+        //
+        // Neither pass is reliably the better one: the full-resolution pass reads narrow bars the smaller
+        // copy blurs away, and the smaller copy reads codes the full-resolution binarizer gives up on. So
+        // both run and the results are merged, rather than one being a fallback for the other. Positions
+        // from the smaller copy are scaled back up so the merged list is still in page reading order --
+        // the primary is whatever comes first in it, so a wrong order picks a wrong barcode.
+        var found = DecodeAll(reader, image, 1);
+        found.AddRange(DecodeDownscaled(reader, image));
+
+        var all = found
+            .OrderBy(x => x.Y)
+            .ThenBy(x => x.X)
+            .Select(x => new BarcodeValue(x.Text, x.Format))
+            .Distinct()
+            .ToList();
+
+        var primary = PickPrimary(all, options);
+        return new Barcode(true, primary != null, primary?.Text, primary?.Format)
+        {
+            AllDetections = all
+        };
+    }
+
+    private record Detection(string? Text, string? Format, float Y, float X);
+
+    private static List<Detection> DecodeAll(
+        BarcodeReader<IMemoryImage> reader, IMemoryImage image, double positionScale)
+    {
         var results = reader.DecodeMultiple(image);
         if (results == null || results.Length == 0)
         {
             var single = reader.Decode(image);
             results = single != null ? [single] : [];
         }
-
-        var all = results
-            .OrderBy(GetReadingOrderY)
-            .ThenBy(GetReadingOrderX)
-            .Select(x => new BarcodeValue(x.Text, x.BarcodeFormat.ToString()))
+        return results
+            .Select(x => new Detection(
+                x.Text,
+                x.BarcodeFormat.ToString(),
+                (float) (GetReadingOrderY(x) / positionScale),
+                (float) (GetReadingOrderX(x) / positionScale)))
             .ToList();
-        var primary = PickPrimary(all, options);
-        return new Barcode(true, primary != null, primary?.Text, primary?.Format)
+    }
+
+    private static List<Detection> DecodeDownscaled(BarcodeReader<IMemoryImage> reader, IMemoryImage image)
+    {
+        if (image.Width < MIN_WIDTH_FOR_RETRY)
         {
-            AllDetections = all
-        };
+            return [];
+        }
+        try
+        {
+            // PerformTransform consumes the image it is given, so the copy is what gets scaled and
+            // disposed -- the caller's page has to survive this.
+            using var scaled = image.Copy().PerformTransform(new ScaleTransform(RETRY_SCALE));
+            return DecodeAll(reader, scaled, RETRY_SCALE);
+        }
+        catch (Exception)
+        {
+            // A page we can't scale (an unusual pixel format, say) is not a reason to lose the barcodes
+            // the full-resolution pass already found.
+            return [];
+        }
     }
 
     private static IList<BarcodeFormat>? GetPossibleFormats(BarcodeDetectionOptions options)

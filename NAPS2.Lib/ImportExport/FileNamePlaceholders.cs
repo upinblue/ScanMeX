@@ -95,7 +95,7 @@ public sealed class FileNamePlaceholders
     {
         if (token.Equals("barcode", StringComparison.OrdinalIgnoreCase))
         {
-            return ctx.SeparatorBarcodeValue ?? ctx.Barcodes.FirstOrDefault()?.Value;
+            return ctx.SeparatorBarcodeValue ?? FirstBarcodeThePatternAllows(ctx);
         }
 
         var selector = token.Substring("barcode:".Length);
@@ -126,5 +126,25 @@ public sealed class FileNamePlaceholders
             }
         }
         return null;
+    }
+
+    /// <summary>
+    /// The document's barcode when no separator value is available. A page can carry several barcodes and
+    /// the first one in reading order is not necessarily the one that identifies the document -- when the
+    /// profile has a separation pattern, that pattern is the operator's statement of which one does, so
+    /// only a value it accepts may name the file. Naming a document after a barcode the pattern rejected
+    /// yields a plausible-looking file under the wrong number, which nobody notices afterwards.
+    /// </summary>
+    private static string? FirstBarcodeThePatternAllows(ScanContext ctx)
+    {
+        var pattern = DocumentSeparator.CompilePattern(
+            DocumentWorkflowSettings.ForProfile(ctx.Profile).SeparationPattern);
+        if (pattern == null)
+        {
+            return ctx.Barcodes.FirstOrDefault()?.Value;
+        }
+        return ctx.Barcodes
+            .Select(x => DocumentSeparator.ApplyPattern(x.Value, pattern))
+            .FirstOrDefault(x => x != null);
     }
 }

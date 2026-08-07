@@ -1144,7 +1144,7 @@
     <value>Separation pattern (regex, optional)</value>
   </data>
   <data name="SeparationPatternHint" xml:space="preserve">
-    <value>A matching barcode starts a new document. Capturing group 1, or the whole match, becomes $(barcode).</value>
+    <value>A matching barcode starts a new document. Capturing group 1, or the whole match, becomes $(barcode). Example: ^\d{8}$ takes only the eight-digit order number and ignores the longer codes next to it.</value>
   </data>
   <data name="KeepSeparatorPage" xml:space="preserve">
     <value>Keep the separator page in the document</value>
@@ -1331,5 +1331,35 @@
   </data>
   <data name="SapValidationBarcodeRegexInvalid" xml:space="preserve">
     <value>The barcode regex is invalid: {0}</value>
+  </data>
+  <data name="NewDocumentOnlyOnValueChange" xml:space="preserve">
+    <value>Start a new document only when the barcode value changes</value>
+  </data>
+  <data name="NewDocumentOnlyOnValueChangeHint" xml:space="preserve">
+    <value>The papers of one order repeat the same barcode on every cover sheet they contain. Without this, each of those sheets starts another file under the same name.</value>
+  </data>
+  <data name="BarcodeTypeRequired" xml:space="preserve">
+    <value>Select at least one barcode type. Without a restriction, any code on the page counts as a separator, including ones the scanner misreads out of dense print.</value>
+  </data>
+  <data name="SapObjectKeyRegexBarcodeLabel" xml:space="preserve">
+    <value>Pattern applied to the barcode (regex, optional)</value>
+  </data>
+  <data name="SapObjectKeyRegexFilenameLabel" xml:space="preserve">
+    <value>Pattern applied to the file name (regex, optional)</value>
+  </data>
+  <data name="SapObjectKeyRegexUnusedLabel" xml:space="preserve">
+    <value>Pattern (regex) — only used by the two options above</value>
+  </data>
+  <data name="SapObjectKeyFromSeparatorInfo" xml:space="preserve">
+    <value>When the profile separates documents by barcode, the separating barcode is the object key, so the file name and the key always agree.</value>
+  </data>
+  <data name="SapPasswordKeepHint" xml:space="preserve">
+    <value>Leave empty to keep the stored password</value>
+  </data>
+  <data name="CleanupAfterCompletionUnavailableHint" xml:space="preserve">
+    <value>Not available while “Clear images after saving” is on: the pages never reach the window, so there is nothing left to remove.</value>
+  </data>
+  <data name="UploadNeedsAutoSaveWarning" xml:space="preserve">
+    <value>Auto Save is off, so nothing is written and the enabled upload targets never run. Turn on Auto Save to upload.</value>
   </data>
 </root>

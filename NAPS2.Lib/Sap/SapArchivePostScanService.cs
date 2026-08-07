@@ -111,10 +111,39 @@ internal class SapArchivePostScanService
         ScanContext ctx)
     {
         var pattern = Substitute(settings.BarcodeRegex, ctx);
+        var primaries = images.Select(x => x.PostProcessingData.Barcode.DetectedText).ToList();
+        // Everything else the pages carry. A page with an order code and a document code has only one of
+        // them as its primary, and which one that is comes down to reading order, not to what the
+        // operator meant -- so the regex has to be able to reach the others.
+        var secondaries = images
+            .SelectMany(x => x.PostProcessingData.Barcode.GetAllValues().Select(v => v.Text))
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Except(primaries.Where(x => !string.IsNullOrWhiteSpace(x)), StringComparer.Ordinal)
+            .ToList();
+        if (secondaries.Count > 0)
+        {
+            ScanConsole.Upload(
+                $"The document's pages carry {secondaries.Count} further barcode(s) besides the page primaries: " +
+                string.Join(", ", secondaries.Select(x => $"'{x}'")) +
+                $"; SAP regex '{pattern ?? ""}' selects the object key.");
+        }
         var key = SapObjectKeyResolver.FromScannedBarcodes(
             ctx.SeparatorBarcodeValue,
-            images.Select(x => x.PostProcessingData.Barcode.DetectedText),
+            primaries,
+            secondaries,
             pattern);
+
+        var candidates = primaries.Concat(secondaries).Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
+        if (key == null && candidates.Count > 0)
+        {
+            // The pages did carry barcodes and none of them survived. Left unsaid this is indistinguishable
+            // from a page where nothing was decoded at all, and the operator has no way to tell that the
+            // regex is what rejected the value.
+            ScanConsole.Upload(
+                $"No SAP object key: none of the document's barcodes " +
+                $"({string.Join(", ", candidates.Select(x => $"'{x}'"))}) produced a single value under the " +
+                $"regex '{pattern ?? ""}'.");
+        }
 
         if (!string.IsNullOrWhiteSpace(ctx.SeparatorBarcodeValue) && key == ctx.SeparatorBarcodeValue?.Trim())
         {

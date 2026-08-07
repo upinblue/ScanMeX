@@ -3599,5 +3599,95 @@ namespace NAPS2.Lang.Resources {
             }
         }
 
+    
+        /// <summary>
+        ///   Looks up a localized string similar to Start a new document only when the barcode value changes.
+        /// </summary>
+        internal static string NewDocumentOnlyOnValueChange {
+            get {
+                return ResourceManager.GetString("NewDocumentOnlyOnValueChange", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The papers of one order repeat the same barcode on every cover sheet they contain. Without this, each of those sheets starts another file under the same name..
+        /// </summary>
+        internal static string NewDocumentOnlyOnValueChangeHint {
+            get {
+                return ResourceManager.GetString("NewDocumentOnlyOnValueChangeHint", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Select at least one barcode type. Without a restriction, any code on the page counts as a separator, including ones the scanner misreads out of dense print..
+        /// </summary>
+        internal static string BarcodeTypeRequired {
+            get {
+                return ResourceManager.GetString("BarcodeTypeRequired", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Pattern applied to the barcode (regex, optional).
+        /// </summary>
+        internal static string SapObjectKeyRegexBarcodeLabel {
+            get {
+                return ResourceManager.GetString("SapObjectKeyRegexBarcodeLabel", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Pattern applied to the file name (regex, optional).
+        /// </summary>
+        internal static string SapObjectKeyRegexFilenameLabel {
+            get {
+                return ResourceManager.GetString("SapObjectKeyRegexFilenameLabel", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Pattern (regex) — only used by the two options above.
+        /// </summary>
+        internal static string SapObjectKeyRegexUnusedLabel {
+            get {
+                return ResourceManager.GetString("SapObjectKeyRegexUnusedLabel", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to When the profile separates documents by barcode, the separating barcode is the object key, so the file name and the key always agree..
+        /// </summary>
+        internal static string SapObjectKeyFromSeparatorInfo {
+            get {
+                return ResourceManager.GetString("SapObjectKeyFromSeparatorInfo", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Leave empty to keep the stored password.
+        /// </summary>
+        internal static string SapPasswordKeepHint {
+            get {
+                return ResourceManager.GetString("SapPasswordKeepHint", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Not available while “Clear images after saving” is on: the pages never reach the window, so there is nothing left to remove..
+        /// </summary>
+        internal static string CleanupAfterCompletionUnavailableHint {
+            get {
+                return ResourceManager.GetString("CleanupAfterCompletionUnavailableHint", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Auto Save is off, so nothing is written and the enabled upload targets never run. Turn on Auto Save to upload..
+        /// </summary>
+        internal static string UploadNeedsAutoSaveWarning {
+            get {
+                return ResourceManager.GetString("UploadNeedsAutoSaveWarning", resourceCulture);
+            }
+        }
     }
 }

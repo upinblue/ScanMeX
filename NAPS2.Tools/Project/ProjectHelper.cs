@@ -63,7 +63,8 @@ public static class ProjectHelper
     {
         version ??= GetCurrentVersionName();
         packageName ??= platform.PackageName();
-        var path = Path.Combine(Paths.Publish, version, $"naps2-{version}-{packageName}.{ext}");
+        // The product is ScanMe, not NAPS2, and the installer file is the first thing an operator sees.
+        var path = Path.Combine(Paths.Publish, version, $"ScanMe-{version}-{packageName}.{ext}");
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         return path;
     }
