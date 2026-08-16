@@ -36,11 +36,12 @@ internal class UploadSapArchiveOperation : OperationBase
         {
             try
             {
-                Status.CurrentProgress = 20;
-                Status.StatusText = UiStrings.SapUploading;
-                InvokeStatusChanged();
-
-                Result = await _uploader.UploadAsync(_request, CancelToken);
+                // Reports the same way the SharePoint upload does -- a share of the bar for signing in,
+                // then the document's bytes, then the wait while the target system processes it. Before
+                // this the bar jumped to 20% and stopped there for the whole upload, which is
+                // indistinguishable from an upload that has hung.
+                Result = await _uploader.UploadAsync(_request,
+                    new InlineProgress<SapUploadProgress>(ReportStage), CancelToken);
                 Status.CurrentProgress = 100;
                 Status.StatusText = Result.Success
                     ? string.Format(UiStrings.SapTestUploadSucceeded, Result.ArchivDocId, _request.Barcode)
@@ -77,6 +78,26 @@ internal class UploadSapArchiveOperation : OperationBase
             }
         });
         return true;
+    }
+
+    /// <summary>
+    /// Turns an uploader stage into what the operator sees. The percentage is clamped below 100 so only a
+    /// finished upload ever shows a full bar.
+    /// </summary>
+    private void ReportStage(SapUploadProgress progress)
+    {
+        Status.CurrentProgress = Math.Clamp(progress.Percent, 0, 99);
+        Status.StatusText = progress.Stage switch
+        {
+            SapUploadStage.Preparing => string.Format(UiStrings.SapUploadPreparing, _request.FileName),
+            SapUploadStage.Authenticating => UiStrings.SapAuthenticating,
+            SapUploadStage.Uploading => string.Format(UiStrings.SapUploadingFile, _request.FileName,
+                Status.CurrentProgress),
+            SapUploadStage.WaitingForSap => string.Format(UiStrings.SapWaitingForArchive, _request.FileName),
+            SapUploadStage.Retrying => string.Format(UiStrings.SapUploadRetrying, _request.FileName),
+            _ => UiStrings.SapUploading
+        };
+        InvokeStatusChanged();
     }
 
     private static string? Truncate(string? value)

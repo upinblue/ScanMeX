@@ -1284,6 +1284,18 @@
   <data name="SapUploading" xml:space="preserve">
     <value>Uploading document to SAP ArchiveLink</value>
   </data>
+  <data name="SapAuthenticating" xml:space="preserve">
+    <value>Signing in to SAP</value>
+  </data>
+  <data name="SapUploadingFile" xml:space="preserve">
+    <value>Uploading {0} to SAP ArchiveLink ({1}%)</value>
+  </data>
+  <data name="SapWaitingForArchive" xml:space="preserve">
+    <value>Waiting for SAP to archive {0}</value>
+  </data>
+  <data name="SapUploadRetrying" xml:space="preserve">
+    <value>Retrying the SAP upload for {0}</value>
+  </data>
   <data name="SapUploadErrorDetail" xml:space="preserve">
     <value>HTTP {0} {1}: {2} (transaction {3})</value>
   </data>

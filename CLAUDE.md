@@ -89,6 +89,39 @@ up in the same console.
   automatic, so it can be retried from the upload button. A failed upload must never be a dead end.
 - Uploads use `ShowBackgroundProgress`, not `ShowProgress`: a batch produces one upload per document and
   modal dialogs would block the window throughout.
+- **Progress is reported through `InlineProgress<T>`, not `Progress<T>`.** An upload runs on a background
+  thread with no synchronization context, so `Progress<T>` posts its callbacks to the thread pool: they
+  can arrive out of order or after the upload has finished, which shows as a bar that jumps backwards or
+  a finished upload still reading "uploading". Both the SharePoint and the SAP operation report inline.
+- **An uploader that owns an `HttpClient` has to be disposed.** `HttpSapArchiveUploader` is created once
+  per document, so `using` it is what keeps a batch from leaving one connection pool per scan open.
+
+## Which barcode goes where
+
+- **`$(barcode:1)` is the barcode the profile's regex accepts, not the first one on the page.**
+  `BarcodeExtractor.SelectionPattern` orders the values before the per-page cap and then promotes the
+  first match to the front of the document's list; the rest stay in reading order, which is what the
+  higher indexes mean. The pattern comes from `ScanProfile.GetBarcodeSelectionPattern()` — the separation
+  pattern, falling back to the SAP object key regex for profiles that archive without separating.
+  `$(barcode)` differs on purpose: it is the document's identifying value, so the regex's capturing group
+  has been applied. Both must always name the *same* barcode.
+- **`ScanProfile.NeedsBarcodeValues()` is the single gate for barcode detection.** It is what
+  `ScanPerformer.BuildOptions` asks, and it covers templates as well as separation: an auto save path of
+  `$(barcode).pdf`, a SharePoint folder of `$(barcode)` or a SAP object id of `$(barcode)` needs the pages
+  decoded just as much. Missing one of those doesn't fail — the placeholder expands to nothing and the
+  document is filed under a name with a hole in it. Add every new template to `UsesBarcodePlaceholder`.
+
+## SharePoint upload
+
+Graph addresses a drive item by path as `root:/{folder}/{name}:/content` — **one** colon opens the path
+expression and one closes it, with the folders and the file name forming a single path in between. Ending
+the folder with its own colon (`root:/{folder}:/{name}:/content`) makes Graph read the file name as a
+second path expression and reject the request, so uploads to the library root worked while uploads into a
+subfolder failed. `SharePointUploadService.BuildUploadUrl` is the only place that builds this, and
+`SharePointUploadUrlTests` pins both cases down.
+
+When the configured library name matches no drive, the upload falls back to the first one rather than
+failing. That is deliberate but silent-looking, so it logs a WARNING naming the libraries that do exist.
 
 ## Barcode detection
 
@@ -141,3 +174,12 @@ showing English is not a bug.
 likewise fails `PageSizeTests.InchesToString` and `PageSizeTests.CentimetresToString` on a German
 locale, because they assume a `.` decimal separator. Compare against `master` before assuming a failure
 is yours.
+
+`NAPS2.Sdk.Tests.Remoting.*` (`ScanServerTests`, `TlsScanServerTests`, `FallbackScanServerTests`) is
+**flaky**: it starts real servers and does mDNS discovery, and a different two or three of them fail on
+each run, on `master` as well. Don't chase one of these unless it fails reproducibly.
+
+A test fake that stands in for an HTTP transport has to drain `request.Content`
+(`await request.Content.CopyToAsync(Stream.Null)`). Upload progress comes out of
+`HttpContent.SerializeToStreamAsync`, which a handler that answers without reading the body never calls —
+so the streaming looks untested and reports one event instead of many.

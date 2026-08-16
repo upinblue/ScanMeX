@@ -201,13 +201,26 @@ public class AutoSaveSettingsForm : EtoDialogBase
 
     private void UpdateRegexVisibility()
     {
-        // The pattern and the symbology selection only apply to barcode separation.
-        bool show = _separateByCode39.Checked;
+        // Barcode separation is the main reason these matter, but they are not only about separating: the
+        // regex also decides which of a page's barcodes $(barcode) yields, and the type selection decides
+        // what is decoded at all. Since both are now kept when the mode changes, a configured value stays
+        // visible -- hiding a setting that is still in force is how it becomes impossible to correct.
+        bool show = _separateByCode39.Checked || HasBarcodeSettings();
         _code39RegexVis.IsVisible = show;
         _barcodeOptionsVis.IsVisible = show;
         _code39Regex.Enabled = show;
         _code39RegexLabel.Enabled = show;
+        // Only separation reads these two, so they don't invite changes when nothing separates.
+        _keepSeparatorPage.Enabled = _separateByCode39.Checked;
+        _newDocumentOnlyOnValueChange.Enabled = _separateByCode39.Checked;
     }
+
+    /// <summary>
+    /// Whether a barcode regex or a barcode type is configured, regardless of the separation mode.
+    /// </summary>
+    private bool HasBarcodeSettings() =>
+        !string.IsNullOrWhiteSpace(_code39Regex.Text) || _symbologyCode39.IsChecked() ||
+        _symbologyCode128.IsChecked() || _symbologyEanUpc.IsChecked();
 
     private void UpdateIdPromptVisibility()
     {
@@ -264,24 +277,25 @@ public class AutoSaveSettingsForm : EtoDialogBase
             return false;
         }
 
-        // Minimal regex validation when barcode separation is selected and the pattern is non-empty
+        // The pattern is kept whatever the separation mode is. It used to be dropped unless barcode
+        // separation was selected, so switching to patch-T and back silently emptied a regex the operator
+        // had typed -- and the pattern is not only about separating: it also decides which of a page's
+        // barcodes $(barcode) and $(barcode:1) yield, which matters on a profile that doesn't separate at
+        // all. It is still validated here so an unusable expression can't be saved.
         string? regex = null;
-        if (separator == SaveSeparator.Code39Barcode)
+        var text = _code39Regex.Text?.Trim();
+        if (!string.IsNullOrEmpty(text))
         {
-            var text = _code39Regex.Text?.Trim();
-            if (!string.IsNullOrEmpty(text))
+            try
             {
-                try
-                {
-                    _ = new Regex(text);
-                    regex = text;
-                }
-                catch (Exception)
-                {
-                    MessageBox.Show(this, UiStrings.InvalidSeparationPattern, MessageBoxType.Error);
-                    _code39Regex.Focus();
-                    return false;
-                }
+                _ = new Regex(text);
+                regex = text;
+            }
+            catch (Exception)
+            {
+                MessageBox.Show(this, UiStrings.InvalidSeparationPattern, MessageBoxType.Error);
+                _code39Regex.Focus();
+                return false;
             }
         }
 

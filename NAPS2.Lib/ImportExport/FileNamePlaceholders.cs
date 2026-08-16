@@ -101,6 +101,9 @@ public sealed class FileNamePlaceholders
         var selector = token.Substring("barcode:".Length);
         if (int.TryParse(selector, out var oneBasedIndex))
         {
+            // The numbered variables hold the barcodes as they were decoded, with the one the profile's
+            // regex accepts first -- see BarcodeExtractor.SelectionPattern. $(barcode) differs on purpose:
+            // it is the document's identifying value, so the regex's capturing group has been applied.
             return oneBasedIndex > 0 && oneBasedIndex <= ctx.Barcodes.Count
                 ? ctx.Barcodes[oneBasedIndex - 1].Value
                 : null;
@@ -131,14 +134,15 @@ public sealed class FileNamePlaceholders
     /// <summary>
     /// The document's barcode when no separator value is available. A page can carry several barcodes and
     /// the first one in reading order is not necessarily the one that identifies the document -- when the
-    /// profile has a separation pattern, that pattern is the operator's statement of which one does, so
-    /// only a value it accepts may name the file. Naming a document after a barcode the pattern rejected
-    /// yields a plausible-looking file under the wrong number, which nobody notices afterwards.
+    /// profile has a barcode regex, that regex is the operator's statement of which one does, so only a
+    /// value it accepts may name the file. Naming a document after a barcode the pattern rejected yields
+    /// a plausible-looking file under the wrong number, which nobody notices afterwards.
     /// </summary>
     private static string? FirstBarcodeThePatternAllows(ScanContext ctx)
     {
-        var pattern = DocumentSeparator.CompilePattern(
-            DocumentWorkflowSettings.ForProfile(ctx.Profile).SeparationPattern);
+        // The same regex the barcode variables were ordered by, so $(barcode) and $(barcode:1) can't name
+        // two different codes off the same sheet.
+        var pattern = DocumentSeparator.CompilePattern(ctx.Profile.GetBarcodeSelectionPattern());
         if (pattern == null)
         {
             return ctx.Barcodes.FirstOrDefault()?.Value;

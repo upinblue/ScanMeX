@@ -203,6 +203,26 @@ internal class ScanPerformer : IScanPerformer
             $"BarcodeDetection={options.BarcodeDetectionOptions.DetectBarcodes}, " +
             $"AutoSave={scanProfile.EnableAutoSave}, AutoSavePath='{scanProfile.AutoSaveSettings?.FilePath ?? ""}'");
 
+        // Which barcode ends up in $(barcode) and $(barcode:1) is decided by this pattern, and getting it
+        // wrong names the file after the article number instead of the order number -- which looks like a
+        // correct scan afterwards. Say which pattern is in force, and say when there isn't one.
+        if (options.BarcodeDetectionOptions.DetectBarcodes)
+        {
+            var selection = scanProfile.GetBarcodeSelectionPattern();
+            ScanConsole.Profile(string.IsNullOrWhiteSpace(selection)
+                ? "No barcode regex is set, so $(barcode) and $(barcode:1) take the first barcode in " +
+                  "reading order on the page."
+                : $"Barcode regex '{selection}' decides which barcode $(barcode) and $(barcode:1) yield.");
+            if (symbologies.Count == 0)
+            {
+                // With no symbology restriction ZXing reads anything it can, and dense production sheets
+                // yield codes that are not on the paper at all.
+                ScanConsole.Profile(
+                    "WARNING: no barcode type is selected, so every symbology is decoded. Dense sheets can " +
+                    "produce phantom EAN/UPC reads; select the types the paperwork actually carries.");
+            }
+        }
+
         // Measured against real Code 39 production papers: nothing decodes below 200 dpi, and detection
         // only becomes reliable from 240 dpi. Scanning at a lower resolution with separation enabled looks
         // like a broken detector, so say plainly that the resolution is the reason.
@@ -347,8 +367,6 @@ internal class ScanPerformer : IScanPerformer
         bool isDeviceQuery)
     {
         var separator = scanProfile.AutoSaveSettings?.Separator;
-        var sapNeedsBarcode = scanProfile.UploadsToSap() &&
-                              scanProfile.SapArchiveSettings!.BarcodeSource == BarcodeSource.FromScannedBarcode;
         var workflow = DocumentWorkflowSettings.ForProfile(scanProfile);
         var symbologies = workflow.GetEffectiveSymbologies().ToList();
 
@@ -393,8 +411,11 @@ internal class ScanPerformer : IScanPerformer
             ExcludeLocalIPs = true,
             BarcodeDetectionOptions =
             {
-                DetectBarcodes = scanParams.DetectPatchT || sapNeedsBarcode ||
-                                 workflow.RequiresBarcodeDetection() ||
+                // NeedsBarcodeValues covers separation, the SAP object key and -- the case that used to be
+                // missed -- any template that expands to a barcode, such as an auto save path of
+                // "$(barcode).pdf" on a profile that doesn't separate.
+                DetectBarcodes = scanParams.DetectPatchT ||
+                                 scanProfile.NeedsBarcodeValues() ||
                                  separator is SaveSeparator.PatchT or SaveSeparator.Code39Barcode,
                 // The profile's symbologies drive which formats ZXing looks for and which barcode wins
                 // when a page carries several. Empty means "anything".

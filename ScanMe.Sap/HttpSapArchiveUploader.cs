@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -17,12 +18,32 @@ namespace NAPS2.Sap;
 /// <summary>
 /// SAP ArchiveLink uploader for a customer-specific OData AttachmentSet service.
 /// </summary>
-public class HttpSapArchiveUploader : ISapArchiveUploader
+/// <remarks>
+/// Owns an <see cref="HttpClient" /> when it created one, so a caller that makes an uploader per document
+/// has to dispose it. Without that, a batch leaves one connection pool per scanned document open until
+/// the garbage collector gets round to it.
+/// </remarks>
+public class HttpSapArchiveUploader : ISapArchiveUploader, IDisposable
 {
     private const string CsrfHeaderName = "x-csrf-token";
+
+    /// <summary>
+    /// Percentage reached once the CSRF token is in hand. The token round trip is a real wait against a
+    /// slow gateway, so it gets a visible share of the bar rather than being folded into "starting".
+    /// </summary>
+    private const int AuthenticatedPercent = 20;
+
+    /// <summary>
+    /// Percentage reached once every byte has been handed to the socket. The rest is SAP's own processing,
+    /// which reports nothing, so the bar stops here until the response arrives.
+    /// </summary>
+    private const int SentPercent = 90;
+
     private readonly SapConnectionConfig _connection;
     private readonly HttpClient _httpClient;
+    private readonly bool _ownsHttpClient;
     private readonly CookieContainer _cookieContainer;
+    private bool _disposed;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="HttpSapArchiveUploader" /> class with a managed HTTP handler.
@@ -37,7 +58,7 @@ public class HttpSapArchiveUploader : ISapArchiveUploader
     /// Initializes a new instance of the <see cref="HttpSapArchiveUploader" /> class with a configured HTTP client.
     /// </summary>
     /// <param name="connection">The SAP OData connection configuration.</param>
-    /// <param name="httpClient">A configured HTTP client.</param>
+    /// <param name="httpClient">A configured HTTP client. The caller keeps ownership of it.</param>
     /// <param name="cookieContainer">An optional cookie container used to preserve the SAP Gateway session.</param>
     public HttpSapArchiveUploader(SapConnectionConfig connection, HttpClient httpClient, CookieContainer? cookieContainer = null)
     {
@@ -52,11 +73,17 @@ public class HttpSapArchiveUploader : ISapArchiveUploader
         _connection = connection ?? throw new ArgumentNullException(nameof(connection));
         _cookieContainer = new CookieContainer();
         _httpClient = new HttpClient(handler, disposeHttpClient);
+        _ownsHttpClient = disposeHttpClient;
         TrySetTimeout(_httpClient);
     }
 
     /// <inheritdoc />
-    public async Task<SapUploadResult> UploadAsync(SapUploadRequest request, CancellationToken ct)
+    public Task<SapUploadResult> UploadAsync(SapUploadRequest request, CancellationToken ct) =>
+        UploadAsync(request, null, ct);
+
+    /// <inheritdoc />
+    public async Task<SapUploadResult> UploadAsync(SapUploadRequest request,
+        IProgress<SapUploadProgress>? progress, CancellationToken ct)
     {
         if (request == null)
         {
@@ -67,12 +94,18 @@ public class HttpSapArchiveUploader : ISapArchiveUploader
             throw new ArgumentException("DocumentBytes is required.", nameof(request));
         }
 
+        void Report(SapUploadStage stage, int percent) =>
+            progress?.Report(new SapUploadProgress(stage, percent));
+
+        Report(SapUploadStage.Preparing, 0);
+        Report(SapUploadStage.Authenticating, 5);
         var csrf = await FetchCsrfTokenAsync(request.Connection, ct).ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(csrf.Token))
         {
             return new SapUploadResult(false, csrf.HttpStatusCode, null, null, null,
                 "CSRF-Token konnte nicht ermittelt werden", null, csrf.RawResponseBody, Array.Empty<SapErrorDetail>());
         }
+        Report(SapUploadStage.Uploading, AuthenticatedPercent);
 
         var uploadUri = new Uri(request.Connection.GetUploadUrl(), UriKind.Absolute);
         var token = csrf.Token!;
@@ -81,14 +114,16 @@ public class HttpSapArchiveUploader : ISapArchiveUploader
         {
             try
             {
-                using var message = BuildUploadMessage(request, uploadUri, token);
+                using var message = BuildUploadMessage(request, uploadUri, token, progress);
                 using var response = await _httpClient.SendAsync(message, ct).ConfigureAwait(false);
+                Report(SapUploadStage.WaitingForSap, SentPercent);
                 CaptureCookies(uploadUri, response);
                 var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                 var result = CreateUploadResult(response, body);
                 if (!result.Success && !csrfRetryUsed && IsCsrfFailure(response, result))
                 {
                     csrfRetryUsed = true;
+                    Report(SapUploadStage.Authenticating, AuthenticatedPercent);
                     var refreshed = await FetchCsrfTokenAsync(request.Connection, ct).ConfigureAwait(false);
                     if (!string.IsNullOrWhiteSpace(refreshed.Token))
                     {
@@ -105,6 +140,7 @@ public class HttpSapArchiveUploader : ISapArchiveUploader
                     return new SapUploadResult(false, null, null, null, ex.GetType().Name, ex.Message, null, null,
                         Array.Empty<SapErrorDetail>());
                 }
+                Report(SapUploadStage.Retrying, AuthenticatedPercent);
                 await Task.Delay(attempt == 0 ? TimeSpan.FromSeconds(1) : TimeSpan.FromSeconds(3), ct)
                     .ConfigureAwait(false);
             }
@@ -114,7 +150,8 @@ public class HttpSapArchiveUploader : ISapArchiveUploader
             Array.Empty<SapErrorDetail>());
     }
 
-    private HttpRequestMessage BuildUploadMessage(SapUploadRequest request, Uri uploadUri, string token)
+    private HttpRequestMessage BuildUploadMessage(SapUploadRequest request, Uri uploadUri, string token,
+        IProgress<SapUploadProgress>? progress)
     {
         var message = new HttpRequestMessage(HttpMethod.Post, uploadUri);
         AddCommonHeaders(message, request.Connection);
@@ -127,7 +164,11 @@ public class HttpSapArchiveUploader : ISapArchiveUploader
         AddIfNotEmpty(message, "x-sap-arobject", request.Profile.ArObject);
         AddIfNotEmpty(message, "x-sap-sapobj", request.Profile.SapObject);
         AddIfNotEmpty(message, "x-sap-objectid", request.ObjectId);
-        message.Content = new ByteArrayContent(request.DocumentBytes);
+        message.Content = progress == null
+            ? new ByteArrayContent(request.DocumentBytes)
+            : new ProgressByteArrayContent(request.DocumentBytes, sent => progress.Report(
+                new SapUploadProgress(SapUploadStage.Uploading,
+                    AuthenticatedPercent + sent * (SentPercent - AuthenticatedPercent) / 100)));
         message.Content.Headers.ContentType = new MediaTypeHeaderValue(
             request.OverrideMimeType ?? SapMimeTypeResolver.Resolve(request.FileName));
         return message;
@@ -280,13 +321,6 @@ public class HttpSapArchiveUploader : ISapArchiveUploader
         }
     }
 
-    private static string? ResolveObjectId(string? value, string barcode)
-    {
-        return string.IsNullOrWhiteSpace(value)
-            ? null
-            : value!.Replace("{barcode}", barcode).Replace("{Barcode}", barcode).Replace("{BARCODE}", barcode);
-    }
-
     private void AddCommonHeaders(HttpRequestMessage message, SapConnectionConfig connection)
     {
         message.Headers.Authorization = new AuthenticationHeaderValue("Basic", BuildBasicAuthParameter(connection));
@@ -435,8 +469,70 @@ public class HttpSapArchiveUploader : ISapArchiveUploader
             : null;
     }
 
+    /// <summary>
+    /// Releases the HTTP client this uploader created. Does nothing when the client was supplied by the
+    /// caller, who keeps ownership of it.
+    /// </summary>
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Releases the HTTP client this uploader created.
+    /// </summary>
+    /// <param name="disposing">True when called from <see cref="Dispose()" />.</param>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed || !disposing)
+        {
+            return;
+        }
+        _disposed = true;
+        if (_ownsHttpClient)
+        {
+            _httpClient.Dispose();
+        }
+    }
+
     private record ParsedSapError(string? ErrorCode, string? ErrorMessage, string? TransactionId,
         IReadOnlyList<SapErrorDetail> Details);
+
+    /// <summary>
+    /// Sends the document in chunks so the caller can show how much of it has gone out. A plain
+    /// <see cref="ByteArrayContent" /> hands everything to the socket in one call, which leaves the
+    /// progress bar sitting still for the whole transfer of a large scan.
+    /// </summary>
+    private sealed class ProgressByteArrayContent : HttpContent
+    {
+        private const int BufferSize = 64 * 1024;
+        private readonly byte[] _bytes;
+        private readonly Action<int> _onPercentSent;
+
+        public ProgressByteArrayContent(byte[] bytes, Action<int> onPercentSent)
+        {
+            _bytes = bytes;
+            _onPercentSent = onPercentSent;
+        }
+
+        protected override async Task SerializeToStreamAsync(Stream stream, TransportContext? context)
+        {
+            var total = Math.Max(1, _bytes.Length);
+            for (var offset = 0; offset < _bytes.Length; offset += BufferSize)
+            {
+                var count = Math.Min(BufferSize, _bytes.Length - offset);
+                await stream.WriteAsync(_bytes, offset, count).ConfigureAwait(false);
+                _onPercentSent((int) ((offset + (long) count) * 100 / total));
+            }
+        }
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = _bytes.Length;
+            return true;
+        }
+    }
 }
 
 /// <summary>

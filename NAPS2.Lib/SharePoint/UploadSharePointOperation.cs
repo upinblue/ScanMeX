@@ -39,7 +39,10 @@ internal class UploadSharePointOperation : OperationBase
         {
             try
             {
-                var progress = new Progress<int>(percent =>
+                // Inline rather than Progress<int>: the upload runs without a synchronization context, so
+                // Progress<T> would post these to the thread pool and they could arrive out of order or
+                // after the upload has finished. See InlineProgress.
+                var progress = new InlineProgress<int>(percent =>
                 {
                     // Map progress into human-readable stages and log debug info
                     Status.CurrentProgress = percent;

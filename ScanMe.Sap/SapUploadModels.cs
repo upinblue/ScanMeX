@@ -1,8 +1,39 @@
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace NAPS2.Sap;
+
+/// <summary>
+/// The step an ArchiveLink upload is on. Reported so the progress window can name what is happening
+/// instead of showing a bar that sits still: fetching the CSRF token and waiting for SAP to accept the
+/// document are the two steps that take noticeable time, and they look identical from the outside.
+/// </summary>
+public enum SapUploadStage
+{
+    /// <summary>Reading the document and building the request.</summary>
+    Preparing,
+
+    /// <summary>Fetching a CSRF token from SAP Gateway.</summary>
+    Authenticating,
+
+    /// <summary>Sending the document's bytes.</summary>
+    Uploading,
+
+    /// <summary>The document has been sent; SAP is processing it.</summary>
+    WaitingForSap,
+
+    /// <summary>The attempt failed and is being made again.</summary>
+    Retrying
+}
+
+/// <summary>
+/// How far an ArchiveLink upload has got.
+/// </summary>
+/// <param name="Stage">The step being performed.</param>
+/// <param name="Percent">Overall completion from 0 to 100.</param>
+public record SapUploadProgress(SapUploadStage Stage, int Percent);
 
 /// <summary>
 /// Uploads a document to a customer-specific SAP ArchiveLink OData service.
@@ -16,6 +47,16 @@ public interface ISapArchiveUploader
     /// <param name="ct">A cancellation token.</param>
     /// <returns>The upload result.</returns>
     Task<SapUploadResult> UploadAsync(SapUploadRequest request, CancellationToken ct);
+
+    /// <summary>
+    /// Uploads the document, reporting each step so the caller can show progress.
+    /// </summary>
+    /// <param name="request">The upload request.</param>
+    /// <param name="progress">Receives the upload's stage and overall percentage, or null for no reporting.</param>
+    /// <param name="ct">A cancellation token.</param>
+    /// <returns>The upload result.</returns>
+    Task<SapUploadResult> UploadAsync(SapUploadRequest request, IProgress<SapUploadProgress>? progress,
+        CancellationToken ct);
 
     /// <summary>
     /// Tests connectivity by fetching a CSRF token for the supplied connection.

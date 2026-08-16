@@ -3456,6 +3456,42 @@ namespace NAPS2.Lang.Resources {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Signing in to SAP.
+        /// </summary>
+        internal static string SapAuthenticating {
+            get {
+                return ResourceManager.GetString("SapAuthenticating", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Uploading {0} to SAP ArchiveLink ({1}%).
+        /// </summary>
+        internal static string SapUploadingFile {
+            get {
+                return ResourceManager.GetString("SapUploadingFile", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Waiting for SAP to archive {0}.
+        /// </summary>
+        internal static string SapWaitingForArchive {
+            get {
+                return ResourceManager.GetString("SapWaitingForArchive", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Retrying the SAP upload for {0}.
+        /// </summary>
+        internal static string SapUploadRetrying {
+            get {
+                return ResourceManager.GetString("SapUploadRetrying", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to HTTP {0} {1}: {2} (transaction {3}).
         /// </summary>
         internal static string SapUploadErrorDetail {

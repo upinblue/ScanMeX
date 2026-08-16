@@ -124,7 +124,8 @@ internal class SapConnectionForm : EtoDialogBase
             return;
         }
         _testResult.Text = UiStrings.Ellipsis;
-        var result = await new HttpSapArchiveUploader(config).TestConnectionAsync(CancellationToken.None);
+        using var uploader = new HttpSapArchiveUploader(config);
+        var result = await uploader.TestConnectionAsync(CancellationToken.None);
         _testResult.TextColor = result.Success ? Colors.Green : Colors.Red;
         _testResult.Text = result.Success
             ? string.Format(UiStrings.SapCsrfTokenReceived, Shorten(result.CsrfToken))

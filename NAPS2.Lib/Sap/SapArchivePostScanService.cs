@@ -35,9 +35,11 @@ internal class SapArchivePostScanService
         }
 
         var barcode = ResolveBarcode(settings, filePath, images, ctx);
+        // ArObject and SapObject are the two values that actually go out as headers; ArDocType is a legacy
+        // field the OData upload never sends, so naming it here suggested a setting that has no effect.
         ScanConsole.Upload(
             $"SAP object key from {settings.BarcodeSource}: '{barcode ?? "(none)"}' " +
-            $"(Archive='{settings.ArchiveId}', ArObject='{settings.ArObject}', DocType='{settings.ArDocType}')");
+            $"(Archive='{settings.ArchiveId}', ArObject='{settings.ArObject}', SapObject='{settings.SapObject}')");
         if (string.IsNullOrWhiteSpace(barcode))
         {
             if (settings.BarcodeSource == BarcodeSource.PromptUser)
@@ -58,7 +60,17 @@ internal class SapArchivePostScanService
             return UiStrings.SapNoObjectKey;
         }
 
-        var connection = settings.Connection ?? _config.Get(c => c.SapConnection);
+        // A profile saved before the connection moved onto the profile has none of its own and silently
+        // uses the global one, which is only validated in its own dialog. Say which one is in use so a
+        // profile pointing at the wrong system isn't invisible.
+        var connection = settings.Connection;
+        if (connection == null)
+        {
+            connection = _config.Get(c => c.SapConnection);
+            ScanConsole.Upload(
+                "This profile has no SAP connection of its own, so the global SAP connection from " +
+                $"Settings is used: Host='{connection.Host ?? ""}', Client='{connection.Client ?? ""}'.");
+        }
         var fileName = Path.GetFileName(filePath);
         var objectId = ResolveObjectId(settings.ObjectId, barcode, ctx);
         var request = new SapUploadRequest(
@@ -74,7 +86,10 @@ internal class SapArchivePostScanService
             $"SAP request: Host='{connection.Host}', Service='{connection.ServiceName}', Client='{connection.Client}', " +
             $"User='{connection.User}', File='{fileName}', ObjectId='{objectId ?? "(none)"}'");
 
-        var uploader = new HttpSapArchiveUploader(connection);
+        // Disposed once the upload has finished: the uploader owns an HttpClient and its handler, and a
+        // batch creates one per document. Without this each document leaves a connection pool open until
+        // the garbage collector gets to it, which on a station that scans all day adds up.
+        using var uploader = new HttpSapArchiveUploader(connection);
         var op = new UploadSapArchiveOperation();
         if (!op.Start(uploader, request))
         {
@@ -186,24 +201,4 @@ internal class SapArchivePostScanService
         return string.IsNullOrWhiteSpace(template) ? template : new FileNamePlaceholders().SubstitutePlaceholders(template!, ctx);
     }
 
-    private static string ResolveDescription(string? template, string objectKey)
-    {
-        var value = string.IsNullOrWhiteSpace(template) ? "ScanMe {date} {objectkey}" : template!;
-        return value
-            .Replace("{date}", DateTime.Now.ToString("yyyy-MM-dd"), StringComparison.OrdinalIgnoreCase)
-            .Replace("{user}", Environment.UserName, StringComparison.OrdinalIgnoreCase)
-            .Replace("{objectkey}", objectKey, StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static string GetMimeType(string filePath)
-    {
-        return Path.GetExtension(filePath).ToLowerInvariant() switch
-        {
-            ".pdf" => "application/pdf",
-            ".jpg" or ".jpeg" => "image/jpeg",
-            ".png" => "image/png",
-            ".tif" or ".tiff" => "image/tiff",
-            _ => "application/octet-stream"
-        };
-    }
 }

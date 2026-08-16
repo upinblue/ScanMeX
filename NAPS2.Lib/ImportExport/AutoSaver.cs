@@ -365,7 +365,12 @@ public class AutoSaver
             SequenceIndex = index,
             Profile = ActiveProfile ?? new ScanProfile(),
             Images = images,
-            Barcodes = new BarcodeExtractor().Extract(images),
+            // The profile's regex decides which of a page's barcodes is the order number, so it also
+            // decides which one $(barcode:1) yields -- see BarcodeExtractor.SelectionPattern.
+            Barcodes = new BarcodeExtractor
+            {
+                SelectionPattern = ActiveProfile?.GetBarcodeSelectionPattern()
+            }.Extract(images),
             SeparatorBarcodeValue = separatorValue ??
                                     (images.FirstOrDefault()?.PostProcessingData.Barcode.IsPatchT == true
                                         ? images.First().PostProcessingData.Barcode.DetectedText

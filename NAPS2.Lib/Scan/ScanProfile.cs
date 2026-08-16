@@ -178,6 +178,75 @@ public class ScanProfile
     public bool UploadsToSap() =>
         SapArchiveSettings != null &&
         (SapArchiveSettings.EnableUpload || AutoSaveSettings?.UploadToSap == true);
+
+    /// <summary>
+    /// The regex that decides which of a page's barcodes is the one the operator means, or null when the
+    /// profile doesn't distinguish them.
+    /// </summary>
+    /// <remarks>
+    /// The separation pattern comes first because it is what names the document's file, so the barcode
+    /// variables agreeing with it keeps the file name and everything derived from it consistent. A
+    /// profile that archives to SAP without separating has no separation pattern, and there the SAP
+    /// object key regex is the only statement of which barcode matters.
+    /// </remarks>
+    public string? GetBarcodeSelectionPattern()
+    {
+        var separationPattern = DocumentWorkflowSettings.ForProfile(this).SeparationPattern;
+        return string.IsNullOrWhiteSpace(separationPattern)
+            ? SapArchiveSettings?.BarcodeRegex
+            : separationPattern;
+    }
+
+    /// <summary>
+    /// Whether anything on this profile needs the pages' barcodes decoded.
+    /// </summary>
+    /// <remarks>
+    /// Separation and the SAP "from the scanned barcode" object key are the obvious cases. The one that
+    /// is easy to miss is a template: an auto save path of <c>Scans\$(barcode).pdf</c>, a SharePoint
+    /// folder of <c>$(barcode)</c> or a SAP object id of <c>$(barcode)</c> needs the pages decoded just
+    /// as much. Without detection the placeholder resolves to nothing, and the document is filed under a
+    /// name with a hole in it rather than failing visibly -- so every template that goes through
+    /// <see cref="ImportExport.FileNamePlaceholders"/> has to be listed here.
+    /// </remarks>
+    public bool NeedsBarcodeValues()
+    {
+        if (DocumentWorkflowSettings.ForProfile(this).RequiresBarcodeDetection())
+        {
+            return true;
+        }
+        if (UploadsToSap() && SapArchiveSettings!.BarcodeSource == BarcodeSource.FromScannedBarcode)
+        {
+            return true;
+        }
+        return BarcodeRecognitionEnabled || UsesBarcodePlaceholder();
+    }
+
+    /// <summary>
+    /// Whether any template on this profile expands to a barcode. <c>$(id)</c> counts because it falls
+    /// back to the barcode whenever the operator isn't asked to type an identification number.
+    /// </summary>
+    private bool UsesBarcodePlaceholder()
+    {
+        var templates = new[]
+        {
+            AutoSaveSettings?.FilePath,
+            SharePointUploadSettings?.SiteUrl,
+            SharePointUploadSettings?.LibraryNameOrPath,
+            SharePointUploadSettings?.FolderPath,
+            SapArchiveSettings?.ObjectId,
+            SapArchiveSettings?.SlugTemplate,
+            SapArchiveSettings?.BarcodeTemplate,
+            SapArchiveSettings?.DescriptionTemplate,
+            SapArchiveSettings?.FixedBarcode,
+            SapArchiveSettings?.BarcodeRegex
+        };
+        var wantsId = DocumentWorkflowSettings.ForProfile(this).IdMode != DocumentIdMode.ManualInput;
+        return templates.Any(x => ContainsPlaceholder(x, "$(barcode") ||
+                                  wantsId && ContainsPlaceholder(x, "$(id)"));
+    }
+
+    private static bool ContainsPlaceholder(string? template, string placeholder) =>
+        template?.IndexOf(placeholder, StringComparison.OrdinalIgnoreCase) >= 0;
 }
 
 /// <summary>

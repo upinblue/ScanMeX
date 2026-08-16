@@ -90,7 +90,7 @@ public class SharePointUploadService
         return $"{status} at {endpoint}. Details: {details}";
     }
 
-    private static string? CombineFolders(params string?[] parts)
+    internal static string? CombineFolders(params string?[] parts)
     {
         var segments = new List<string>();
         foreach (var p in parts)
@@ -112,6 +112,26 @@ public class SharePointUploadService
             .Where(s => !string.IsNullOrEmpty(s))
             .Select(s => Uri.EscapeDataString(s)));
         return encoded;
+    }
+
+    /// <summary>
+    /// Builds the Graph URL that writes the file's content.
+    /// </summary>
+    /// <remarks>
+    /// Graph addresses a drive item by path as <c>root:/{folder}/{name}:/content</c>: one colon opens the
+    /// path expression and one closes it, with the folders and the file name forming a single path in
+    /// between. Ending the folder with its own colon produces <c>root:/{folder}:/{name}:/content</c>,
+    /// which Graph reads as a second path expression and rejects -- so uploading to the library root
+    /// worked while uploading into a subfolder failed with "invalid request". Keep the two joined by a
+    /// plain slash.
+    /// </remarks>
+    internal static string BuildUploadUrl(string siteId, string driveId, string? folderPath, string fileName)
+    {
+        var encodedFileName = Uri.EscapeDataString(fileName);
+        var itemPath = string.IsNullOrWhiteSpace(folderPath)
+            ? encodedFileName
+            : $"{EncodePath(folderPath!)}/{encodedFileName}";
+        return $"https://graph.microsoft.com/v1.0/sites/{siteId}/drives/{driveId}/root:/{itemPath}:/content";
     }
 
     private async Task UploadCoreAsync(
@@ -264,7 +284,11 @@ public class SharePointUploadService
                     var w = d.TryGetProperty("webUrl", out var wp) ? wp.GetString() : "?";
                     return $"{n} ({w})";
                 }));
-                ScanConsole.Upload($"[SP] Library '{libraryName}' not matched. Falling back to first: '{driveName}'. Available libraries: {available}");
+                // A typo in the library name lands the document in whichever library happens to come
+                // first, which afterwards looks exactly like a correct upload to the wrong place.
+                ScanConsole.Upload(
+                    $"[SP] WARNING: library '{libraryName}' was not found, so documents go to '{driveName}' " +
+                    $"instead. Available libraries: {available}");
             }
         }
 
@@ -275,11 +299,11 @@ public class SharePointUploadService
         }
         Report(40);
 
-        // Determine folder segment combining library subpath and configured folder path
+        // Determine the item path combining library subpath, configured folder path and file name.
         var combinedFolder = CombineFolders(librarySubPath, sp.FolderPath);
-        string folderSegment = string.IsNullOrWhiteSpace(combinedFolder) ? "root" : $"root:/{EncodePath(combinedFolder!)}";
-        var encodedFileName = Uri.EscapeDataString(fileName);
-        string uploadUrl = $"https://graph.microsoft.com/v1.0/sites/{siteId}/drives/{driveId}/{folderSegment}:/{encodedFileName}:/content";
+        string uploadUrl = BuildUploadUrl(siteId, driveId!, combinedFolder, fileName);
+        ScanConsole.Upload(
+            $"[SP] Uploading into folder '{combinedFolder ?? "(library root)"}' as '{fileName}'.");
         ScanConsole.Upload($"[SP] Upload URL: {uploadUrl}");
 
         using var fs = File.OpenRead(localFilePath);

@@ -719,7 +719,8 @@ public class EditProfileForm : EtoDialogBase
 
     private SapArchiveProfileSettings BuildSapArchiveSettings()
     {
-        var currentConnection = ScanProfile.SapArchiveSettings?.Connection ?? Config.Get(c => c.SapConnection);
+        var current = ScanProfile.SapArchiveSettings;
+        var currentConnection = current?.Connection ?? Config.Get(c => c.SapConnection);
         var connection = new SapConnectionConfig
         {
             Host = _sapHost.Text.Trim().TrimEnd('/'),
@@ -748,7 +749,16 @@ public class EditProfileForm : EtoDialogBase
                 : _sapFixedObjectKey.Checked ? BarcodeSource.Fixed
                 : BarcodeSource.PromptUser,
             BarcodeRegex = _sapObjectKeyRegex.Text.Trim(),
-            FixedBarcode = _sapFixedObjectKeyValue.Text.Trim()
+            FixedBarcode = _sapFixedObjectKeyValue.Text.Trim(),
+
+            // Settings this dialog doesn't edit. A new object is built on every save, so anything not
+            // carried across here is emptied the next time the profile is opened and confirmed -- the same
+            // trap GetUpdatedScanProfile documents for the profile as a whole.
+            ArDocType = current?.ArDocType,
+            ConnectionName = current?.ConnectionName,
+            SlugTemplate = current?.SlugTemplate,
+            BarcodeTemplate = current?.BarcodeTemplate,
+            DescriptionTemplate = current?.DescriptionTemplate
         };
     }
 
@@ -839,7 +849,8 @@ public class EditProfileForm : EtoDialogBase
             await File.ReadAllBytesAsync(filePath),
             fileName,
             "application/pdf");
-        var result = await new HttpSapArchiveUploader(request.Connection).UploadAsync(request, CancellationToken.None);
+        using var uploader = new HttpSapArchiveUploader(request.Connection);
+        var result = await uploader.UploadAsync(request, CancellationToken.None);
         MessageBox.Show(this,
             result.Success
                 ? string.Format(UiStrings.SapTestUploadSucceeded, result.ArchivDocId, barcode)
