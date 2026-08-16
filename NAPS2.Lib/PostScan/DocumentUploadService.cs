@@ -37,7 +37,13 @@ public class DocumentUploadService
     /// notifies the operator of the outcome, and removes the staging file when the profile doesn't keep
     /// a local copy.
     /// </summary>
-    public async Task<bool> UploadAsync(PendingDocument document)
+    /// <remarks>
+    /// Virtual so <see cref="ImportExport.AutoSaver"/> and
+    /// <see cref="EtoForms.Desktop.DocumentUploadController"/> can be tested against a stand-in. Both of
+    /// them do something with the outcome -- queueing a failure for retry, clearing the window on success
+    /// -- that is worth pinning down without reaching a real SharePoint or SAP system.
+    /// </remarks>
+    public virtual async Task<bool> UploadAsync(PendingDocument document)
     {
         document.Status = DocumentUploadStatus.Uploading;
         document.Message = null;
@@ -95,7 +101,17 @@ public class DocumentUploadService
         return true;
     }
 
-    private async Task<string?> UploadToSharePointAsync(PendingDocument document)
+    /// <summary>
+    /// Sends the document to SharePoint. Returns null on success, otherwise why it failed.
+    /// </summary>
+    /// <remarks>
+    /// Virtual together with <see cref="UploadToSapAsync"/> so a test can drive
+    /// <see cref="UploadAsync"/> with a chosen outcome per target. What matters there is what happens
+    /// around the two calls -- that one target failing still lets the other run, that the failures are
+    /// reported together, and that the staging file survives a failure -- and none of that should need a
+    /// reachable SharePoint tenant to check.
+    /// </remarks>
+    protected virtual async Task<string?> UploadToSharePointAsync(PendingDocument document)
     {
         try
         {
@@ -123,7 +139,11 @@ public class DocumentUploadService
         }
     }
 
-    private async Task<string?> UploadToSapAsync(PendingDocument document)
+    /// <summary>
+    /// Sends the document to SAP ArchiveLink. Returns null on success, otherwise why it failed.
+    /// See <see cref="UploadToSharePointAsync"/> for why this is virtual.
+    /// </summary>
+    protected virtual async Task<string?> UploadToSapAsync(PendingDocument document)
     {
         try
         {

@@ -7,7 +7,7 @@
 - Auto-save paths are configured through `AutoSaveSettings.FilePath` and expanded with `Placeholders.All.WithDate(...)`.
 - Scan splitting is handled by `SaveSeparatorHelper` using `SaveSeparator.FilePerScan`, `FilePerPage`, `PatchT`, and `Code39Barcode`.
 - Barcode metadata is stored on `ProcessedImage.PostProcessingData.Barcode`.
-- `BarcodeDetector` in `NAPS2.Sdk\Scan\BarcodeDetector.cs` wraps ZXing and currently stores the preferred detected barcode per image.
+- `BarcodeDetector` in `NAPS2.Sdk\Scan\BarcodeDetector.cs` wraps ZXing. It decodes each page twice (full size and 60%) and stores every result in `Barcode.AllDetections`, with `DetectedText` holding the primary one.
 - Patch-T detection uses `Barcode.IsPatchT`, backed by detected text `PATCHT` and format `CODE_39`.
 - Scan options enable barcode detection for PatchT/Code39 separation in `ScanPerformer.BuildOptions`.
 - SharePoint upload settings are stored on `ScanProfile.EnableSharePointUpload` and `SharePointUploadSettings`.
@@ -24,25 +24,40 @@
 - Unresolved barcode placeholders expand to an empty string so file names never contain literal `$(barcode)` tokens.
 - `SanitizeForFileName` is explicit and caller-controlled; substitution itself remains text-only.
 - `BarcodeExtractor` reads existing post-processing barcode metadata and does not introduce a new ZXing dependency.
-- The extractor returns at most one barcode per page today because the current `ProcessedImage` metadata stores one barcode; the API is list-shaped for future multi-barcode support.
-- Barcode recognition remains opt-in through `ScanProfile.BarcodeRecognitionEnabled` to avoid performance regressions for existing profiles.
+- ~~The extractor returns at most one barcode per page~~ — superseded. `Barcode.AllDetections` holds every
+  code decoded on a page, and `BarcodeExtractor` returns them with the one matching the profile's regex
+  (`SelectionPattern`) first, so `$(barcode:1)` is the order number rather than whichever code happened to
+  read first.
+- ~~Barcode recognition is opt-in through `ScanProfile.BarcodeRecognitionEnabled`~~ — superseded.
+  That property is vestigial (no UI sets it); `ScanProfile.NeedsBarcodeValues()` is the gate, and it also
+  turns detection on for profiles that only need a barcode for a file-name or upload-path template.
 
 ## Post-Scan Pipeline
 
-- `PostScanOrchestrator` coordinates active sinks in strict order: `AutoSave`, `SharePoint`, then `Sap`.
-- `IPostScanSink` is the common abstraction; `SavedArtifact` describes files written by AutoSave and consumed by upload sinks.
-- `AutoSaveSink` owns artifact production; upload sinks skip when no artifact is available.
-- `SharePointSink` wraps the existing `SharePointUploadService` and resolves file names with `FileNamePlaceholders`.
-- `SapArchiveSink` resolves barcode/object-id/slug templates before calling `ISapArchiveUploader`; the uploader receives only final strings.
-- Barcode extraction is lazy: it runs only when `BarcodeRecognitionEnabled` is true or an active template contains `$(barcode`.
-- Patch-T segmentation for this pipeline keeps the separator sheet as page 1 of the new segment.
-- The first segment may have no leading Patch-T sheet; in that case `SeparatorBarcodeValue` is null and `$(barcode)` falls back to the first detected barcode.
-- Unknown placeholders are detected after substitution by checking for `$(` and fail the sink before writing/uploading.
-- Upload failures do not delete the local artifact; this preserves evidence for retry/support.
+A sink-based pipeline (`PostScanOrchestrator`, `IPostScanSink`, `AutoSaveSink`, `SharePointSink`,
+`SapArchiveSink`, `SavedArtifact`) was designed here but never wired into the Autofac container, so it
+never ran in the shipped app while carrying its own drifting copies of the barcode and path logic. It has
+been deleted. The pipeline that actually runs is:
+
+- `AutoSaver` splits the scan into documents, resolves the file name and writes the PDF.
+- `DocumentUploadService` takes one saved document to every target the profile enables, attempting all of
+  them and joining the failures into one message, so one target being down doesn't stop the other.
+- `DocumentUploadQueue` holds documents waiting for the manual upload button plus any whose automatic
+  upload failed; `DocumentUploadController` drives the button.
+- Barcode extraction is decided by `ScanProfile.NeedsBarcodeValues()`, which covers separation, the SAP
+  object key and any template containing `$(barcode` or `$(id)`.
+- Unresolved placeholders are detected after substitution by checking for `$(` and fail the save before
+  anything is written or uploaded.
+- A failed upload never deletes the local file, and the document stays in the queue so it can be retried.
+
+See the "path a scan takes" section of `CLAUDE.md` for the full call chain. Do not reintroduce a second
+post-scan path.
 
 ## Migration Notes
 
 - Existing profiles remain compatible because all new fields default to empty/null/false.
 - The old `Placeholders.Substitute(...)` signature and behavior are unchanged.
 - The new `FileNamePlaceholders.SubstitutePlaceholders(..., ScanContext, ...)` is additive.
-- Patch-T behavior differs in the new post-scan pipeline: separator sheets are retained in output files to preserve the visible SAP business reference.
+- Whether the separator sheet stays in the output is `DocumentWorkflowSettings.KeepSeparatorPage`. It
+  defaults to on for barcode separation, because the barcode cover sheet is part of the order's paperwork
+  and carries the visible SAP business reference, and to off for patch-T, whose sheets are only markers.

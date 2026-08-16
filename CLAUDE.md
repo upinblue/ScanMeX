@@ -4,6 +4,27 @@ A fork of NAPS2 that adds document separation, SharePoint upload and SAP Archive
 the scanning pipeline. The upstream NAPS2 projects are unchanged in structure; the ScanMe-specific code
 lives in `NAPS2.Lib/PostScan`, `NAPS2.Lib/Sap`, `NAPS2.Lib/SharePoint` and the `ScanMe.Sap` project.
 
+## The path a scan takes
+
+There is exactly one, and it is worth knowing by heart before changing anything downstream of scanning:
+
+```
+ScanPerformer            decides whether barcodes are decoded (ScanProfile.NeedsBarcodeValues)
+  -> AutoSaver           splits into documents, resolves the file name, writes the PDF
+     -> DocumentUploadService   one document -> SharePoint and/or SAP, aggregates the failures
+        -> SharePointUploadService        (Microsoft Graph)
+        -> SapArchivePostScanService      (ScanMe.Sap / HttpSapArchiveUploader)
+     -> DocumentUploadQueue  holds manual-trigger documents and failed automatic uploads
+        -> DocumentUploadController  the manual upload button
+```
+
+Autofac registers these explicitly in `CommonModule`; there is **no assembly scanning**, so a type that
+nothing constructs by name is dead. A second, sink-based pipeline (`PostScanOrchestrator` plus
+`AutoSaveSink`/`SharePointSink`/`SapArchiveSink`) once existed alongside this one, was never wired into
+the container, and carried drifting copies of the barcode and path logic while its tests suggested the
+behaviour was covered. It was deleted; don't reintroduce a parallel post-scan path. If the upload flow
+needs to change, change `DocumentUploadService`.
+
 ---
 
 ## The diagnostic console — read this before changing scan, barcode, separation or upload code
@@ -87,6 +108,15 @@ up in the same console.
   and always separate.
 - **A document that fails to upload goes into `DocumentUploadQueue`**, whether the trigger was manual or
   automatic, so it can be retried from the upload button. A failed upload must never be a dead end.
+  `AutoSaverUploadTests` pins this down, along with the other half of it: a document that failed to
+  *save* has nothing to upload and must not be queued either.
+- **One target failing does not stop the other.** `DocumentUploadService` attempts every enabled target
+  and joins the failures into one message, so a SharePoint outage still lets the document reach SAP.
+  `UploadToSharePointAsync`/`UploadToSapAsync` are `protected virtual` purely so
+  `DocumentUploadServiceTests` can drive that logic without a reachable tenant or gateway.
+- **A staging file is only deleted once every target succeeded.** For a profile with `KeepLocalCopy` off
+  it is the only copy of the scan, so removing it after a failure would destroy a document that never
+  reached the archive.
 - Uploads use `ShowBackgroundProgress`, not `ShowProgress`: a batch produces one upload per document and
   modal dialogs would block the window throughout.
 - **Progress is reported through `InlineProgress<T>`, not `Progress<T>`.** An upload runs on a background
