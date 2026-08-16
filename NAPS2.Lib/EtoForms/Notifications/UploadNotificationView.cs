@@ -25,6 +25,13 @@ public class UploadNotificationView : NotificationView
         _title.BackgroundColor = _detail.BackgroundColor = BackgroundColor;
     }
 
+    /// <summary>
+    /// A failed upload usually means the document never reached the archive and someone has to act,
+    /// so it gets the critical tint rather than the plain card it used to share with a success.
+    /// </summary>
+    protected override NotificationSeverity Severity =>
+        Model is UploadNotification { IsError: true } ? NotificationSeverity.Error : NotificationSeverity.Success;
+
     protected override LayoutElement PrimaryContent => _title.DynamicWrap(180).MaxWidth(180).Scale();
 
     protected override LayoutElement SecondaryContent => _detail.DynamicWrap(180).MaxWidth(180);

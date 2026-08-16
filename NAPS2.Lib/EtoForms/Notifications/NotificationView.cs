@@ -30,9 +30,37 @@ public abstract class NotificationView : IDisposable
 
     protected abstract LayoutElement SecondaryContent { get; }
 
-    protected Color BackgroundColor => Manager!.ColorScheme.NotificationBackgroundColor;
-    
-    protected Color BorderColor => Manager!.ColorScheme.NotificationBorderColor;
+    /// <summary>
+    /// What outcome this notification reports, which decides its tint and icon. Neutral by default,
+    /// so a notification that isn't reporting success or failure stays a plain card.
+    /// </summary>
+    protected virtual NotificationSeverity Severity => NotificationSeverity.Neutral;
+
+    protected Color BackgroundColor => Manager!.ColorScheme.GetSeverityBackgroundColor(Severity);
+
+    protected Color BorderColor => Manager!.ColorScheme.GetSeverityBorderColor(Severity);
+
+    private string? SeverityIconName => Severity switch
+    {
+        NotificationSeverity.Success => "status_success_small",
+        NotificationSeverity.Warning => "status_warning_small",
+        NotificationSeverity.Error => "status_error_small",
+        _ => null
+    };
+
+    private LayoutElement CreateSeverityIcon()
+    {
+        var iconName = SeverityIconName;
+        if (iconName == null)
+        {
+            return C.None();
+        }
+        var imageView = new ImageView { BackgroundColor = BackgroundColor };
+        var color = Manager!.ColorScheme.GetSeverityColor(Severity);
+        EtoPlatform.Current.AttachDpiDependency(imageView,
+            scale => imageView.Image = EtoPlatform.Current.IconProvider.GetIcon(iconName, scale)?.Tint(color));
+        return imageView.AlignLeading();
+    }
 
     public LayoutElement CreateContent()
     {
@@ -47,12 +75,15 @@ public abstract class NotificationView : IDisposable
             C.Filler(),
             L.Overlay(
                 drawable.MinWidth(120),
-                L.Column(
-                    L.Row(
-                        PrimaryContent,
-                        ShowClose ? C.Spacer().Width(CLOSE_BUTTON_SIZE) : C.None()),
-                    SecondaryContent
-                ).Padding(10, 8, 10, 8),
+                L.Row(
+                    CreateSeverityIcon(),
+                    L.Column(
+                        L.Row(
+                            PrimaryContent,
+                            ShowClose ? C.Spacer().Width(CLOSE_BUTTON_SIZE) : C.None()),
+                        SecondaryContent
+                    )
+                ).Spacing(8).Padding(10, 8, 10, 8),
                 ShowClose
                     ? L.Column(
                         L.Row(

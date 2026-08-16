@@ -1,4 +1,5 @@
 using Eto.Drawing;
+using NAPS2.EtoForms.Notifications;
 
 namespace NAPS2.EtoForms;
 
@@ -47,9 +48,22 @@ public class ColorScheme
     private static readonly Color SubtlePressedLight = Color.FromRgb(0xededed);
     private static readonly Color SubtlePressedDark = Color.FromRgb(0x272727);
 
-    // SystemFillColorCaution
+    // The Fluent InfoBar severity palette: SystemFillColor<Severity> for the icon, and
+    // SystemFillColor<Severity>Background for the surface behind it.
+    private static readonly Color SuccessLight = Color.FromRgb(0x0f7b0f);
+    private static readonly Color SuccessDark = Color.FromRgb(0x6ccb5f);
+    private static readonly Color SuccessBgLight = Color.FromRgb(0xdff6dd);
+    private static readonly Color SuccessBgDark = Color.FromRgb(0x393d1b);
+
     private static readonly Color CautionLight = Color.FromRgb(0x9d5d00);
     private static readonly Color CautionDark = Color.FromRgb(0xfce100);
+    private static readonly Color CautionBgLight = Color.FromRgb(0xfff4ce);
+    private static readonly Color CautionBgDark = Color.FromRgb(0x433519);
+
+    private static readonly Color CriticalLight = Color.FromRgb(0xc42b1c);
+    private static readonly Color CriticalDark = Color.FromRgb(0xff99a4);
+    private static readonly Color CriticalBgLight = Color.FromRgb(0xfde7e9);
+    private static readonly Color CriticalBgDark = Color.FromRgb(0x442726);
 
     // The Windows 11 default accent, used when the OS doesn't report one.
     private static readonly Color DefaultAccent = Color.FromRgb(0x0078d4);
@@ -155,6 +169,32 @@ public class ColorScheme
     public Color NotificationBackgroundColor => DarkMode ? CardDark : CardLight;
 
     public Color NotificationBorderColor => DarkMode ? DividerDark : DividerLight;
+
+    /// <summary>The tinted surface of a notification reporting an outcome.</summary>
+    public Color GetSeverityBackgroundColor(NotificationSeverity severity) => severity switch
+    {
+        NotificationSeverity.Success => DarkMode ? SuccessBgDark : SuccessBgLight,
+        NotificationSeverity.Warning => DarkMode ? CautionBgDark : CautionBgLight,
+        NotificationSeverity.Error => DarkMode ? CriticalBgDark : CriticalBgLight,
+        _ => NotificationBackgroundColor
+    };
+
+    /// <summary>The icon colour, and the border of the tinted surface.</summary>
+    public Color GetSeverityColor(NotificationSeverity severity) => severity switch
+    {
+        NotificationSeverity.Success => DarkMode ? SuccessDark : SuccessLight,
+        NotificationSeverity.Warning => CautionColor,
+        NotificationSeverity.Error => DarkMode ? CriticalDark : CriticalLight,
+        _ => ForegroundColor
+    };
+
+    /// <summary>
+    /// The border of a severity-tinted notification: the severity colour thinned into its own
+    /// background, so it reads as an edge rather than as a second, louder message.
+    /// </summary>
+    public Color GetSeverityBorderColor(NotificationSeverity severity) => severity == NotificationSeverity.Neutral
+        ? NotificationBorderColor
+        : Blend(GetSeverityColor(severity), GetSeverityBackgroundColor(severity), 0.55f);
 
     public Color LinkColor => DarkMode ? Color.FromRgb(0x60cdff) : Color.FromRgb(0x0067c0);
 
