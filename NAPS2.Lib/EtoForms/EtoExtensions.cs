@@ -49,6 +49,29 @@ public static class EtoExtensions
         new FillColorImageOp((byte) color.Rb, (byte) color.Gb, (byte) color.Bb, (byte) color.Ab).Perform(image);
     }
 
+    /// <summary>
+    /// Recolours every pixel of a monochrome glyph while keeping its alpha, so the antialiased edges
+    /// survive. This is what lets one stored icon follow the theme; see DefaultIconProvider.
+    /// Note this is not <see cref="Fill(IMemoryImage,Color)"/>, which overwrites alpha as well and so
+    /// floods the whole rectangle.
+    /// </summary>
+    public static Bitmap Tint(this Bitmap bitmap, Color color)
+    {
+        using var data = bitmap.Lock();
+        for (int y = 0; y < bitmap.Height; y++)
+        {
+            for (int x = 0; x < bitmap.Width; x++)
+            {
+                var alpha = data.GetPixel(x, y).Ab;
+                if (alpha > 0)
+                {
+                    data.SetPixel(x, y, Color.FromArgb(color.Rb, color.Gb, color.Bb, alpha));
+                }
+            }
+        }
+        return bitmap;
+    }
+
     public static Image PadTo(this Image image, Size size)
     {
         bool fits = image.Width <= size.Width && image.Height <= size.Height;

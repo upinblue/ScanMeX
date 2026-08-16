@@ -114,8 +114,16 @@ public static class C
         else if (iconName != null)
         {
             bool oversized = imagePosition == ButtonImagePosition.Above && flags.HasFlag(ButtonFlags.LargeIcon);
-            EtoPlatform.Current.AttachDpiDependency(button,
-                scale => button.Image = EtoPlatform.Current.IconProvider.GetIcon(iconName, scale, oversized));
+            // The icon provider tints for the window background. An accent button is filled, so its
+            // glyph has to be re-tinted for the accent instead or it disappears into it.
+            bool onAccent = flags.HasFlag(ButtonFlags.Accent);
+            EtoPlatform.Current.AttachDpiDependency(button, scale =>
+            {
+                var icon = EtoPlatform.Current.IconProvider.GetIcon(iconName, scale, oversized);
+                button.Image = onAccent && icon != null
+                    ? icon.Tint(EtoPlatform.Current.ColorScheme.AccentForegroundColor)
+                    : icon;
+            });
         }
         button.ImagePosition = imagePosition;
         if (flags.HasFlag(ButtonFlags.LargeText))
@@ -158,6 +166,47 @@ public static class C
     public static LayoutElement TextSpace() => NoWrap(" ");
 
     public static Label Label(string text) => new() { Text = text };
+
+    // The Fluent type ramp is defined in absolute pixels (Body 14/20, Body Strong 14/20 semibold,
+    // Subtitle 20/28 semibold). These helpers scale the *app's* base font instead, because setting
+    // absolute sizes would mean overriding the size in every form that uses one, and any form whose
+    // layout was measured for the smaller default could clip -- German labels are long enough to
+    // make that a real risk. The ratios below match the ramp's relative steps.
+    //
+    // Bold rather than Semibold: Fluent asks for Semibold, but that is a separate font family
+    // ("Segoe UI Semibold") that does not exist on Gtk or Mac, and the rest of this codebase already
+    // emphasises with Bold (see the notification views). Consistency beats the weight difference.
+
+    /// <summary>
+    /// Fluent's Body Strong: a label that titles a group of controls without being a heading.
+    /// </summary>
+    public static Label BodyStrong(string text)
+    {
+        var label = NoWrap(text);
+        label.Font = new Font(label.Font.Family, label.Font.Size, FontStyle.Bold);
+        return label;
+    }
+
+    /// <summary>
+    /// Fluent's Subtitle: the heading of an empty state or a page-level section.
+    /// </summary>
+    public static Label Subtitle(string text)
+    {
+        var label = NoWrap(text);
+        label.Font = new Font(label.Font.Family, label.Font.Size * 5 / 3, FontStyle.Bold);
+        return label;
+    }
+
+    /// <summary>
+    /// Secondary text: the explanatory line under a heading, or a caption. Dimmer than body text so
+    /// the hierarchy reads without another font size.
+    /// </summary>
+    public static Label Secondary(string text)
+    {
+        var label = NoWrap(text);
+        label.TextColor = EtoPlatform.Current.ColorScheme.SecondaryTextColor;
+        return label;
+    }
 
     public static DropDown DropDown(bool scale = true)
     {

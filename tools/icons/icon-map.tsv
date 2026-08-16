@@ -113,6 +113,19 @@ information	info
 exclamation	warning
 hourglass_grey	hourglass
 
+# Severity icons for notifications. Filled rather than regular on purpose: Fluent draws state with
+# the filled style, and at 16px a filled disc reads as a status badge where an outline reads as
+# another button. `:filled` selects the style; a bare name means regular.
+status_success	checkmark_circle:filled
+status_warning	warning:filled
+status_error	error_circle:filled
+
+# --- empty state --------------------------------------------------------------------------------
+# The left column is always the *base* name, so this generates only the one variant that has a resx
+# entry: empty_scan_96.png. It is requested as "empty_scan_48" so the provider's oversized path
+# scales the 96px drawing down instead of blowing up a 32px one.
+empty_scan	scan_dash
+
 # --- combine / split variants -----------------------------------------------------------------
 combine_hor	merge
 combine_ver	arrow_join

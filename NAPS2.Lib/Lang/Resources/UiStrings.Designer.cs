@@ -3204,6 +3204,24 @@ namespace NAPS2.Lang.Resources {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to No pages yet.
+        /// </summary>
+        internal static string EmptyStateNoPages {
+            get {
+                return ResourceManager.GetString("EmptyStateNoPages", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Load a document and start a scan..
+        /// </summary>
+        internal static string EmptyStateHint {
+            get {
+                return ResourceManager.GetString("EmptyStateHint", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Uploaded to {0}.
         /// </summary>
         internal static string UploadNotificationSucceeded {

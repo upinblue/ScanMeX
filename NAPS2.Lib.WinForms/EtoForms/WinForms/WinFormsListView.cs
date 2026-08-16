@@ -29,11 +29,15 @@ public class WinFormsListView<T> : IListView<T> where T : notnull
     private ContextMenu? _contextMenu;
     private float _dpiScale = 1f;
     private Eto.Drawing.Size _imageSize = new(48, 48);
+    // Held as the Eto bitmap, not the System.Drawing one: ToSD() hands back the *underlying* image
+    // rather than a copy, so disposing the Eto wrapper would invalidate anything kept from it.
+    private Eto.Drawing.Bitmap? _emptyStateGlyph;
+    private float _emptyStateGlyphScale;
 
     public WinFormsListView(ListViewBehavior<T> behavior)
     {
         _behavior = behavior;
-        _view = behavior.ScrollOnDrag ? new DragScrollListView() : new ListView();
+        _view = behavior.ScrollOnDrag ? new DragScrollListView() : new OverlayPaintListView();
         _view.MultiSelect = behavior.MultiSelect;
 
         if (_behavior.Checkboxes)
@@ -54,6 +58,16 @@ public class WinFormsListView<T> : IListView<T> where T : notnull
                 ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint,
                 true);
             _view.SelectedIndexChanged += OnSelectedIndexChanged;
+        }
+
+        if (_behavior.UseCanvasBackground)
+        {
+            _view.BackColor = _behavior.ColorScheme.CanvasColor.ToSD();
+        }
+
+        if (_behavior.EmptyState != null && _view is OverlayPaintListView overlayView)
+        {
+            overlayView.OverlayPaint += DrawEmptyState;
         }
 
         _view.AllowDrop = _behavior.AllowDragDrop;
@@ -87,6 +101,87 @@ public class WinFormsListView<T> : IListView<T> where T : notnull
     }
 
     private bool UseCustomRendering => !_behavior.ShowLabels && !_behavior.Checkboxes;
+
+    /// <summary>
+    /// The empty state's glyph, tinted for the accent rather than the window foreground the icon
+    /// provider applies. Cached because the empty view repaints on every resize and scroll, and
+    /// tinting walks every pixel.
+    /// </summary>
+    private Image? GetEmptyStateGlyph(string iconName)
+    {
+        if (_emptyStateGlyph == null || _emptyStateGlyphScale != _dpiScale)
+        {
+            _emptyStateGlyph?.Dispose();
+            _emptyStateGlyph = EtoPlatform.Current.IconProvider.GetIcon(iconName, _dpiScale);
+            _emptyStateGlyph?.Tint(_behavior.ColorScheme.AccentColor);
+            _emptyStateGlyphScale = _dpiScale;
+        }
+        return _emptyStateGlyph?.ToSD();
+    }
+
+    /// <summary>
+    /// Draws the empty state into the list's own background, so it costs no window and therefore
+    /// doesn't intercept the file drops that land in the middle of the list. It paints only while
+    /// the list is empty, so there is nothing to hide once the first page arrives.
+    /// </summary>
+    private void DrawEmptyState(object? sender, PaintEventArgs e)
+    {
+        var info = _behavior.EmptyState;
+        if (info == null || _view.Items.Count > 0)
+        {
+            return;
+        }
+
+        var scheme = _behavior.ColorScheme;
+        var client = _view.ClientRectangle;
+        if (client.Width < 120 * _dpiScale || client.Height < 120 * _dpiScale)
+        {
+            // Too cramped to say anything useful; an elided heading is worse than nothing.
+            return;
+        }
+
+        var oldSmoothing = e.Graphics.SmoothingMode;
+        e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+
+        int disc = (int) Math.Round(104 * _dpiScale);
+        int icon = (int) Math.Round(48 * _dpiScale);
+        int gap = (int) Math.Round(20 * _dpiScale);
+
+        using var titleFont = new Font(_view.Font.FontFamily, _view.Font.Size * 4 / 3, FontStyle.Bold);
+        using var hintFont = new Font(_view.Font.FontFamily, _view.Font.Size);
+        var titleSize = e.Graphics.MeasureString(info.Title, titleFont);
+        var hintSize = e.Graphics.MeasureString(info.Hint, hintFont);
+
+        int blockHeight = disc + gap + (int) Math.Ceiling(titleSize.Height) + (int) Math.Round(6 * _dpiScale) +
+                          (int) Math.Ceiling(hintSize.Height);
+        int cx = client.Left + client.Width / 2;
+        int top = client.Top + (client.Height - blockHeight) / 2;
+
+        using (var discBrush = new SolidBrush(scheme.AccentSubtleBackgroundColor.ToSD()))
+        {
+            e.Graphics.FillEllipse(discBrush, cx - disc / 2, top, disc, disc);
+        }
+
+        var glyph = GetEmptyStateGlyph(info.IconName);
+        if (glyph != null)
+        {
+            // Explicit size: the DrawImage overload without one scales by the image's embedded dpi.
+            e.Graphics.DrawImage(glyph, cx - icon / 2, top + (disc - icon) / 2, icon, icon);
+        }
+
+        int y = top + disc + gap;
+        using (var titleBrush = new SolidBrush(scheme.ForegroundColor.ToSD()))
+        {
+            e.Graphics.DrawString(info.Title, titleFont, titleBrush, cx - titleSize.Width / 2, y);
+        }
+        y += (int) Math.Ceiling(titleSize.Height) + (int) Math.Round(6 * _dpiScale);
+        using (var hintBrush = new SolidBrush(scheme.SecondaryTextColor.ToSD()))
+        {
+            e.Graphics.DrawString(info.Hint, hintFont, hintBrush, cx - hintSize.Width / 2, y);
+        }
+
+        e.Graphics.SmoothingMode = oldSmoothing;
+    }
 
     private void CustomRenderItem(object? sender, DrawListViewItemEventArgs e)
     {

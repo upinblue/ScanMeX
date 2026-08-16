@@ -152,6 +152,9 @@ public class Sidebar
                 C.Button(NewProfileCommand, ButtonImagePosition.Left).Height(30).AlignCenter()
             ).Visible(_onboardingVis),
             L.Column(
+                // One Body Strong heading over the group, not bold field labels: Fluent uses the
+                // strong weight for section titles, and emphasising every label emphasises nothing.
+                C.BodyStrong(UiStrings.ScanConfig),
                 L.Row(
                     C.Label(UiStrings.ProfileLabel).AlignTrailing(),
                     C.Filler(),
@@ -176,7 +179,10 @@ public class Sidebar
                     _bitDepth
                 ).Visible(_predefinedVis),
                 C.Spacer(),
-                C.Button(ScanCommand, ButtonImagePosition.Left).AlignCenter().Height(30)
+                // The one primary action on this surface. Deliberately not also applied to the
+                // toolbar's Scan button: two accent-filled controls stop marking anything out, and
+                // Fluent's CommandBar doesn't fill items anyway.
+                C.Button(ScanCommand, ButtonImagePosition.Left, ButtonFlags.Accent).AlignCenter().Height(32)
             ).Visible(!_onboardingVis),
             C.Filler()
         ).Padding(left: parentWindow.LayoutController.DefaultSpacing + 10, right: 10).Visible(_sidebarVis);

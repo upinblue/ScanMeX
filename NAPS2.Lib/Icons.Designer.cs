@@ -1162,6 +1162,16 @@ namespace NAPS2 {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
+        internal static byte[] empty_scan_96 {
+            get {
+                object obj = ResourceManager.GetObject("empty_scan_96", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
         internal static byte[] exclamation {
             get {
                 object obj = ResourceManager.GetObject("exclamation", resourceCulture);
@@ -2115,6 +2125,66 @@ namespace NAPS2 {
         internal static byte[] split_ver_small {
             get {
                 object obj = ResourceManager.GetObject("split_ver_small", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] status_error {
+            get {
+                object obj = ResourceManager.GetObject("status_error", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] status_error_small {
+            get {
+                object obj = ResourceManager.GetObject("status_error_small", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] status_success {
+            get {
+                object obj = ResourceManager.GetObject("status_success", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] status_success_small {
+            get {
+                object obj = ResourceManager.GetObject("status_success_small", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] status_warning {
+            get {
+                object obj = ResourceManager.GetObject("status_warning", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] status_warning_small {
+            get {
+                object obj = ResourceManager.GetObject("status_warning_small", resourceCulture);
                 return ((byte[])(obj));
             }
         }

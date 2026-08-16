@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <resheader name="resmimetype">
     <value>text/microsoft-resx</value>
@@ -1268,5 +1268,11 @@
   </data>
   <data name="UploadNeedsAutoSaveWarning" xml:space="preserve">
     <value>Automatisches Speichern ist aus, daher wird nichts geschrieben und die aktivierten Upload-Ziele laufen nie. Schalten Sie automatisches Speichern ein, um hochzuladen.</value>
+  </data>
+  <data name="EmptyStateNoPages" xml:space="preserve">
+    <value>Noch keine Seiten</value>
+  </data>
+  <data name="EmptyStateHint" xml:space="preserve">
+    <value>Legen Sie ein Dokument ein und starten Sie den Scan.</value>
   </data>
 </root>

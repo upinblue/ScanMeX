@@ -50,6 +50,55 @@ public class WinFormsEtoPlatform : EtoPlatform
 
     public override void ConfigureImageButton(Button button, ButtonFlags flags)
     {
+        ConfigureImageButtonCore(button, flags);
+        if (flags.HasFlag(ButtonFlags.Accent))
+        {
+            // Applied last: the layout paths above set BackColor to the window colour, which is
+            // exactly what an accent button must not have.
+            ApplyAccentStyle(button);
+        }
+    }
+
+    /// <summary>
+    /// Fluent's accent button: filled, borderless and rounded, for the one primary action.
+    /// </summary>
+    private void ApplyAccentStyle(Button button)
+    {
+        var native = (WF.Button) button.ToNative();
+        native.FlatStyle = WF.FlatStyle.Flat;
+        native.UseVisualStyleBackColor = false;
+        native.FlatAppearance.BorderSize = 0;
+        native.BackColor = ColorScheme.AccentColor.ToSD();
+        native.ForeColor = ColorScheme.AccentForegroundColor.ToSD();
+        native.FlatAppearance.MouseOverBackColor = ColorScheme.AccentHoverColor.ToSD();
+        native.FlatAppearance.MouseDownBackColor = ColorScheme.AccentPressedColor.ToSD();
+
+        // WinForms buttons have square corners, so the rounding is done by clipping the control to a
+        // rounded path. The region has to be rebuilt whenever the control is resized -- Eto's layout
+        // assigns the size after this runs -- and whenever the DPI changes the radius.
+        float radius = FluentShapes.CONTROL_CORNER_RADIUS;
+        void ApplyRegion()
+        {
+            if (native.Width <= 0 || native.Height <= 0)
+            {
+                return;
+            }
+            var bounds = new SD.Rectangle(0, 0, native.Width, native.Height);
+            using var path = FluentShapes.RoundedRect(bounds, radius);
+            native.Region?.Dispose();
+            native.Region = new SD.Region(path);
+        }
+        AttachDpiDependency(button, scale =>
+        {
+            radius = FluentShapes.CONTROL_CORNER_RADIUS * scale;
+            ApplyRegion();
+        });
+        native.Resize += (_, _) => ApplyRegion();
+        ApplyRegion();
+    }
+
+    private void ConfigureImageButtonCore(Button button, ButtonFlags flags)
+    {
         if (string.IsNullOrEmpty(button.Text))
         {
             AttachDpiDependency(button, scale => button.MinimumSize = Size.Round(MinImageOnlyButtonSize * scale));

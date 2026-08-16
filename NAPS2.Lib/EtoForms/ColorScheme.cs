@@ -17,9 +17,20 @@ public class ColorScheme
     private static readonly Color TextPrimaryLight = Color.FromRgb(0x1b1b1b);
     private static readonly Color TextPrimaryDark = Color.FromRgb(0xffffff);
 
-    // SolidBackgroundFillColorBase / LayerFillColorDefault
+    // TextFillColorSecondary: explanatory and caption text, one step down from primary.
+    private static readonly Color TextSecondaryLight = Color.FromRgb(0x5d5d5d);
+    private static readonly Color TextSecondaryDark = Color.FromRgb(0xc5c5c5);
+
+    // LayerFillColorDefault: the chrome -- toolbars, sidebar, dialogs.
     private static readonly Color SurfaceLight = Color.FromRgb(0xffffff);
     private static readonly Color SurfaceDark = Color.FromRgb(0x202020);
+
+    // SolidBackgroundFillColorBase: the canvas the scanned pages sit on. Deliberately one step back
+    // from the chrome, so a white page reads as an object lying on a surface rather than as a hole
+    // in the window. This is the "elevation and layering" part of Fluent, and it is also why a
+    // document app wants the canvas darker rather than lighter.
+    private static readonly Color CanvasLight = Color.FromRgb(0xf3f3f3);
+    private static readonly Color CanvasDark = Color.FromRgb(0x191919);
 
     // CardBackgroundFillColorDefault
     private static readonly Color CardLight = Color.FromRgb(0xf9f9f9);
@@ -67,7 +78,15 @@ public class ColorScheme
 
     public Color ForegroundColor => DarkMode ? TextPrimaryDark : TextPrimaryLight;
 
+    public Color SecondaryTextColor => DarkMode ? TextSecondaryDark : TextSecondaryLight;
+
     public Color BackgroundColor => DarkMode ? SurfaceDark : SurfaceLight;
+
+    /// <summary>
+    /// The background of the page thumbnail area. See <see cref="CanvasLight"/> for why it differs
+    /// from <see cref="BackgroundColor"/>.
+    /// </summary>
+    public Color CanvasColor => DarkMode ? CanvasDark : CanvasLight;
 
     public Color SeparatorColor => DarkMode ? DividerDark : DividerLight;
 
@@ -85,8 +104,7 @@ public class ColorScheme
         get
         {
             var accent = _darkModeProvider.AccentColor ?? DefaultAccent;
-            // Rec. 601 luma is enough here; this is a legibility guard, not colour science.
-            float luma = 0.299f * accent.R + 0.587f * accent.G + 0.114f * accent.B;
+            float luma = Luma(accent);
             if (DarkMode && luma < 0.4f)
             {
                 return Blend(accent, Colors.White, (0.4f - luma) / 0.4f);
@@ -98,6 +116,27 @@ public class ColorScheme
             return accent;
         }
     }
+
+    /// <summary>
+    /// Text and glyphs drawn on top of <see cref="AccentColor"/> (TextOnAccentFillColorPrimary).
+    /// Chosen from the accent's own brightness rather than from the theme: Fluent uses black on the
+    /// accent in dark mode because Windows lightens it there, but the user's accent can be any
+    /// colour and the contrast guard in <see cref="AccentColor"/> only nudges it, so deciding by
+    /// theme puts dark text on a dark blue.
+    /// </summary>
+    public Color AccentForegroundColor => Luma(AccentColor) > 0.55f ? Colors.Black : Colors.White;
+
+    /// <summary>
+    /// The accent thinned almost into the background: a backplate that tints without competing, e.g.
+    /// the disc behind an empty state's glyph.
+    /// </summary>
+    public Color AccentSubtleBackgroundColor => Blend(AccentColor, CanvasColor, 0.88f);
+
+    /// <summary>Hover state of an accent-filled control (AccentFillColorSecondary).</summary>
+    public Color AccentHoverColor => Blend(AccentColor, BackgroundColor, 0.1f);
+
+    /// <summary>Pressed state of an accent-filled control (AccentFillColorTertiary).</summary>
+    public Color AccentPressedColor => Blend(AccentColor, BackgroundColor, 0.2f);
 
     public Color HighlightBorderColor => AccentColor;
 
@@ -118,6 +157,9 @@ public class ColorScheme
     public Color NotificationBorderColor => DarkMode ? DividerDark : DividerLight;
 
     public Color LinkColor => DarkMode ? Color.FromRgb(0x60cdff) : Color.FromRgb(0x0067c0);
+
+    /// <summary>Rec. 601 luma. Enough for legibility decisions; this is not colour science.</summary>
+    private static float Luma(Color color) => 0.299f * color.R + 0.587f * color.G + 0.114f * color.B;
 
     private static Color Blend(Color from, Color to, float amount) => new(
         from.R + (to.R - from.R) * amount,

@@ -39,24 +39,29 @@ New-Item -ItemType Directory -Force $cacheDir -WhatIf:$false | Out-Null
 # ---------------------------------------------------------------------------------------------
 # 1. The upstream icon index: which names exist, and in which design sizes.
 # ---------------------------------------------------------------------------------------------
-$indexPath = Join-Path $cacheDir 'icons_regular.md'
-if (-not (Test-Path $indexPath)) {
-    Write-Host "Downloading icon index..." -ForegroundColor Cyan
-    Invoke-WebRequest -Uri "https://raw.githubusercontent.com/microsoft/fluentui-system-icons/$Branch/icons_regular.md" -OutFile $indexPath
-}
-$folderOf = @{}   # base name -> asset folder
-$sizesOf  = @{}   # base name -> int[] design sizes
-foreach ($line in Get-Content $indexPath) {
-    if ($line -notmatch '^\|') { continue }
-    $cols = $line.Split('|')
-    if ($cols.Count -lt 5 -or $cols[1] -eq 'Name' -or $cols[1] -match '^-+$') { continue }
-    foreach ($m in [regex]::Matches($cols[4], 'ic_fluent_([a-z0-9_]+)_(\d+)_regular')) {
-        $b = $m.Groups[1].Value
-        if (-not $folderOf.ContainsKey($b)) { $folderOf[$b] = $cols[1]; $sizesOf[$b] = @() }
-        $sizesOf[$b] += [int]$m.Groups[2].Value
+# Keys throughout are "<name>:<style>", because the same name exists in both styles with different
+# available sizes. Fluent uses the filled style for states -- selected, active, and the severity
+# icons on a notification -- and the regular style for everything else.
+$folderOf = @{}   # name:style -> asset folder
+$sizesOf  = @{}   # name:style -> int[] design sizes
+foreach ($style in @('regular', 'filled')) {
+    $indexPath = Join-Path $cacheDir "icons_$style.md"
+    if (-not (Test-Path $indexPath)) {
+        Write-Host "Downloading $style icon index..." -ForegroundColor Cyan
+        Invoke-WebRequest -Uri "https://raw.githubusercontent.com/microsoft/fluentui-system-icons/$Branch/icons_$style.md" -OutFile $indexPath
+    }
+    foreach ($line in Get-Content $indexPath) {
+        if ($line -notmatch '^\|') { continue }
+        $cols = $line.Split('|')
+        if ($cols.Count -lt 5 -or $cols[1] -eq 'Name' -or $cols[1] -match '^-+$') { continue }
+        foreach ($m in [regex]::Matches($cols[4], "ic_fluent_([a-z0-9_]+)_(\d+)_$style")) {
+            $k = "$($m.Groups[1].Value):$style"
+            if (-not $folderOf.ContainsKey($k)) { $folderOf[$k] = $cols[1]; $sizesOf[$k] = @() }
+            $sizesOf[$k] += [int]$m.Groups[2].Value
+        }
     }
 }
-Write-Host "Index: $($folderOf.Count) icons" -ForegroundColor DarkGray
+Write-Host "Index: $($folderOf.Count) icon/style combinations" -ForegroundColor DarkGray
 
 # ---------------------------------------------------------------------------------------------
 # 2. The mapping, and the resx entries it is allowed to write.
@@ -66,7 +71,10 @@ foreach ($line in Get-Content (Join-Path $toolDir 'icon-map.tsv')) {
     if ($line -match '^\s*(#|$)') { continue }
     $p = $line -split "`t"
     if ($p.Count -lt 2) { throw "Malformed mapping line (expected a tab): $line" }
-    $map[$p[0].Trim()] = $p[1].Trim()
+    # "name" means the regular style; "name:filled" asks for the filled one.
+    $value = $p[1].Trim()
+    if ($value -notmatch ':') { $value = "${value}:regular" }
+    $map[$p[0].Trim()] = $value
 }
 $badNames = $map.Values | Sort-Object -Unique | Where-Object { -not $folderOf.ContainsKey($_) }
 if ($badNames) { throw "No such Fluent icon: $($badNames -join ', ')" }
@@ -81,17 +89,18 @@ foreach ($m in [regex]::Matches($resx, '(?s)<data name="([A-Za-z0-9_]+)" type="S
 # ---------------------------------------------------------------------------------------------
 # 3. Fetch + render.
 # ---------------------------------------------------------------------------------------------
-function Get-Svg([string] $base, [int] $wantSize) {
+function Get-Svg([string] $key, [int] $wantSize) {
+    $base, $style = $key -split ':', 2
     # Pick the design size closest to (but not below, where possible) the target: the small
     # variants are drawn with fewer details on purpose, so 16px output wants the 16px drawing.
-    $avail = $sizesOf[$base] | Sort-Object -Unique
+    $avail = $sizesOf[$key] | Sort-Object -Unique
     $pick  = $avail | Where-Object { $_ -ge $wantSize } | Select-Object -First 1
     if (-not $pick) { $pick = $avail | Select-Object -Last 1 }
 
-    $file = "ic_fluent_${base}_${pick}_regular.svg"
+    $file = "ic_fluent_${base}_${pick}_${style}.svg"
     $path = Join-Path $cacheDir $file
     if (-not (Test-Path $path)) {
-        $folder = [uri]::EscapeDataString($folderOf[$base])
+        $folder = [uri]::EscapeDataString($folderOf[$key])
         Invoke-WebRequest -Uri "https://raw.githubusercontent.com/microsoft/fluentui-system-icons/$Branch/assets/$folder/SVG/$file" -OutFile $path
     }
     @{ Text = (Get-Content $path -Raw); DesignSize = $pick }
@@ -151,7 +160,11 @@ function Write-Png([hashtable] $svg, [int] $size, [string] $outPath) {
 $variants = @(
     @{ Suffix = '_small'; Size = 16; File = '-small' },
     @{ Suffix = '';       Size = 32; File = '' },
-    @{ Suffix = '_hires'; Size = 64; File = '-hires' }
+    @{ Suffix = '_hires'; Size = 64; File = '-hires' },
+    # The oversized variant NAPS2 already used for the device pictures: DefaultIconProvider resolves
+    # a request for "<name>_48" through the "<name>_96" resource. Note the file suffix is an
+    # underscore here, not a dash -- that is the existing convention for these, not a typo.
+    @{ Suffix = '_96';    Size = 96; File = '_96' }
 )
 
 $written = 0; $skipped = @()
@@ -186,7 +199,7 @@ foreach ($resxName in ($map.Keys | Where-Object { $_ -match '_(small|hires)$' -a
 
 Write-Host "Wrote $written PNG(s) to $iconsDir" -ForegroundColor Green
 $unmapped = $resxTargets.Keys |
-    ForEach-Object { $_ -replace '_(small|hires)$', '' } |
+    ForEach-Object { $_ -replace '_(small|hires|96)$', '' } |
     Sort-Object -Unique |
     Where-Object { -not $map.ContainsKey($_) }
 if ($unmapped) { Write-Host "Left as-is (see icon-map.tsv header): $($unmapped -join ', ')" -ForegroundColor DarkGray }

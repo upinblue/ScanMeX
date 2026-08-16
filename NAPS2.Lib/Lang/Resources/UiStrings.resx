@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -1373,5 +1373,11 @@
   </data>
   <data name="UploadNeedsAutoSaveWarning" xml:space="preserve">
     <value>Auto Save is off, so nothing is written and the enabled upload targets never run. Turn on Auto Save to upload.</value>
+  </data>
+  <data name="EmptyStateNoPages" xml:space="preserve">
+    <value>No pages yet</value>
+  </data>
+  <data name="EmptyStateHint" xml:space="preserve">
+    <value>Load a document and start a scan.</value>
   </data>
 </root>

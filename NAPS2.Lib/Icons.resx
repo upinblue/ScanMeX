@@ -862,4 +862,25 @@
   <data name="keyboard_small" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\keyboard-small.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
+  <data name="empty_scan_96" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\empty_scan_96.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="status_error" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\status_error.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="status_error_small" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\status_error-small.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="status_success" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\status_success.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="status_success_small" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\status_success-small.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="status_warning" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\status_warning.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="status_warning_small" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\status_warning-small.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
 </root>

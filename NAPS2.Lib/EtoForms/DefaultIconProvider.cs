@@ -33,7 +33,7 @@ public class DefaultIconProvider : IIconProvider
             return null;
         }
         var tint = GetTintColor(name);
-        return tint == null ? bitmap : Tint(bitmap, tint.Value);
+        return tint == null ? bitmap : bitmap.Tint(tint.Value);
     }
 
     public Icon? GetFormIcon(string name, float scale = 1f)
@@ -115,25 +115,4 @@ public class DefaultIconProvider : IIconProvider
             : colorScheme.ForegroundColor;
     }
 
-    /// <summary>
-    /// Replaces the colour of every pixel while keeping its alpha, so the glyph's antialiased edges
-    /// survive. Icons are at most 64x64 and are only re-fetched when the toolbar is rebuilt or the
-    /// DPI changes, so this does not need a cache.
-    /// </summary>
-    private static Bitmap Tint(Bitmap bitmap, Color color)
-    {
-        using var data = bitmap.Lock();
-        for (int y = 0; y < bitmap.Height; y++)
-        {
-            for (int x = 0; x < bitmap.Width; x++)
-            {
-                var alpha = data.GetPixel(x, y).Ab;
-                if (alpha > 0)
-                {
-                    data.SetPixel(x, y, Color.FromArgb(color.Rb, color.Gb, color.Bb, alpha));
-                }
-            }
-        }
-        return bitmap;
-    }
 }

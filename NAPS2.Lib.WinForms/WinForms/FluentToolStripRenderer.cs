@@ -17,8 +17,7 @@ namespace NAPS2.WinForms;
 /// </summary>
 public class FluentToolStripRenderer : ToolStripProfessionalRenderer
 {
-    /// <summary>Fluent uses 4px for in-page elements such as buttons and list backplates.</summary>
-    private const int CORNER_RADIUS = 4;
+    private const int CORNER_RADIUS = FluentShapes.CONTROL_CORNER_RADIUS;
 
     /// <summary>Keeps a hovered backplate clear of its neighbours and of the bar's edges.</summary>
     private const int ITEM_INSET = 2;
@@ -33,23 +32,6 @@ public class FluentToolStripRenderer : ToolStripProfessionalRenderer
 
     private static float GetScale(ToolStrip? toolStrip) => (toolStrip?.DeviceDpi ?? 96) / 96f;
 
-    private static GraphicsPath RoundedRect(Rectangle bounds, float radius)
-    {
-        var path = new GraphicsPath();
-        float d = radius * 2;
-        if (d <= 0 || bounds.Width <= d || bounds.Height <= d)
-        {
-            path.AddRectangle(bounds);
-            return path;
-        }
-        path.AddArc(bounds.Left, bounds.Top, d, d, 180, 90);
-        path.AddArc(bounds.Right - d, bounds.Top, d, d, 270, 90);
-        path.AddArc(bounds.Right - d, bounds.Bottom - d, d, d, 0, 90);
-        path.AddArc(bounds.Left, bounds.Bottom - d, d, d, 90, 90);
-        path.CloseFigure();
-        return path;
-    }
-
     private void FillBackplate(Graphics g, Rectangle bounds, Color color, float scale)
     {
         if (bounds.Width <= 0 || bounds.Height <= 0)
@@ -58,7 +40,7 @@ public class FluentToolStripRenderer : ToolStripProfessionalRenderer
         }
         var old = g.SmoothingMode;
         g.SmoothingMode = SmoothingMode.AntiAlias;
-        using var path = RoundedRect(bounds, CORNER_RADIUS * scale);
+        using var path = FluentShapes.RoundedRect(bounds, CORNER_RADIUS * scale);
         using var brush = new SolidBrush(color);
         g.FillPath(brush, path);
         g.SmoothingMode = old;

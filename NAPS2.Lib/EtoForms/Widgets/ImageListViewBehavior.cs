@@ -20,6 +20,8 @@ public class ImageListViewBehavior : ListViewBehavior<UiImage>
         ShowLabels = false;
         ScrollOnDrag = true;
         UseHandCursor = true;
+        UseCanvasBackground = true;
+        EmptyState = new EmptyStateInfo("empty_scan_48", UiStrings.EmptyStateNoPages, UiStrings.EmptyStateHint);
     }
 
     public override bool ShowPageNumbers => _config.Get(c => c.ShowPageNumbers);
