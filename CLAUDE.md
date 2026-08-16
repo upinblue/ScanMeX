@@ -171,6 +171,42 @@ therefore **no unit test that fails without the second pass** — the merge logi
 `MultiBarcodeDetectionTests`, and the end-to-end behaviour was verified against the sample PDFs, which
 live outside the repo (customer documents, not committed).
 
+## Icons and theming
+
+The icons come from [Fluent UI System Icons](https://github.com/microsoft/fluentui-system-icons) (MIT)
+and are **generated, not hand-placed**. `tools/icons/icon-map.tsv` maps each ScanMe icon name to a
+Fluent one; `tools/icons/Generate-Icons.ps1` fetches the SVGs and renders them into `NAPS2.Lib/Icons`.
+To change an icon, edit the mapping and re-run the script — don't drop a PNG in by hand, it will be
+overwritten on the next run.
+
+```bash
+pwsh tools/icons/Generate-Icons.ps1
+```
+
+- **The script only writes names that already have an `Icons.resx` entry**, so it cannot create an
+  icon nothing looks up. Adding a new icon therefore means adding the resx entry (and the
+  `Icons.Designer.cs` property) first. The naming convention is `foo_small` → `Icons\foo-small.png`
+  at 16px, `foo` → `Icons\foo.png` at 32px, `foo_hires` → `Icons\foo-hires.png` at 64px.
+- **The generated PNGs must declare 192 dpi**, which the script does explicitly. This is not
+  metadata hygiene: `ToolStripDoubleButton` (the stacked *Move up/Move down* and *Settings/About*
+  buttons) paints with `Graphics.DrawImage(image, Point)`, the overload that sizes an image by its
+  *physical* size — `graphicsDpi / imageDpi`. A 96 dpi icon draws at double size there on a 192 dpi
+  screen while the label is still offset by the pixel width, so the text lands on top of the glyph.
+  The rest of NAPS2's icons have always been 192 dpi; the generated ones match them.
+- **Icons are stored as black glyphs and tinted at load time** by `DefaultIconProvider`, which is
+  what makes dark mode work. The exclusion list there (brand logos, `scanner_*`, `favicon`) mirrors
+  the one at the top of `icon-map.tsv` — an icon that is regenerated is monochrome and belongs in
+  neither list. `exclamation` is tinted with the caution colour rather than the text colour, because
+  it only ever means an error state and would otherwise lose the signal the old coloured icon had.
+- **`ColorScheme` is the only place a colour is chosen.** Its constants are Fluent 2 design tokens,
+  named in comments after the WinUI resources they come from, so a value can be checked rather than
+  guessed at. `AccentColor` follows the user's Windows accent (via `IDarkModeProvider.AccentColor`,
+  a default interface member so Gtk/Mac need no implementation) and is nudged for contrast, since
+  Windows lets you pick an accent that would vanish against the current surface.
+- `FluentToolStripRenderer` draws the toolbars and menus; `DwmWindowStyle` opts windows into rounded
+  corners and the dark title bar. Both attributes are Windows 11 only and fail silently on Windows
+  10, which the app still targets (`net9.0-windows10.0.17763.0`).
+
 ## Localization
 
 All user-visible strings go through `NAPS2.Lib/Lang/Resources/UiStrings.resx`, with a German translation

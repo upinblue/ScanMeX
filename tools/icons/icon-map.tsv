@@ -1,0 +1,137 @@
+# ScanMe icon name -> Fluent UI System Icons name
+#
+# The left column is the *base* name as used in NAPS2.Lib/Icons.resx. The generator derives the
+# three variants from it and writes them to NAPS2.Lib/Icons:
+#
+#   <base>-small.png    16px    (resx name <base>_small)
+#   <base>.png          32px    (resx name <base>)
+#   <base>-hires.png    64px    (resx name <base>_hires)
+#
+# Only variants that already have a resx entry are written, so this file cannot introduce an icon
+# that nothing looks up. The one exception is `diskette`, which DesktopCommands references for
+# "Save PDF"/"Save images" but which has no resx entry at all -- see Generate-Icons.ps1.
+#
+# Source: https://github.com/microsoft/fluentui-system-icons (MIT). Right column is the icon's
+# snake_case name, i.e. the `ic_fluent_<name>_<size>_regular` middle part. The generator fails if a
+# name does not exist upstream, so a typo here is a build error, not a missing icon at runtime.
+#
+# Deliberately NOT mapped, and therefore left untouched:
+#   favicon                                       the application icon
+#   scanner_*                                     device illustrations in the device picker; the
+#                                                 default/lock/wireless/gray variants encode state
+#                                                 through colour and have no Fluent equivalent
+#   apple_mail, gmail, outlooknew, outlookweb,
+#   thunderbird                                   third-party brand logos
+
+# --- main toolbar -----------------------------------------------------------------------------
+# The 32px variant is the toolbar "Scan" button, so it gets the scan frame. The 16px variant is the
+# "run this profile" button in the profiles toolbar, the sidebar and ProfilesForm, where a play
+# triangle reads better than a second scan frame next to every profile name.
+control_play_blue	scan_dash
+control_play_blue_small	play
+blueprints	apps_list_detail
+text	scan_text
+folder_picture	folder_open
+diskette	save
+file_extension_pdf	document_pdf
+pictures	image_multiple
+email_attach	mail_attach
+printer	print
+arrow_up	arrow_upload
+picture_edit	image_edit
+arrow_rotate_anticlockwise	arrow_rotate_counterclockwise
+arrow_refresh	arrow_sync
+cross	delete
+broom	broom
+world	globe
+console	window_console
+cog	settings
+
+# --- image menu -------------------------------------------------------------------------------
+zoom	eye
+transform_crop	crop
+contrast_with_sun	brightness_high
+color_management	color
+contrast_high	circle_half_fill
+contrast	circle_half_fill
+sharpen	image_sparkle
+document	document_one_page
+split	split_horizontal
+combine	merge
+pencil	edit
+picture	image
+
+# --- rotate / reorder -------------------------------------------------------------------------
+arrow_rotate_clockwise	arrow_rotate_clockwise
+arrow_switch	flip_horizontal
+# `arrow_up` is the only base name whose variants mean different things: the 32px one is the
+# "Upload documents" toolbar button (-> arrow_upload, above), the 16px one is "Move up" in the
+# reorder menu. An exact resx name on the left overrides the base mapping.
+arrow_up_small	arrow_up
+arrow_down	arrow_down
+arrow_left	arrow_left
+arrow_right	arrow_right
+arrow_out	arrow_expand
+
+# --- editing ----------------------------------------------------------------------------------
+copy	copy
+paste	clipboard_paste
+undo	arrow_undo
+redo	arrow_redo
+add	add
+accept	checkmark
+tick	checkmark
+cancel	dismiss_circle
+close	dismiss
+ask	question_circle
+
+# --- zoom / view ------------------------------------------------------------------------------
+zoom_in	zoom_in
+zoom_out	zoom_out
+zoom_actual	ratio_one_to_one
+large_tiles	grid
+application_side_list	panel_left
+application_cascade	square_multiple
+
+# --- scan / device ----------------------------------------------------------------------------
+# `hard_drive` is named for a different thing but draws as a flat slab device, which is what a
+# flatbed scanner looks like. `print` is taken by the Print button and the scan_* frames all read
+# as "an act of scanning" rather than "a machine".
+device	hard_drive
+wireless	wifi_2
+network_ip	network_adapter
+key	key
+keyboard	keyboard
+
+# --- email ------------------------------------------------------------------------------------
+email	mail
+email_setting	mail_settings
+mail_yellow	mail
+
+# --- status -----------------------------------------------------------------------------------
+information	info
+exclamation	warning
+hourglass_grey	hourglass
+
+# --- combine / split variants -----------------------------------------------------------------
+combine_hor	merge
+combine_ver	arrow_join
+split_hor	split_horizontal
+split_ver	split_vertical
+switch_hor	flip_horizontal
+switch_ver	flip_vertical
+
+# --- alignment (combine dialog) ---------------------------------------------------------------
+shape_align_left	align_left
+shape_align_right	align_right
+shape_align_top	align_top
+shape_align_bottom	align_bottom
+shape_align_center	align_center_horizontal
+shape_align_middle	align_center_vertical
+text_align_justify	text_align_justify
+
+# --- misc -------------------------------------------------------------------------------------
+color_gradient	color_fill
+color_wheel	color_background
+draw_ellipse	oval
+weather_sun	weather_sunny

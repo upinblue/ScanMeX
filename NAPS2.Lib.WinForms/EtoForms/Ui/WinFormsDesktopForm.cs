@@ -8,6 +8,7 @@ using NAPS2.EtoForms.Layout;
 using NAPS2.EtoForms.Notifications;
 using NAPS2.EtoForms.Widgets;
 using NAPS2.EtoForms.WinForms;
+using NAPS2.Platform.Windows;
 using NAPS2.PostScan;
 using NAPS2.Scan;
 using NAPS2.WinForms;
@@ -316,6 +317,12 @@ public class WinFormsDesktopForm : DesktopForm
 
     private void SetUpMenu(WF.ToolStripDropDownItem item, List<MenuProvider.Item> subItems)
     {
+        // Pop-up windows are not rounded by the system, so a drop-down would otherwise keep square
+        // corners while the window it belongs to has round ones. The handle is recreated each time
+        // the menu opens, hence Opened rather than a one-off at construction.
+        item.DropDown.Opened -= RoundDropDown;
+        item.DropDown.Opened += RoundDropDown;
+
         item.DropDownItems.Clear();
         foreach (var subItem in subItems)
         {
@@ -338,6 +345,14 @@ public class WinFormsDesktopForm : DesktopForm
                     item.DropDownItems.Add(subMenu);
                     break;
             }
+        }
+    }
+
+    private static void RoundDropDown(object? sender, EventArgs e)
+    {
+        if (sender is WF.ToolStripDropDown { IsHandleCreated: true } dropDown)
+        {
+            DwmWindowStyle.UseSmallRoundedCorners(dropDown.Handle);
         }
     }
 

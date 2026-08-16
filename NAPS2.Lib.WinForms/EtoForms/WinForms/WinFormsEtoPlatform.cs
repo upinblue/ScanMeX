@@ -10,6 +10,8 @@ using Eto.WinForms.Forms.ToolBar;
 using NAPS2.EtoForms.Layout;
 using NAPS2.EtoForms.Widgets;
 using NAPS2.Images.Gdi;
+using NAPS2.Platform.Windows;
+using NAPS2.WinForms;
 using SD = System.Drawing;
 using WF = System.Windows.Forms;
 
@@ -36,11 +38,9 @@ public class WinFormsEtoPlatform : EtoPlatform
         WF.Application.SetColorMode(ColorScheme.DarkMode ? WF.SystemColorMode.Dark : WF.SystemColorMode.Classic);
 #pragma warning restore WFO5001
 
-        // ToolStrip renderer with borderless, flat style
-        WF.ToolStripManager.Renderer = new WF.ToolStripProfessionalRenderer(new WF.ProfessionalColorTable
-        {
-            UseSystemColors = true
-        });
+        // Draws toolbars and menus in the Windows 11 style. It reads the colour scheme on every
+        // paint, so a theme change is picked up without replacing the renderer.
+        WF.ToolStripManager.Renderer = new FluentToolStripRenderer(ColorScheme);
 
         return new Application(Eto.Platforms.WinForms);
     }
@@ -280,6 +280,29 @@ public class WinFormsEtoPlatform : EtoPlatform
 
         // Set background color to scheme to reduce classic gray
         form.BackColor = ColorScheme.BackgroundColor.ToSD();
+
+        ApplyWindowStyle(form);
+    }
+
+    /// <summary>
+    /// Applies the Windows 11 frame once the window has a handle. Touching Form.Handle directly
+    /// would force the handle to be created early, so this waits for HandleCreated instead.
+    /// </summary>
+    private void ApplyWindowStyle(WF.Form form)
+    {
+        void Apply()
+        {
+            DwmWindowStyle.UseDarkTitleBar(form.Handle, ColorScheme.DarkMode);
+            DwmWindowStyle.UseRoundedCorners(form.Handle);
+        }
+        if (form.IsHandleCreated)
+        {
+            Apply();
+        }
+        else
+        {
+            form.HandleCreated += (_, _) => Apply();
+        }
     }
 
     public override float GetScaleFactor(Window window)
