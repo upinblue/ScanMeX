@@ -54,6 +54,13 @@ public class DocumentInspector
         _onDiscard = onDiscard;
 
         _identifier.TextChanged += IdentifierChanged;
+        // The list row and the radio buttons are brought up to date once the box is done being typed in;
+        // see IsEditingIdentifier for why they cannot be touched while it has focus.
+        _identifier.LostFocus += (_, _) =>
+        {
+            Refresh();
+            _onChanged();
+        };
         _uploadButton = C.Button(UiStrings.UploadDocumentAction, () =>
         {
             if (_document != null) _onUpload(_document);
@@ -88,6 +95,18 @@ public class DocumentInspector
     public LayoutElement Content { get; }
 
     public ScannedDocument? Document => _document;
+
+    /// <summary>
+    /// Whether the operator is currently typing an identification.
+    /// </summary>
+    /// <remarks>
+    /// Everything that reacts to the value changing has to leave the focus alone while this is true.
+    /// Setting a radio button's Checked, replacing the row in the document list, or re-running the
+    /// layout all move the caret out of the box, and since the value changes on every keystroke the
+    /// effect was that only one character could be typed before the box lost focus and the selection
+    /// jumped away. The deferred work happens on LostFocus instead.
+    /// </remarks>
+    public bool IsEditingIdentifier => _identifier.HasFocus;
 
     /// <summary>
     /// Points the inspector at a document, or at nothing.
@@ -154,7 +173,10 @@ public class DocumentInspector
                 ? UiStrings.RetryDocumentAction
                 : UiStrings.UploadDocumentAction;
             _discardButton.Enabled = !busy;
-            SyncBarcodeSelection();
+            if (!IsEditingIdentifier)
+            {
+                SyncBarcodeSelection();
+            }
         }
         finally
         {

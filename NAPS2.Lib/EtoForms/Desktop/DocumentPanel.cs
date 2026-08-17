@@ -198,6 +198,15 @@ public class DocumentPanel : IDisposable
     private void UpdateRows()
     {
         var documents = _queue.Documents;
+        if (_inspector.IsEditingIdentifier)
+        {
+            // An upload finishing in the background must not yank the caret out of the box either. The
+            // counts still move; the rows catch up when the operator leaves the field.
+            _inspector.Refresh();
+            _summary.Text = Summarize(documents);
+            _uploadAll.Enabled = _uploadController.HasPendingDocuments;
+            return;
+        }
         _suppressSelectionEvent = true;
         try
         {
@@ -277,6 +286,13 @@ public class DocumentPanel : IDisposable
         var documents = _queue.Documents;
         _summary.Text = Summarize(documents);
         _uploadAll.Enabled = _uploadController.HasPendingDocuments;
+        if (_inspector.IsEditingIdentifier)
+        {
+            // Mid-keystroke. Replacing the row resets the grid's selection and re-running the layout
+            // moves the caret out of the box, so the list waits until the box is done -- the inspector
+            // calls back on LostFocus. Only the two labels above, which nothing can focus, update live.
+            return;
+        }
         var index = documents.ToList().FindIndex(x => x.Id == _selectedId);
         if (index >= 0 && index < _rows.Count)
         {

@@ -329,6 +329,12 @@ otherwise take only its natural width.
   drawn on top of the new ones. **Changing a `LayoutColumn`'s children is not enough on its own: nothing
   leaves the screen until a layout pass runs, so call `LayoutController.Invalidate()` afterwards.**
 
+- **Anything that reacts to a control's value has to leave the focus alone while it is being typed in.**
+  Setting a radio button's `Checked`, replacing a row in a `GridView`, or re-running the layout all move
+  the caret out of the box -- and since a `TextChanged` handler runs on every keystroke, the effect is
+  that exactly one character can be typed before the field loses focus. `DocumentInspector` exposes
+  `IsEditingIdentifier` for this, and defers that work to `LostFocus`.
+
 A `GridView` does not inherit the theme: its background comes out black on the Fluent surface unless
 `BackgroundColor` is set, and its cell images are bitmaps, so they need the real DPI scale rather than
 `1f`. `&` in a label is an accelerator prefix and eats the following character -- "Documents & barcodes"
