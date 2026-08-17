@@ -35,11 +35,16 @@ internal class SapArchivePostScanService
         }
 
         var barcode = ResolveBarcode(profile, settings, filePath, images, ctx);
-        // ArObject and SapObject are the two values that actually go out as headers; ArDocType is a legacy
-        // field the OData upload never sends, so naming it here suggested a setting that has no effect.
+        // The object-type headers are only mentioned when something is still set on them: they are no
+        // longer editable and are normally absent, so printing two empty values on every upload would be
+        // noise -- but a profile that carries them from before must not do so invisibly.
+        var objectTypes = string.IsNullOrWhiteSpace(settings.ArObject) &&
+                          string.IsNullOrWhiteSpace(settings.SapObject)
+            ? ""
+            : $", ArObject='{settings.ArObject}', SapObject='{settings.SapObject}'";
         ScanConsole.Upload(
             $"SAP object key from {settings.BarcodeSource}: '{barcode ?? "(none)"}' " +
-            $"(Archive='{settings.ArchiveId}', ArObject='{settings.ArObject}', SapObject='{settings.SapObject}')");
+            $"(Archive='{settings.ArchiveId}'{objectTypes})");
         if (string.IsNullOrWhiteSpace(barcode))
         {
             if (settings.BarcodeSource == BarcodeSource.PromptUser)

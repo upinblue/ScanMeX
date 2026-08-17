@@ -62,10 +62,33 @@ public class ToolStripDoubleButton : ToolStripButton
         return width;
     }
 
+    /// <summary>
+    /// Makes a bitmap's declared resolution match the surface it is about to be drawn on.
+    /// </summary>
+    /// <remarks>
+    /// This control paints with the <c>DrawImage(image, Point)</c> overload, which sizes an image by its
+    /// *physical* size -- <c>graphicsDpi / imageDpi</c> -- rather than by its pixels. The icons declare
+    /// 192 dpi, so on a 96 dpi (100% scaling) screen every one of them was drawn at half size, which is
+    /// why Settings and About looked shrunken next to the ordinary toolbar buttons. Matching the
+    /// resolution first makes the draw 1:1 in pixels at any scaling, and it fixes the disabled path too:
+    /// <c>ControlPaint.DrawImageDisabled</c> has no overload that takes a size.
+    /// </remarks>
+    private static void MatchResolution(Image image, Graphics graphics)
+    {
+        if (image is Bitmap bitmap &&
+            (Math.Abs(bitmap.HorizontalResolution - graphics.DpiX) > 0.1f ||
+             Math.Abs(bitmap.VerticalResolution - graphics.DpiY) > 0.1f))
+        {
+            bitmap.SetResolution(graphics.DpiX, graphics.DpiY);
+        }
+    }
+
     protected override void OnPaint(PaintEventArgs e)
     {
         if (Owner == null || FirstImage == null || SecondImage == null)
             return;
+        MatchResolution(FirstImage, e.Graphics);
+        MatchResolution(SecondImage, e.Graphics);
         ToolStripRenderer renderer = ToolStripManager.Renderer;
 
         var oldHeight = Height;

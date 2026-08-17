@@ -13,7 +13,8 @@ public class LayoutController
     private Window? _window;
     private bool _isShown;
     private bool _layoutQueued;
-    private HashSet<Control> _controlSet = new();
+    // Control -> the container it was added to, so it can be taken out of the right one again.
+    private Dictionary<Control, Control> _controlSet = new();
 
     public LayoutElement? Content
     {
@@ -114,18 +115,31 @@ public class LayoutController
         EtoPlatform.Current.SetContainerSize(_window, _layout, size, p);
     }
 
+    /// <summary>
+    /// Takes controls that have dropped out of the layout tree off the screen.
+    /// </summary>
+    /// <remarks>
+    /// Each control is removed from the container it was actually added to, which is not always the
+    /// window's own: anything inside a scrollable or a tab page belongs to that page's container.
+    /// Removing from the root instead is a silent no-op, so a panel whose contents change -- the
+    /// document inspector switching between documents with different numbers of barcodes -- kept every
+    /// control it had ever shown, drawn on top of the new ones.
+    /// </remarks>
     private void RemoveControls()
     {
-        var newControlSet = new HashSet<Control>();
+        var newControlSet = new Dictionary<Control, Control>();
         PopulateControlSet(newControlSet, _content!);
-        foreach (var removedControl in _controlSet.Except(newControlSet))
+        foreach (var (control, container) in _controlSet)
         {
-            EtoPlatform.Current.RemoveFromContainer(_layout, removedControl);
+            if (!newControlSet.ContainsKey(control))
+            {
+                EtoPlatform.Current.RemoveFromContainer(container, control);
+            }
         }
         _controlSet = newControlSet;
     }
 
-    private void PopulateControlSet(HashSet<Control> controlSet, LayoutElement element)
+    private void PopulateControlSet(Dictionary<Control, Control> controlSet, LayoutElement element)
     {
         if (element is LayoutContainer container)
         {
@@ -136,7 +150,7 @@ public class LayoutController
         }
         if (element is LayoutControl { Control: { } } control)
         {
-            controlSet.Add(control.Control);
+            controlSet[control.Control] = control.MaterializedContainer ?? _layout;
         }
     }
 

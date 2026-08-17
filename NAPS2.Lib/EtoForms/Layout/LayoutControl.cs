@@ -20,6 +20,11 @@ public class LayoutControl : LayoutElement
     private bool _isAdded;
     private bool _isWindowSet;
 
+    /// <summary>
+    /// The platform container this control was actually added to, or null if it never was.
+    /// </summary>
+    internal Control? MaterializedContainer { get; private set; }
+
     public LayoutControl(Control? control)
     {
         Control = control;
@@ -196,6 +201,10 @@ public class LayoutControl : LayoutElement
         {
             EtoPlatform.Current.AddToContainer(context.Container, Control, context.InOverlay);
             _isAdded = true;
+            // Remembered because it is not always the window's own container: anything inside a
+            // scrollable or a tab page is added to that page's container instead, and taking a control
+            // out of the wrong one silently does nothing. See LayoutController.RemoveControls.
+            MaterializedContainer = context.Container;
             void OnVisibleChanged(object? sender, EventArgs args)
             {
                 context.Invalidate();

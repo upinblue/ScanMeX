@@ -66,10 +66,10 @@ public class DocumentInspector
         Content = L.Column(
             C.BodyStrong(UiStrings.DocumentInspectorTitle),
             L.Column(C.Label(UiStrings.DocumentInspectorNoSelection)
-                .DynamicWrap(DocumentPanel.PANEL_WRAP_WIDTH).MaxWidth(DocumentPanel.PANEL_WRAP_WIDTH)).Visible(_emptyVis),
+                .DynamicWrap(DocumentPanel.PANEL_WRAP_WIDTH)).Visible(_emptyVis),
             L.Column(
                 L.Row(_statusIcon.AlignCenter(), _title.Scale()).Spacing(6),
-                _status.DynamicWrap(DocumentPanel.PANEL_WRAP_WIDTH).MaxWidth(DocumentPanel.PANEL_WRAP_WIDTH),
+                _status.DynamicWrap(DocumentPanel.PANEL_WRAP_WIDTH),
                 C.Spacer(),
                 _identifierLabel,
                 _identifier,
@@ -143,7 +143,7 @@ public class DocumentInspector
                 ? UiStrings.DocumentIdentifierRequired
                 : "";
 
-            _fileName.Text = ResolveName(_document) ?? UiStrings.DocumentNameNotYetKnown;
+            _fileName.Text = ResolveName(_document) ?? UiStrings.DocumentNameMissingShort;
             _fileName.ToolTip = _document.SavedPath ?? _fileName.Text;
             _targets.Text = DescribeTargets(_document);
 
@@ -200,8 +200,8 @@ public class DocumentInspector
     /// to it.
     /// </summary>
     /// <remarks>
-    /// Returns null rather than a placeholder so each caller can use one that fits: the inspector has
-    /// room to explain, a row in the list has room for two words.
+    /// Returns null rather than a placeholder because "$(id).pdf" with no identification expands to
+    /// ".pdf", which reads as a bug rather than as the blank it is.
     /// </remarks>
     public static string? ResolveName(ScannedDocument document)
     {
@@ -289,9 +289,12 @@ public class DocumentInspector
             };
             _barcodeChoices.Add(choice);
 
+            // Where it was found, not what kind it is. The symbology mattered while phantom reads were
+            // possible; now that detection is restricted to the profile's own types, a code that turns up
+            // here is one of them, and the page is what the operator needs to go and look at.
             var detail = C.Secondary(barcode.Source == DocumentBarcodeSource.Manual
                 ? UiStrings.BarcodeSourceManual
-                : $"{barcode.Format ?? "?"} · {barcode.PageIndex + 1}");
+                : string.Format(UiStrings.BarcodeOnPage, barcode.PageIndex + 1));
             var remove = C.Link("×", () =>
             {
                 _document?.RemoveBarcode(current);

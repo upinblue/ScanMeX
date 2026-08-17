@@ -92,9 +92,7 @@ public class EditProfileForm : EtoDialogBase
     // being blank has to read as "unchanged" rather than "no password set".
     private readonly PasswordBox _sapPassword = new() { ToolTip = UiStrings.SapPasswordKeepHint };
     private readonly CheckBox _sapIgnoreSsl = new() { Text = UiStrings.SapIgnoreSslCertificateCheck };
-    private readonly DropDownWidget<SapObjectTypeCatalogEntry> _sapObjectType = new();
     private readonly TextBox _sapArchiveId = new();
-    private readonly TextBox _sapDocumentType = new();
     private readonly RadioButton _sapPromptObjectKey = new() { Text = UiStrings.SapObjectKeyPromptEachScan };
     private readonly RadioButton _sapBarcodeObjectKey;
     private readonly RadioButton _sapFilenameObjectKey;
@@ -169,9 +167,6 @@ public class EditProfileForm : EtoDialogBase
         _sapBarcodeObjectKey = new RadioButton(_sapPromptObjectKey) { Text = UiStrings.SapObjectKeyFromBarcode };
         _sapFilenameObjectKey = new RadioButton(_sapPromptObjectKey) { Text = UiStrings.SapObjectKeyFromFilename };
         _sapFixedObjectKey = new RadioButton(_sapPromptObjectKey) { Text = UiStrings.SapObjectKeyFixedValue };
-        _sapObjectType.Format = x => $"{x.Key} - {x.DisplayName}";
-        _sapObjectType.Items = SapObjectTypeCatalog.CommonTypes;
-        _sapObjectType.SelectedItemChanged += (_, _) => UpdateSapObjectTypeTooltip();
         _enableSapArchiveUpload.CheckedChanged += (_, _) => UpdateSapControlsEnabled();
         _sapPromptObjectKey.CheckedChanged += (_, _) => UpdateSapControlsEnabled();
         _sapBarcodeObjectKey.CheckedChanged += (_, _) => UpdateSapControlsEnabled();
@@ -237,10 +232,16 @@ public class EditProfileForm : EtoDialogBase
     private const int FIELD_WIDTH = 320;
 
     /// <summary>
-    /// The width explanatory sentences wrap at. Measured against the dialog's minimum width, so a hint
-    /// that fits here fits however the operator has sized the window.
+    /// The width explanatory sentences are measured at, deliberately below the content width the dialog
+    /// has at its minimum size (480 less the tab and root padding).
     /// </summary>
-    private const int HINT_WRAP_WIDTH = 440;
+    /// <remarks>
+    /// The layout reserves a label's height for this width and then draws it at the real one. Measuring
+    /// at a width the label will never actually be that narrow at is what truncates it: the height comes
+    /// out one line short and the rest of the sentence is clipped. Erring low costs a little blank space
+    /// on a wide dialog and cannot cut anything off.
+    /// </remarks>
+    private const int HINT_WRAP_WIDTH = 380;
 
     private LayoutElement ScannerTab() => L.Scrollable(L.Column(
         C.Label(UiStrings.DisplayNameLabel),
@@ -292,13 +293,13 @@ public class EditProfileForm : EtoDialogBase
             C.Spacer(),
             C.Label(UiStrings.BarcodeTypesLabel),
             L.Row(_symbologyCode39, _symbologyCode128, _symbologyEanUpc),
-            L.Column(_eanUpcWarning.DynamicWrap(HINT_WRAP_WIDTH).MaxWidth(HINT_WRAP_WIDTH)).Visible(_eanUpcWarningVis),
+            L.Column(_eanUpcWarning.DynamicWrap(HINT_WRAP_WIDTH)).Visible(_eanUpcWarningVis),
             C.Label(UiStrings.SeparationPatternLabel),
             _separationPattern.MaxWidth(FIELD_WIDTH),
-            C.Label(UiStrings.SeparationPatternHint).DynamicWrap(HINT_WRAP_WIDTH).MaxWidth(HINT_WRAP_WIDTH),
+            C.Label(UiStrings.SeparationPatternHint).DynamicWrap(HINT_WRAP_WIDTH),
             _keepSeparatorPage,
             _newDocumentOnlyOnValueChange,
-            C.Label(UiStrings.NewDocumentOnlyOnValueChangeHint).DynamicWrap(HINT_WRAP_WIDTH).MaxWidth(HINT_WRAP_WIDTH)
+            C.Label(UiStrings.NewDocumentOnlyOnValueChangeHint).DynamicWrap(HINT_WRAP_WIDTH)
         ).Visible(_barcodeOptionsVis),
 
         C.Spacer(),
@@ -313,7 +314,7 @@ public class EditProfileForm : EtoDialogBase
         C.Spacer(),
         C.BodyStrong(UiStrings.DocumentNameSection),
         L.Row(_documentName.MaxWidth(FIELD_WIDTH), _documentNamePlaceholders.AlignCenter()),
-        C.Label(UiStrings.DocumentNameHint).DynamicWrap(HINT_WRAP_WIDTH).MaxWidth(HINT_WRAP_WIDTH),
+        C.Label(UiStrings.DocumentNameHint).DynamicWrap(HINT_WRAP_WIDTH),
 
         C.Spacer(),
         C.BodyStrong(UiStrings.DocumentDestinationSection),
@@ -326,7 +327,7 @@ public class EditProfileForm : EtoDialogBase
         C.Spacer(),
         C.Label(UiStrings.UploadTriggerLabel),
         _uploadTrigger.AsControl().MaxWidth(FIELD_WIDTH),
-        L.Column(_noDestinationWarning.DynamicWrap(HINT_WRAP_WIDTH).MaxWidth(HINT_WRAP_WIDTH)).Visible(_noDestinationWarningVis),
+        L.Column(_noDestinationWarning.DynamicWrap(HINT_WRAP_WIDTH)).Visible(_noDestinationWarningVis),
         C.Spacer(),
         _cleanupAfterCompletion,
         C.Filler()
@@ -380,11 +381,7 @@ public class EditProfileForm : EtoDialogBase
         L.Row(
             L.Column(
                 C.Label(UiStrings.SapArchiveIdLabel),
-                _sapArchiveId,
-                C.Label(UiStrings.SapArObjectLabel),
-                _sapObjectType,
-                C.Label(UiStrings.SapObjectLabel),
-                _sapDocumentType
+                _sapArchiveId
             ).Scale(),
             L.Column(
                 C.Label(UiStrings.SapObjectIdLabel),
@@ -401,7 +398,7 @@ public class EditProfileForm : EtoDialogBase
         _sapFixedObjectKey,
         _sapFixedObjectKeyValue.MaxWidth(FIELD_WIDTH),
         C.Spacer(),
-        C.Label(UiStrings.SapObjectKeyFromSeparatorInfo).DynamicWrap(HINT_WRAP_WIDTH).MaxWidth(HINT_WRAP_WIDTH),
+        C.Label(UiStrings.SapObjectKeyFromSeparatorInfo).DynamicWrap(HINT_WRAP_WIDTH),
         C.Spacer(),
         _sapTestConnection.AlignLeading(),
         C.Filler()
@@ -603,20 +600,12 @@ public class EditProfileForm : EtoDialogBase
         _sapPassword.Text = "";
         _sapIgnoreSsl.Checked = sapConnection.IgnoreCertificateErrors;
         _sapArchiveId.Text = sap.ArchiveId ?? "";
-        _sapDocumentType.Text = sap.SapObject ?? "";
         _sapDescriptionTemplate.Text = sap.ObjectId ?? "";
         _sapFixedObjectKeyValue.Text = sap.FixedBarcode ?? "";
-        var selectedType = SapObjectTypeCatalog.CommonTypes.FirstOrDefault(x => x.Key == sap.ArObject) ?? SapObjectTypeCatalog.CommonTypes.FirstOrDefault();
-        if (selectedType != null)
-        {
-            _sapObjectType.SelectedItem = selectedType;
-        }
         _sapPromptObjectKey.Checked = sap.BarcodeSource == BarcodeSource.PromptUser;
         _sapBarcodeObjectKey.Checked = sap.BarcodeSource == BarcodeSource.FromScannedBarcode;
         _sapFilenameObjectKey.Checked = sap.BarcodeSource == BarcodeSource.FromFilename;
         _sapFixedObjectKey.Checked = sap.BarcodeSource == BarcodeSource.Fixed;
-        UpdateSapObjectTypeTooltip();
-
         UpdateSharePointControlsEnabled();
         UpdateSapControlsEnabled();
 
@@ -1021,8 +1010,12 @@ public class EditProfileForm : EtoDialogBase
             EnableUpload = _enableSapArchiveUpload.IsChecked(),
             Connection = connection,
             ArchiveId = _sapArchiveId.Text.Trim(),
-            ArObject = _sapObjectType.SelectedItem?.Key,
-            SapObject = _sapDocumentType.Text.Trim(),
+            // The ArchiveLink object-type headers are not sent any more. They were optional all along
+            // and this installation's endpoint does not read them, so the fields were two more things to
+            // fill in for no effect. Cleared rather than preserved: a value still going over the wire
+            // with nowhere to see or change it is worse than one that is simply gone.
+            ArObject = null,
+            SapObject = null,
             ObjectId = _sapDescriptionTemplate.Text.Trim(),
             BarcodeSource = _sapBarcodeObjectKey.Checked ? BarcodeSource.FromScannedBarcode
                 : _sapFilenameObjectKey.Checked ? BarcodeSource.FromFilename
@@ -1044,11 +1037,6 @@ public class EditProfileForm : EtoDialogBase
         };
     }
 
-    private void UpdateSapObjectTypeTooltip()
-    {
-        _sapObjectType.AsControl().ToolTip = _sapObjectType.SelectedItem?.KeyFormatHint ?? "";
-    }
-
     private void UpdateSapControlsEnabled()
     {
         if (_scanProfile == null)
@@ -1064,9 +1052,7 @@ public class EditProfileForm : EtoDialogBase
         _sapUser.Enabled = enabled;
         _sapPassword.Enabled = enabled;
         _sapIgnoreSsl.Enabled = enabled;
-        _sapObjectType.Enabled = enabled;
         _sapArchiveId.Enabled = enabled;
-        _sapDocumentType.Enabled = enabled;
         _sapPromptObjectKey.Enabled = enabled;
         _sapBarcodeObjectKey.Enabled = enabled;
         _sapFilenameObjectKey.Enabled = enabled;

@@ -1428,9 +1428,6 @@
   <data name="ToggleDocumentPanel" xml:space="preserve">
     <value>Show or hide the document list</value>
   </data>
-  <data name="DocumentNameNotYetKnown" xml:space="preserve">
-    <value>(name follows the identification)</value>
-  </data>
   <data name="PlaceholderIdentification" xml:space="preserve">
     <value>The document's identification, typed or read from the barcode</value>
   </data>
@@ -1541,5 +1538,8 @@
   </data>
   <data name="DocumentNameMissingShort" xml:space="preserve">
     <value>(no identification)</value>
+  </data>
+  <data name="BarcodeOnPage" xml:space="preserve">
+    <value>Page {0}</value>
   </data>
 </root>

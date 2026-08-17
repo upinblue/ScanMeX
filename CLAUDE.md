@@ -195,6 +195,12 @@ up in the same console.
   barcode and name the file after another, and nothing afterwards showed the two had parted company.
   `ForProfile` folds the old value in for profiles that only ever set that one, and SAP's "from barcode"
   source now simply takes `ctx.DocumentId`.
+- **The ArchiveLink object-type headers are not sent.** `ArObject` and `SapObject` were always optional,
+  are never validated, and this installation's endpoint does not read them, so the profile dialog no
+  longer offers them and saving a profile clears them. The properties stay on `SapArchiveProfileSettings`
+  and `HttpSapArchiveUploader` still emits `x-sap-arobject`/`x-sap-sapobj` when something is set, so a
+  profile carrying values from before keeps working -- and the console names them when it does, because
+  a header going out with nowhere in the UI to see it is exactly the invisible setting to avoid.
 - **`ScanProfile.NeedsBarcodeValues()` is the single gate for barcode detection.** It covers templates
   as well as separation: a file name of `$(barcode).pdf`, a SharePoint folder of `$(barcode)` or a SAP
   object id of `$(barcode)` needs the pages decoded just as much. Missing one of those doesn't fail —
@@ -273,6 +279,11 @@ pwsh tools/icons/Generate-Icons.ps1
   *physical* size — `graphicsDpi / imageDpi`. A 96 dpi icon draws at double size there on a 192 dpi
   screen while the label is still offset by the pixel width, so the text lands on top of the glyph.
   The rest of NAPS2's icons have always been 192 dpi; the generated ones match them.
+  `ToolStripDoubleButton` now calls `SetResolution` on the bitmap to match the surface before painting,
+  because the overload cuts both ways: it *halves* a 192 dpi icon on a 96 dpi screen, which is why
+  Settings and About came out shrunken at 100% scaling and looked right at 200%. Matching the resolution
+  makes the draw 1:1 in pixels at any scaling and covers the disabled path too, which has no size
+  overload to use instead.
 - **Icons are stored as black glyphs and tinted at load time** by `DefaultIconProvider`, which is
   what makes dark mode work. The exclusion list there (brand logos, `scanner_*`, `favicon`) mirrors
   the one at the top of `icon-map.tsv` — an icon that is regenerated is monochrome and belongs in
@@ -309,6 +320,14 @@ The layout system in `NAPS2.Lib/EtoForms/Layout` is custom: `LayoutElement`s are
 A nested layout element also has to ask for its space: `LayoutRightPanel` sets `Scale = true` in its
 constructor because, unlike `LayoutLeftPanel` at the root of a window, it sits inside a row and would
 otherwise take only its natural width.
+
+- **Controls are removed from the container they were added to**, which is not always the window's own:
+  anything inside a scrollable or a tab page belongs to that page's container. `LayoutControl` records it
+  in `MaterializedContainer` and `LayoutController.RemoveControls` uses that. Removing from the root
+  instead is a silent no-op, and a panel whose contents change -- the document inspector switching
+  between documents with different numbers of barcodes -- then keeps every control it has ever shown,
+  drawn on top of the new ones. **Changing a `LayoutColumn`'s children is not enough on its own: nothing
+  leaves the screen until a layout pass runs, so call `LayoutController.Invalidate()` afterwards.**
 
 A `GridView` does not inherit the theme: its background comes out black on the Fluent surface unless
 `BackgroundColor` is set, and its cell images are bitmaps, so they need the real DPI scale rather than

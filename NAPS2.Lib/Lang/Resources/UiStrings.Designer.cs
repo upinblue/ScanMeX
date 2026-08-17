@@ -3910,14 +3910,6 @@ namespace NAPS2.Lang.Resources {
             }
         }
 
-        /// <summary>
-        ///   Looks up a localized string similar to (name follows the identification).
-        /// </summary>
-        internal static string DocumentNameNotYetKnown {
-            get {
-                return ResourceManager.GetString("DocumentNameNotYetKnown", resourceCulture);
-            }
-        }
 
         /// <summary>
         ///   Looks up a localized string similar to The document's identification, typed or read from the barcode.
@@ -4252,6 +4244,16 @@ namespace NAPS2.Lang.Resources {
         internal static string DocumentNameMissingShort {
             get {
                 return ResourceManager.GetString("DocumentNameMissingShort", resourceCulture);
+            }
+        }
+
+
+        /// <summary>
+        ///   Looks up a localized string similar to Page {0}.
+        /// </summary>
+        internal static string BarcodeOnPage {
+            get {
+                return ResourceManager.GetString("BarcodeOnPage", resourceCulture);
             }
         }
 

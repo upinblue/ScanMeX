@@ -47,10 +47,11 @@ public class DocumentPanel : IDisposable
     private const int LIST_HEIGHT = 150;
 
     /// <summary>
-    /// The width wrapping text is measured against: the narrowest the panel can be dragged to, so a
-    /// sentence that fits here fits at every size.
+    /// The width wrapping text is measured at, below the 260 the panel can be dragged down to. The
+    /// layout reserves the height for this width and draws at the real one, so measuring at anything
+    /// wider than the panel can actually be leaves the label a line short and cuts the sentence off.
     /// </summary>
-    internal const int PANEL_WRAP_WIDTH = 240;
+    internal const int PANEL_WRAP_WIDTH = 200;
 
     private LayoutController? _layoutController;
     private Guid? _selectedId;
@@ -105,7 +106,7 @@ public class DocumentPanel : IDisposable
         UpdateRows();
         return L.Column(
             C.BodyStrong(UiStrings.DocumentPanelTitle),
-            _summary.DynamicWrap(PANEL_WRAP_WIDTH).MaxWidth(PANEL_WRAP_WIDTH),
+            _summary.DynamicWrap(PANEL_WRAP_WIDTH),
             L.Column(
                 C.Spacer(),
                 C.Secondary(UiStrings.DocumentPanelEmpty)
@@ -284,6 +285,9 @@ public class DocumentPanel : IDisposable
             _list.SelectedRow = index;
             _suppressSelectionEvent = false;
         }
+        // Removing a barcode changes how many rows the inspector has, and controls only leave the screen
+        // during a layout pass -- without this the row stays visible under the ones that moved up.
+        _layoutController?.Invalidate();
     }
 
     private void UploadOne(ScannedDocument document) => _ = _uploadController.UploadDocument(document);
