@@ -99,11 +99,6 @@ public class EditProfileForm : EtoDialogBase
     private readonly RadioButton _sapBarcodeObjectKey;
     private readonly RadioButton _sapFilenameObjectKey;
     private readonly RadioButton _sapFixedObjectKey;
-    // One regex, one text box. The profile stores a single BarcodeRegex, and showing it twice -- once
-    // under "from barcode" and once under "from file name" -- meant an operator could type a pattern into
-    // the box that wasn't the one their selected source read from, and lose it on save.
-    private readonly TextBox _sapObjectKeyRegex = new();
-    private readonly Label _sapObjectKeyRegexLabel = C.Label(UiStrings.SapObjectKeyRegexBarcodeLabel);
     private readonly TextBox _sapFixedObjectKeyValue = new();
     private readonly TextBox _sapDescriptionTemplate = new() { PlaceholderText = UiStrings.SapObjectIdPlaceholder };
     private readonly Button _sapTestConnection = new() { Text = UiStrings.SapTestUpload };
@@ -241,6 +236,12 @@ public class EditProfileForm : EtoDialogBase
     /// </summary>
     private const int FIELD_WIDTH = 320;
 
+    /// <summary>
+    /// The width explanatory sentences wrap at. Measured against the dialog's minimum width, so a hint
+    /// that fits here fits however the operator has sized the window.
+    /// </summary>
+    private const int HINT_WRAP_WIDTH = 440;
+
     private LayoutElement ScannerTab() => L.Scrollable(L.Column(
         C.Label(UiStrings.DisplayNameLabel),
         _displayName.MaxWidth(FIELD_WIDTH),
@@ -291,13 +292,13 @@ public class EditProfileForm : EtoDialogBase
             C.Spacer(),
             C.Label(UiStrings.BarcodeTypesLabel),
             L.Row(_symbologyCode39, _symbologyCode128, _symbologyEanUpc),
-            L.Column(_eanUpcWarning).Visible(_eanUpcWarningVis),
+            L.Column(_eanUpcWarning.DynamicWrap(HINT_WRAP_WIDTH).MaxWidth(HINT_WRAP_WIDTH)).Visible(_eanUpcWarningVis),
             C.Label(UiStrings.SeparationPatternLabel),
             _separationPattern.MaxWidth(FIELD_WIDTH),
-            C.Secondary(UiStrings.SeparationPatternHint),
+            C.Label(UiStrings.SeparationPatternHint).DynamicWrap(HINT_WRAP_WIDTH).MaxWidth(HINT_WRAP_WIDTH),
             _keepSeparatorPage,
             _newDocumentOnlyOnValueChange,
-            C.Secondary(UiStrings.NewDocumentOnlyOnValueChangeHint)
+            C.Label(UiStrings.NewDocumentOnlyOnValueChangeHint).DynamicWrap(HINT_WRAP_WIDTH).MaxWidth(HINT_WRAP_WIDTH)
         ).Visible(_barcodeOptionsVis),
 
         C.Spacer(),
@@ -312,7 +313,7 @@ public class EditProfileForm : EtoDialogBase
         C.Spacer(),
         C.BodyStrong(UiStrings.DocumentNameSection),
         L.Row(_documentName.MaxWidth(FIELD_WIDTH), _documentNamePlaceholders.AlignCenter()),
-        C.Secondary(UiStrings.DocumentNameHint),
+        C.Label(UiStrings.DocumentNameHint).DynamicWrap(HINT_WRAP_WIDTH).MaxWidth(HINT_WRAP_WIDTH),
 
         C.Spacer(),
         C.BodyStrong(UiStrings.DocumentDestinationSection),
@@ -325,7 +326,7 @@ public class EditProfileForm : EtoDialogBase
         C.Spacer(),
         C.Label(UiStrings.UploadTriggerLabel),
         _uploadTrigger.AsControl().MaxWidth(FIELD_WIDTH),
-        L.Column(_noDestinationWarning).Visible(_noDestinationWarningVis),
+        L.Column(_noDestinationWarning.DynamicWrap(HINT_WRAP_WIDTH).MaxWidth(HINT_WRAP_WIDTH)).Visible(_noDestinationWarningVis),
         C.Spacer(),
         _cleanupAfterCompletion,
         C.Filler()
@@ -400,9 +401,7 @@ public class EditProfileForm : EtoDialogBase
         _sapFixedObjectKey,
         _sapFixedObjectKeyValue.MaxWidth(FIELD_WIDTH),
         C.Spacer(),
-        _sapObjectKeyRegexLabel,
-        _sapObjectKeyRegex.MaxWidth(FIELD_WIDTH),
-        C.Secondary(UiStrings.SapObjectKeyFromSeparatorInfo),
+        C.Label(UiStrings.SapObjectKeyFromSeparatorInfo).DynamicWrap(HINT_WRAP_WIDTH).MaxWidth(HINT_WRAP_WIDTH),
         C.Spacer(),
         _sapTestConnection.AlignLeading(),
         C.Filler()
@@ -606,7 +605,6 @@ public class EditProfileForm : EtoDialogBase
         _sapArchiveId.Text = sap.ArchiveId ?? "";
         _sapDocumentType.Text = sap.SapObject ?? "";
         _sapDescriptionTemplate.Text = sap.ObjectId ?? "";
-        _sapObjectKeyRegex.Text = sap.BarcodeRegex ?? "";
         _sapFixedObjectKeyValue.Text = sap.FixedBarcode ?? "";
         var selectedType = SapObjectTypeCatalog.CommonTypes.FirstOrDefault(x => x.Key == sap.ArObject) ?? SapObjectTypeCatalog.CommonTypes.FirstOrDefault();
         if (selectedType != null)
@@ -696,14 +694,13 @@ public class EditProfileForm : EtoDialogBase
     /// </summary>
     private void UpdateDocumentControls()
     {
-        // The barcode settings are not only about separating: the regex also decides which of a page's
-        // barcodes $(barcode) yields, and the type selection decides what is decoded at all. So they stay
-        // visible whenever anything is configured -- hiding a setting that is still in force is how it
-        // becomes impossible to correct.
-        var barcodesConfigured = !string.IsNullOrWhiteSpace(_separationPattern.Text) ||
-                                 _symbologyCode39.IsChecked() || _symbologyCode128.IsChecked() ||
-                                 _symbologyEanUpc.IsChecked();
-        _barcodeOptionsVis.IsVisible = _sepBarcode.Checked || barcodesConfigured;
+        // Shown when the profile actually reads barcodes -- either to split documents or to identify
+        // them. Not merely when something happens to be configured, which meant the section stayed on
+        // screen for profiles that had no use for it. Tying it to separation alone would be too narrow
+        // the other way: a profile that doesn't split but names its documents after a barcode still has
+        // to pick the symbologies, and without them nothing is decoded at all.
+        var usesBarcodes = _sepBarcode.Checked || _idMode.SelectedItem == DocumentIdMode.Barcode;
+        _barcodeOptionsVis.IsVisible = usesBarcodes;
         // Only separation reads these two, so they don't invite changes when nothing separates. Patch-T
         // sheets are reusable blank cards and are never part of the document, hence no choice there.
         _keepSeparatorPage.Enabled = _sepBarcode.Checked;
@@ -1031,7 +1028,9 @@ public class EditProfileForm : EtoDialogBase
                 : _sapFilenameObjectKey.Checked ? BarcodeSource.FromFilename
                 : _sapFixedObjectKey.Checked ? BarcodeSource.Fixed
                 : BarcodeSource.PromptUser,
-            BarcodeRegex = _sapObjectKeyRegex.Text.Trim(),
+            // The profile's one barcode pattern lives on the workflow now; this legacy field is kept so a
+            // profile written by this version still reads correctly in an older one.
+            BarcodeRegex = _separationPattern.Text?.Trim(),
             FixedBarcode = _sapFixedObjectKeyValue.Text.Trim(),
 
             // Settings this dialog doesn't edit. A new object is built on every save, so anything not
@@ -1072,16 +1071,6 @@ public class EditProfileForm : EtoDialogBase
         _sapBarcodeObjectKey.Enabled = enabled;
         _sapFilenameObjectKey.Enabled = enabled;
         _sapFixedObjectKey.Enabled = enabled;
-        // The regex is only read for the two sources that have something to apply it to. It stays visible
-        // for the other two so its value is never silently out of reach, just not editable.
-        var regexApplies = _sapBarcodeObjectKey.Checked || _sapFilenameObjectKey.Checked;
-        _sapObjectKeyRegex.Enabled = enabled && regexApplies;
-        _sapObjectKeyRegexLabel.Enabled = enabled && regexApplies;
-        _sapObjectKeyRegexLabel.Text = _sapBarcodeObjectKey.Checked
-            ? UiStrings.SapObjectKeyRegexBarcodeLabel
-            : _sapFilenameObjectKey.Checked
-                ? UiStrings.SapObjectKeyRegexFilenameLabel
-                : UiStrings.SapObjectKeyRegexUnusedLabel;
         _sapFixedObjectKeyValue.Enabled = enabled && _sapFixedObjectKey.Checked;
         _sapDescriptionTemplate.Enabled = enabled;
         _sapTestConnection.Enabled = enabled;

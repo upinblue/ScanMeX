@@ -994,7 +994,7 @@
     <value>Bei jedem Scan abfragen</value>
   </data>
   <data name="SapObjectKeyFromBarcode" xml:space="preserve">
-    <value>Aus Barcode</value>
+    <value>Kennzeichnung des Dokuments</value>
   </data>
   <data name="SapObjectKeyFromFilename" xml:space="preserve">
     <value>Aus Dateiname</value>
@@ -1225,7 +1225,7 @@
     <value>Muster (Regex) – wird nur von den beiden Optionen darüber verwendet</value>
   </data>
   <data name="SapObjectKeyFromSeparatorInfo" xml:space="preserve">
-    <value>Wenn das Profil Dokumente nach Barcode trennt, ist der trennende Barcode der Objektschlüssel – Dateiname und Schlüssel stimmen so immer überein.</value>
+    <value>Die Kennzeichnung ist der Wert, unter dem das Dokument abgelegt wird — Dateiname und Archivschlüssel stimmen damit immer überein. Sie stammt aus dem im Reiter „Dokumente" gewählten Barcode oder aus der Eingabe in der Dokumentenliste.</value>
   </data>
   <data name="SapPasswordKeepHint" xml:space="preserve">
     <value>Leer lassen, um das gespeicherte Passwort zu behalten</value>
@@ -1243,13 +1243,13 @@
     <value>Das Speichern wurde abgebrochen, das Dokument wurde nicht abgelegt.</value>
   </data>
   <data name="DocumentNameEmpty" xml:space="preserve">
-    <value>Das Profil legt keinen Dateinamen fÃ¼r seine Dokumente fest.</value>
+    <value>Das Profil legt keinen Dateinamen für seine Dokumente fest.</value>
   </data>
   <data name="DocumentPanelTitle" xml:space="preserve">
     <value>Dokumente</value>
   </data>
   <data name="DocumentPanelEmpty" xml:space="preserve">
-    <value>Dokumente aus dem nÃ¤chsten Scan erscheinen hier.</value>
+    <value>Dokumente aus dem nächsten Scan erscheinen hier.</value>
   </data>
   <data name="DocumentPageCount" xml:space="preserve">
     <value>{0} Seite(n)</value>
@@ -1264,7 +1264,7 @@
     <value>Auf diesem Dokument wurden keine Barcodes gefunden.</value>
   </data>
   <data name="AddBarcodeAction" xml:space="preserve">
-    <value>Wert hinzufÃ¼gen</value>
+    <value>Wert hinzufügen</value>
   </data>
   <data name="RemoveBarcodeAction" xml:space="preserve">
     <value>Entfernen</value>
@@ -1291,7 +1291,7 @@
     <value>Lokal abgelegt, wartet auf den Upload.</value>
   </data>
   <data name="DocumentStatusNeedsIdentifier" xml:space="preserve">
-    <value>Noch keine Kennzeichnung, das Dokument wird zurÃ¼ckgehalten.</value>
+    <value>Noch keine Kennzeichnung, das Dokument wird zurückgehalten.</value>
   </data>
   <data name="DocumentStatusWorking" xml:space="preserve">
     <value>Wird verarbeitet...</value>
@@ -1330,7 +1330,7 @@
     <value>Die Kennzeichnung des Dokuments, eingegeben oder aus dem Barcode gelesen</value>
   </data>
   <data name="PlaceholderBarcode" xml:space="preserve">
-    <value>Der Barcode, den der Regex des Profils ausgewÃ¤hlt hat</value>
+    <value>Der Barcode, den der Regex des Profils ausgewählt hat</value>
   </data>
   <data name="PlaceholderBarcodeSecond" xml:space="preserve">
     <value>Zweiter Barcode auf dem Dokument</value>
@@ -1381,24 +1381,60 @@
     <value>Ordner</value>
   </data>
   <data name="LocalFolderRequired" xml:space="preserve">
-    <value>Bitte einen Ordner auswÃ¤hlen oder "Bei jedem Scan nach dem Dateipfad fragen" aktivieren.</value>
+    <value>Bitte einen Ordner auswählen oder "Bei jedem Scan nach dem Dateipfad fragen" aktivieren.</value>
   </data>
   <data name="DocumentNameRequired" xml:space="preserve">
-    <value>Bitte einen Dateinamen fÃ¼r die Dokumente eingeben. Er wird auch in SharePoint und SAP verwendet.</value>
+    <value>Bitte einen Dateinamen für die Dokumente eingeben. Er wird auch in SharePoint und SAP verwendet.</value>
   </data>
   <data name="RequireIdentifier" xml:space="preserve">
     <value>Dokument ohne Kennzeichnung nicht ablegen</value>
   </data>
   <data name="NoDestinationWarning" xml:space="preserve">
-    <value>Dieses Profil legt Dokumente weder ab noch lÃ¤dt es sie hoch. Gescannte Seiten erscheinen nur im Fenster.</value>
+    <value>Dieses Profil legt Dokumente weder ab noch lädt es sie hoch. Gescannte Seiten erscheinen nur im Fenster.</value>
   </data>
   <data name="EanUpcPhantomWarning" xml:space="preserve">
-    <value>EAN/UPC-Codes werden auf dicht bedruckten Formularen hÃ¤ufig fÃ¤lschlich erkannt. Nur auswÃ¤hlen, wenn Ihre Belege sie wirklich tragen.</value>
+    <value>EAN/UPC-Codes werden auf dicht bedruckten Formularen häufig fälschlich erkannt. Nur auswählen, wenn Ihre Belege sie wirklich tragen.</value>
   </data>
   <data name="SapConnectionSection" xml:space="preserve">
     <value>Verbindung</value>
   </data>
   <data name="SapArchiveSection" xml:space="preserve">
     <value>Archiv</value>
+  </data>
+  <data name="DocumentInspectorTitle" xml:space="preserve">
+    <value>Ausgewähltes Dokument</value>
+  </data>
+  <data name="DocumentInspectorNoSelection" xml:space="preserve">
+    <value>Oben ein Dokument auswählen, um seine Kennzeichnung zu bearbeiten.</value>
+  </data>
+  <data name="DocumentBarcodesSection" xml:space="preserve">
+    <value>Erkannte Barcodes</value>
+  </data>
+  <data name="DocumentOwnValueOption" xml:space="preserve">
+    <value>Eigener Wert</value>
+  </data>
+  <data name="DocumentFileNameLabel" xml:space="preserve">
+    <value>Dateiname</value>
+  </data>
+  <data name="DocumentTargetsLabel" xml:space="preserve">
+    <value>Ziel</value>
+  </data>
+  <data name="DocumentTargetsNone" xml:space="preserve">
+    <value>bleibt im Fenster</value>
+  </data>
+  <data name="DocumentTargetLocal" xml:space="preserve">
+    <value>Ordner</value>
+  </data>
+  <data name="RemoveBarcodeTooltip" xml:space="preserve">
+    <value>Diesen Barcode aus dem Dokument entfernen</value>
+  </data>
+  <data name="DocumentsRemovedWithPages" xml:space="preserve">
+    <value>{0} Dokument(e) entfernt, weil ihre Seiten gelöscht wurden.</value>
+  </data>
+  <data name="DocumentListRow" xml:space="preserve">
+    <value>Dokument {0} · {1} Seite(n)</value>
+  </data>
+  <data name="DocumentNameMissingShort" xml:space="preserve">
+    <value>(ohne Kennzeichnung)</value>
   </data>
 </root>

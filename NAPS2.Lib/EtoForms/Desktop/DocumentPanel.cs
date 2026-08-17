@@ -1,3 +1,6 @@
+﻿using System.Collections.ObjectModel;
+using Eto.Drawing;
+using Eto.Forms;
 using NAPS2.EtoForms.Layout;
 using NAPS2.Images;
 using NAPS2.PostScan;
@@ -5,14 +8,18 @@ using NAPS2.PostScan;
 namespace NAPS2.EtoForms.Desktop;
 
 /// <summary>
-/// The document list beside the pages: every document this session produced, what it is called, what it
-/// is filed under, which barcodes it carries and whether it got where it was going.
+/// The document list beside the pages: every document this session produced, and an inspector for the
+/// one selected.
 /// </summary>
 /// <remarks>
-/// This exists because the scan window could only ever show pages. Whether a document had reached the
-/// archive was recorded in a notification that scrolled away, a barcode read off the wrong code on the
-/// sheet could not be corrected at all, and a document waiting for the upload button was invisible until
-/// the button was pressed. All three are the same missing thing: somewhere for a document to be.
+/// The scan window could only ever show pages. Whether a document had reached the archive was recorded
+/// in a notification that scrolled away, a barcode read off the wrong code on the sheet could not be
+/// corrected at all, and a document waiting for the upload button was invisible until the button was
+/// pressed. All three are the same missing thing: somewhere for a document to be.
+///
+/// Split into a list and an inspector because the two answer different questions -- "is everything
+/// through?" and "what is wrong with this one?" -- and one control trying to answer both is what made
+/// the first version unreadable in a panel this narrow.
 /// </remarks>
 public class DocumentPanel : IDisposable
 {
@@ -22,17 +29,35 @@ public class DocumentPanel : IDisposable
     private readonly Naps2Config _config;
     private readonly UiImageList _imageList;
 
-    private readonly Dictionary<Guid, DocumentCardView> _cards = new();
-    private readonly LayoutColumn _list = L.Column().Spacing(8);
-    private readonly LayoutVisibility _emptyVis = new(true);
+    private readonly GridView _list = new() { ShowHeader = false, AllowMultipleSelection = false };
+    private readonly ObservableCollection<DocumentRow> _rows = [];
+    private readonly DocumentInspector _inspector;
+    // Wrapping, unlike C.Secondary: four counts joined with separators do not fit one line at panel width.
+    private readonly Label _summary = C.Label("");
+    private readonly Button _uploadAll;
     private readonly LayoutVisibility _panelVis = new(true);
-    // The layout engine re-shows controls as it lays them out, so Control.Visible doesn't stick; hiding
-    // has to go through the layout's own visibility.
     private readonly LayoutVisibility _uploadAllVis = new(false);
-    private readonly Eto.Forms.Label _summary = C.Secondary("");
-    private readonly Eto.Forms.Button _uploadAll;
+    private readonly LayoutVisibility _emptyVis = new(true);
+    private readonly LayoutVisibility _listVis = new(false);
+
+    /// <summary>
+    /// How much of the panel the list may take before it starts scrolling. About six rows -- enough to
+    /// see a normal batch at a glance without crowding out the inspector.
+    /// </summary>
+    private const int LIST_HEIGHT = 150;
+
+    /// <summary>
+    /// The width wrapping text is measured against: the narrowest the panel can be dragged to, so a
+    /// sentence that fits here fits at every size.
+    /// </summary>
+    internal const int PANEL_WRAP_WIDTH = 240;
 
     private LayoutController? _layoutController;
+    private Guid? _selectedId;
+    private bool _suppressSelectionEvent;
+    // What the window held at the last change, so a deletion can be told from a page still arriving.
+    private HashSet<ProcessedImage> _pagesInWindow = [];
+    private float _iconScale = 1f;
 
     public DocumentPanel(DocumentQueue queue, DocumentUploadController uploadController,
         ColorScheme colorScheme, Naps2Config config, UiImageList imageList)
@@ -42,9 +67,33 @@ public class DocumentPanel : IDisposable
         _colorScheme = colorScheme;
         _config = config;
         _imageList = imageList;
+        _inspector = new DocumentInspector(colorScheme, OnInspectorChanged, UploadOne, Discard);
         _uploadAll = C.Button(UiStrings.UploadPendingDocuments,
             () => _ = _uploadController.UploadPendingDocuments());
+
+        _list.DataStore = _rows;
+        _list.Columns.Add(new GridColumn
+        {
+            DataCell = new ImageTextCell(nameof(DocumentRow.Icon), nameof(DocumentRow.Text)),
+            Expand = true
+        });
+        _list.SelectionChanged += ListSelectionChanged;
+        // The grid does not inherit the theme, and its unpainted area comes out black on the Fluent
+        // surface. Both the control and the area below the last row have to be told what colour they are.
+        _list.BackgroundColor = _colorScheme.BackgroundColor;
+        _summary.TextColor = _colorScheme.SecondaryTextColor;
+        // Row icons are bitmaps, so they need the real scale; picked once here rather than per row,
+        // because the rows are rebuilt on every change.
+        EtoPlatform.Current.AttachDpiDependency(_list, scale =>
+        {
+            _iconScale = scale;
+            UpdateRows();
+        });
+
         _queue.Changed += QueueChanged;
+        // A document's pages can be deleted from the window, which leaves it describing paper that is no
+        // longer there.
+        _imageList.ImagesUpdated += ImagesUpdated;
     }
 
     public bool IsVisible => _panelVis.IsVisible;
@@ -53,16 +102,21 @@ public class DocumentPanel : IDisposable
     {
         _layoutController = layoutController;
         _panelVis.IsVisible = _config.Get(c => c.DocumentPanelVisible);
-        UpdateCards();
+        UpdateRows();
         return L.Column(
             C.BodyStrong(UiStrings.DocumentPanelTitle),
-            _summary,
+            _summary.DynamicWrap(PANEL_WRAP_WIDTH).MaxWidth(PANEL_WRAP_WIDTH),
             L.Column(
                 C.Spacer(),
                 C.Secondary(UiStrings.DocumentPanelEmpty)
             ).Visible(_emptyVis),
-            L.Column(L.Scrollable(_list)).Scale(),
-            L.Row(_uploadAll, C.Filler()).Visible(_uploadAllVis)
+            // The list is capped rather than allowed to scale: it is a means of choosing, and letting it
+            // grow with the number of documents pushes the inspector -- the part you actually work in --
+            // off the bottom of the panel. It scrolls internally past that height.
+            L.Column(_list.MaxHeight(LIST_HEIGHT)).Visible(_listVis),
+            L.Row(_uploadAll, C.Filler()).Visible(_uploadAllVis),
+            C.Spacer(),
+            L.Column(L.Scrollable(_inspector.Content)).Scale()
         ).Padding(left: 10, right: 10, top: 8, bottom: 8).Spacing(6).Visible(_panelVis);
     }
 
@@ -76,40 +130,123 @@ public class DocumentPanel : IDisposable
     private void QueueChanged(object? sender, EventArgs e)
     {
         // Documents finish on scanner and upload threads, which must never touch the UI directly.
-        Invoker.Current.Invoke(UpdateCards);
+        Invoker.Current.Invoke(UpdateRows);
     }
 
     /// <summary>
-    /// Brings the list in line with the queue. Cards for documents that are still there are refreshed
-    /// rather than replaced, so an operator typing an identification keeps the caret.
+    /// Drops documents whose pages have all been deleted from the window.
     /// </summary>
-    private void UpdateCards()
+    /// <remarks>
+    /// Driven by what disappeared since the last change, not by what is present now. A document is
+    /// created the moment the scan finishes, while its pages are still on their way into the window, so
+    /// "this document has no page in the list" is true for a fraction of a second after every scan and
+    /// would delete the documents that had just been produced. Only pages that were in the list and then
+    /// left can mean a deletion.
+    ///
+    /// A finished document is left alone regardless: it is the record that those pages reached the
+    /// archive, and clearing the window afterwards is the normal way to start the next batch.
+    /// </remarks>
+    private void ImagesUpdated(object? sender, ImageListEventArgs e)
+    {
+        Invoker.Current.Invoke(() =>
+        {
+            var present = _imageList.Images
+                .Select(x => x.GetImageWeakReference().ProcessedImage)
+                .ToHashSet();
+            var removed = _pagesInWindow.Where(x => !present.Contains(x)).ToHashSet();
+            _pagesInWindow = present;
+            if (removed.Count == 0)
+            {
+                UpdateRows();
+                return;
+            }
+
+            var dropped = 0;
+            foreach (var document in _queue.Documents)
+            {
+                if (document.Status == DocumentStatus.Done || !document.Pages.Any(removed.Contains))
+                {
+                    continue;
+                }
+                if (document.Pages.Any(present.Contains))
+                {
+                    // Some pages survived. The document shrinks with them rather than disappearing, and
+                    // its name is re-resolved from what is left.
+                    ScanConsole.Document(
+                        $"{document.Describe()}: some of its pages were deleted from the window.");
+                    continue;
+                }
+                ScanConsole.Document(
+                    $"{document.Describe()}: all of its pages were deleted from the window, so the " +
+                    "document is gone too.");
+                _queue.Remove(document);
+                dropped++;
+            }
+            if (dropped > 0)
+            {
+                ScanConsole.Document(string.Format(UiStrings.DocumentsRemovedWithPages, dropped));
+            }
+            UpdateRows();
+        });
+    }
+
+    /// <summary>
+    /// Brings the list in line with the queue, keeping the selection on the same document where it still
+    /// exists so a background change doesn't move the inspector out from under the operator.
+    /// </summary>
+    private void UpdateRows()
     {
         var documents = _queue.Documents;
-        var live = documents.Select(x => x.Id).ToHashSet();
-
-        foreach (var gone in _cards.Keys.Except(live).ToList())
+        _suppressSelectionEvent = true;
+        try
         {
-            _list.Children.Remove(_cards[gone].Content);
-            _cards.Remove(gone);
-        }
-        foreach (var document in documents)
-        {
-            if (_cards.TryGetValue(document.Id, out var existing))
+            _rows.Clear();
+            foreach (var document in documents)
             {
-                existing.Refresh();
-                continue;
+                _rows.Add(new DocumentRow(document, _colorScheme, _iconScale));
             }
-            var card = new DocumentCardView(document, _colorScheme, OnCardChanged, UploadOne, Discard,
-                SelectPages);
-            _cards.Add(document.Id, card);
-            _list.Children.Add(card.Content);
+            var index = _selectedId == null
+                ? -1
+                : documents.ToList().FindIndex(x => x.Id == _selectedId);
+            if (index < 0 && documents.Count > 0)
+            {
+                // Nothing selected, or the selected document is gone: fall back to the first one that
+                // still needs attention, which is what the operator is going to open anyway.
+                index = documents.ToList().FindIndex(x => x.Status != DocumentStatus.Done);
+                if (index < 0) index = 0;
+            }
+            _list.SelectedRow = index;
+            _selectedId = index >= 0 ? documents[index].Id : null;
+        }
+        finally
+        {
+            _suppressSelectionEvent = false;
         }
 
+        _inspector.Show(_selectedId == null ? null : documents.FirstOrDefault(x => x.Id == _selectedId));
         _emptyVis.IsVisible = documents.Count == 0;
+        _listVis.IsVisible = documents.Count > 0;
         _summary.Text = Summarize(documents);
         _uploadAll.Enabled = _uploadController.HasPendingDocuments;
         _uploadAllVis.IsVisible = documents.Count > 0;
+        _layoutController?.Invalidate();
+    }
+
+    private void ListSelectionChanged(object? sender, EventArgs e)
+    {
+        if (_suppressSelectionEvent)
+        {
+            return;
+        }
+        var documents = _queue.Documents;
+        var index = _list.SelectedRow;
+        var document = index >= 0 && index < documents.Count ? documents[index] : null;
+        _selectedId = document?.Id;
+        _inspector.Show(document);
+        if (document != null)
+        {
+            SelectPages(document);
+        }
         _layoutController?.Invalidate();
     }
 
@@ -130,14 +267,23 @@ public class DocumentPanel : IDisposable
     }
 
     /// <summary>
-    /// A card edited its document. The queue isn't told, because it would rebuild every other card and
-    /// take the caret out of the box being typed into; only the parts that depend on all documents at
-    /// once are recomputed.
+    /// The inspector edited its document. Only the parts that depend on all documents at once are
+    /// recomputed: telling the queue would rebuild the list and take the caret out of the box being
+    /// typed into.
     /// </summary>
-    private void OnCardChanged()
+    private void OnInspectorChanged()
     {
-        _summary.Text = Summarize(_queue.Documents);
+        var documents = _queue.Documents;
+        _summary.Text = Summarize(documents);
         _uploadAll.Enabled = _uploadController.HasPendingDocuments;
+        var index = documents.ToList().FindIndex(x => x.Id == _selectedId);
+        if (index >= 0 && index < _rows.Count)
+        {
+            _rows[index] = new DocumentRow(documents[index], _colorScheme, _iconScale);
+            _suppressSelectionEvent = true;
+            _list.SelectedRow = index;
+            _suppressSelectionEvent = false;
+        }
     }
 
     private void UploadOne(ScannedDocument document) => _ = _uploadController.UploadDocument(document);
@@ -149,7 +295,7 @@ public class DocumentPanel : IDisposable
     }
 
     /// <summary>
-    /// Selects the document's pages in the thumbnail list, so clicking a document shows what is in it.
+    /// Selects the document's pages in the thumbnail list, so picking a document shows what is in it.
     /// </summary>
     private void SelectPages(ScannedDocument document)
     {
@@ -166,5 +312,29 @@ public class DocumentPanel : IDisposable
     public void Dispose()
     {
         _queue.Changed -= QueueChanged;
+        _imageList.ImagesUpdated -= ImagesUpdated;
+    }
+
+    /// <summary>
+    /// One row of the list: a status icon and a single line of text. Deliberately thin -- the detail
+    /// belongs to the inspector, and a list that repeats it cannot stay readable at panel width.
+    /// </summary>
+    private class DocumentRow
+    {
+        public DocumentRow(ScannedDocument document, ColorScheme colorScheme, float iconScale)
+        {
+            var severity = DocumentInspector.SeverityOf(document.Status);
+            var color = severity == Notifications.NotificationSeverity.Neutral
+                ? colorScheme.SecondaryTextColor
+                : colorScheme.GetSeverityColor(severity);
+            Icon = EtoPlatform.Current.IconProvider
+                .GetIcon(DocumentInspector.IconOf(document.Status), iconScale)?.Tint(color);
+            Text = $"{DocumentInspector.ResolveName(document) ?? UiStrings.DocumentNameMissingShort}  ·  " +
+                   string.Format(UiStrings.DocumentPageCount, document.PageCount);
+        }
+
+        public Image? Icon { get; }
+
+        public string Text { get; }
     }
 }

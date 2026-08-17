@@ -45,6 +45,18 @@ reaches the file name, the SharePoint folder and the SAP object key together.
 `DocumentPipeline.Advance` is the single method that takes a document further, used by both the
 automatic trigger and the upload button, so the two cannot drift.
 
+The panel is a list plus an inspector, not a card per document: the two answer different questions
+("is everything through?" and "what is wrong with this one?"), and one control trying to answer both is
+unreadable at panel width. In the inspector the detected barcodes are *radio buttons* -- the selected
+one is the identification -- plus "own value" for free text. A "use as identification" button per row
+said what would happen if you pressed it but never which barcode was actually in use.
+
+**A document is dropped when its pages are deleted from the window, driven by what disappeared, not by
+what is present.** A document exists the moment the scan finishes, while its pages are still on their
+way into the window, so "has no page in the list" is briefly true for every document that was just
+produced and would delete them all. Finished documents are never dropped -- they are the record that
+those pages reached the archive.
+
 ### Saving, uploading and the trigger are three settings, not one
 
 `DocumentWorkflowSettings` carries `SaveLocally` + `LocalFolder`, the upload targets (on the profile),
@@ -177,6 +189,12 @@ up in the same console.
   pattern, falling back to the SAP object key regex for profiles that archive without separating.
   `$(barcode)` differs on purpose: it is the document's identifying value, so the regex's capturing group
   has been applied. Both must always name the *same* barcode.
+- **One barcode regex, on the workflow.** It decides document boundaries, which barcode the variables
+  yield, and -- through the document's identification -- the SAP object key, so all three necessarily
+  agree. There was a second one on `SapArchiveSettings.BarcodeRegex`; a profile could then file under one
+  barcode and name the file after another, and nothing afterwards showed the two had parted company.
+  `ForProfile` folds the old value in for profiles that only ever set that one, and SAP's "from barcode"
+  source now simply takes `ctx.DocumentId`.
 - **`ScanProfile.NeedsBarcodeValues()` is the single gate for barcode detection.** It covers templates
   as well as separation: a file name of `$(barcode).pdf`, a SharePoint folder of `$(barcode)` or a SAP
   object id of `$(barcode)` needs the pages decoded just as much. Missing one of those doesn't fail —
@@ -277,6 +295,10 @@ The layout system in `NAPS2.Lib/EtoForms/Layout` is custom: `LayoutElement`s are
 
 - **`Control.Visible = false` does not stick.** The engine re-shows controls as it lays them out. To
   hide something, wrap it in `L.Column(x).Visible(vis)` with a `LayoutVisibility` and toggle that.
+- **A label does not wrap on its own.** `DynamicWrap(width)` only sets the width it is *measured* at;
+  without a `MaxWidth` as well it is laid out at its full natural width and runs off the edge of the
+  panel. Long sentences need both, and `C.Secondary` never wraps at all -- it is `C.NoWrap` with a
+  colour, so an explanatory line built with it is a line that will be cut off.
 - **A label that starts empty has no height, and setting its text later doesn't give it any** until the
   layout is redone. Give warning labels their text up front and toggle their visibility, or call
   `LayoutController.Invalidate()` after changing the text.
@@ -287,6 +309,11 @@ The layout system in `NAPS2.Lib/EtoForms/Layout` is custom: `LayoutElement`s are
 A nested layout element also has to ask for its space: `LayoutRightPanel` sets `Scale = true` in its
 constructor because, unlike `LayoutLeftPanel` at the root of a window, it sits inside a row and would
 otherwise take only its natural width.
+
+A `GridView` does not inherit the theme: its background comes out black on the Fluent surface unless
+`BackgroundColor` is set, and its cell images are bitmaps, so they need the real DPI scale rather than
+`1f`. `&` in a label is an accelerator prefix and eats the following character -- "Documents & barcodes"
+renders as "Documents _barcodes".
 
 `L.Tabs(...)` follows `LayoutScrollable`: each page owns a container from
 `EtoPlatform.Current.CreateContainer()` and its content is laid out into that. **Every page is laid out,

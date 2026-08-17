@@ -1,5 +1,6 @@
 #nullable enable
 using NAPS2.ImportExport;
+using NAPS2.Sap;
 using NAPS2.Scan;
 using Xunit;
 
@@ -140,6 +141,53 @@ public class DocumentWorkflowMigrationTests
         Assert.False(workflow.SaveLocally);
         Assert.Null(workflow.LocalFolder);
         Assert.Equal(UploadTrigger.Manual, workflow.UploadTrigger);
+    }
+
+    /// <summary>
+    /// There used to be two barcode regexes: one deciding document boundaries and the barcode variables,
+    /// one deciding the SAP object key. A profile that archives without separating only ever set the SAP
+    /// one, so dropping it would leave that profile with no pattern at all and it would start filing
+    /// under whichever barcode came first on the page.
+    /// </summary>
+    [Fact]
+    public void AProfileThatOnlySetTheSapRegexKeepsItAsItsPattern()
+    {
+        var profile = new ScanProfile
+        {
+            SapArchiveSettings = new SapArchiveProfileSettings
+            {
+                EnableUpload = true,
+                BarcodeSource = BarcodeSource.FromScannedBarcode,
+                BarcodeRegex = @"^\d{8}$"
+            }
+        };
+
+        Assert.Equal(@"^\d{8}$", DocumentWorkflowSettings.ForProfile(profile).SeparationPattern);
+        Assert.Equal(@"^\d{8}$", profile.GetBarcodeSelectionPattern());
+    }
+
+    /// <summary>
+    /// Where both were set, the separation pattern is the one that named the files, so it wins. Letting
+    /// the SAP one take over would rename every document the profile produces.
+    /// </summary>
+    [Fact]
+    public void TheSeparationPatternOutranksTheOldSapRegex()
+    {
+        var profile = new ScanProfile
+        {
+            DocumentWorkflow = new DocumentWorkflowSettings
+            {
+                SeparationMode = DocumentSeparationMode.Barcode,
+                SeparationPattern = "SEP-(.*)"
+            },
+            SapArchiveSettings = new SapArchiveProfileSettings
+            {
+                EnableUpload = true,
+                BarcodeRegex = @"^\d{8}$"
+            }
+        };
+
+        Assert.Equal("SEP-(.*)", profile.GetBarcodeSelectionPattern());
     }
 
     /// <summary>

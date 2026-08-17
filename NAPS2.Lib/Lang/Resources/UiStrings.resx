@@ -1219,7 +1219,7 @@
     <value>Prompt for every scan</value>
   </data>
   <data name="SapObjectKeyFromBarcode" xml:space="preserve">
-    <value>From barcode</value>
+    <value>The document's identification</value>
   </data>
   <data name="SapObjectKeyFromFilename" xml:space="preserve">
     <value>From filename</value>
@@ -1330,7 +1330,7 @@
     <value>Pattern (regex) — only used by the two options above</value>
   </data>
   <data name="SapObjectKeyFromSeparatorInfo" xml:space="preserve">
-    <value>When the profile separates documents by barcode, the separating barcode is the object key, so the file name and the key always agree.</value>
+    <value>The identification is the value the document is filed under, so the file name and the archive key always agree. It comes from the barcode selected on the Documents tab, or from what was entered in the document list.</value>
   </data>
   <data name="SapPasswordKeepHint" xml:space="preserve">
     <value>Leave empty to keep the stored password</value>
@@ -1505,5 +1505,41 @@
   </data>
   <data name="SapArchiveSection" xml:space="preserve">
     <value>Archive</value>
+  </data>
+  <data name="DocumentInspectorTitle" xml:space="preserve">
+    <value>Selected document</value>
+  </data>
+  <data name="DocumentInspectorNoSelection" xml:space="preserve">
+    <value>Select a document above to edit its identification.</value>
+  </data>
+  <data name="DocumentBarcodesSection" xml:space="preserve">
+    <value>Detected barcodes</value>
+  </data>
+  <data name="DocumentOwnValueOption" xml:space="preserve">
+    <value>Own value</value>
+  </data>
+  <data name="DocumentFileNameLabel" xml:space="preserve">
+    <value>File name</value>
+  </data>
+  <data name="DocumentTargetsLabel" xml:space="preserve">
+    <value>Target</value>
+  </data>
+  <data name="DocumentTargetsNone" xml:space="preserve">
+    <value>stays in the window</value>
+  </data>
+  <data name="DocumentTargetLocal" xml:space="preserve">
+    <value>Folder</value>
+  </data>
+  <data name="RemoveBarcodeTooltip" xml:space="preserve">
+    <value>Remove this barcode from the document</value>
+  </data>
+  <data name="DocumentsRemovedWithPages" xml:space="preserve">
+    <value>{0} document(s) dropped because their pages were deleted.</value>
+  </data>
+  <data name="DocumentListRow" xml:space="preserve">
+    <value>Document {0} · {1} page(s)</value>
+  </data>
+  <data name="DocumentNameMissingShort" xml:space="preserve">
+    <value>(no identification)</value>
   </data>
 </root>

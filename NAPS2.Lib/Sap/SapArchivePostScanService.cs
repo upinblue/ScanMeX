@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using Eto.Forms;
 using Microsoft.Extensions.Logging;
 using NAPS2.EtoForms;
@@ -34,7 +34,7 @@ internal class SapArchivePostScanService
             return null;
         }
 
-        var barcode = ResolveBarcode(settings, filePath, images, ctx);
+        var barcode = ResolveBarcode(profile, settings, filePath, images, ctx);
         // ArObject and SapObject are the two values that actually go out as headers; ArDocType is a legacy
         // field the OData upload never sends, so naming it here suggested a setting that has no effect.
         ScanConsole.Upload(
@@ -110,22 +110,38 @@ internal class SapArchivePostScanService
         return failure;
     }
 
-    private string? ResolveBarcode(SapArchiveProfileSettings settings, string filePath, IReadOnlyList<ProcessedImage> images,
-        ScanContext ctx)
+    private string? ResolveBarcode(ScanProfile profile, SapArchiveProfileSettings settings, string filePath,
+        IReadOnlyList<ProcessedImage> images, ScanContext ctx)
     {
         return settings.BarcodeSource switch
         {
             BarcodeSource.Fixed => Substitute(settings.FixedBarcode, ctx)?.Trim(),
-            BarcodeSource.FromFilename => ExtractWithRegex(Path.GetFileNameWithoutExtension(filePath), Substitute(settings.BarcodeRegex, ctx)),
-            BarcodeSource.FromScannedBarcode => ResolveScannedBarcode(settings, images, ctx),
+            BarcodeSource.FromFilename => ExtractWithRegex(
+                Path.GetFileNameWithoutExtension(filePath), profile.GetBarcodeSelectionPattern()),
+            BarcodeSource.FromScannedBarcode => ResolveScannedBarcode(profile, images, ctx),
             _ => null
         };
     }
 
-    private string? ResolveScannedBarcode(SapArchiveProfileSettings settings, IReadOnlyList<ProcessedImage> images,
+    /// <summary>
+    /// The object key for a profile that takes it from the paper.
+    /// </summary>
+    /// <remarks>
+    /// The document's identification is the answer whenever there is one: it is what the file was named
+    /// after, and it is what the operator corrected in the document list if the barcode was misread.
+    /// Working the key out again from the pages would undo that correction silently -- the file would say
+    /// one number and the archive another. The search below is only for documents that never got an
+    /// identification, which is what profiles looked like before there was one.
+    /// </remarks>
+    private string? ResolveScannedBarcode(ScanProfile profile, IReadOnlyList<ProcessedImage> images,
         ScanContext ctx)
     {
-        var pattern = Substitute(settings.BarcodeRegex, ctx);
+        if (!string.IsNullOrWhiteSpace(ctx.DocumentId))
+        {
+            ScanConsole.Upload($"SAP object key from the document's identification: '{ctx.DocumentId}'.");
+            return ctx.DocumentId!.Trim();
+        }
+        var pattern = Substitute(profile.GetBarcodeSelectionPattern(), ctx);
         var primaries = images.Select(x => x.PostProcessingData.Barcode.DetectedText).ToList();
         // Everything else the pages carry. A page with an order code and a document code has only one of
         // them as its primary, and which one that is comes down to reading order, not to what the

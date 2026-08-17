@@ -1,4 +1,4 @@
-using NAPS2.ImportExport;
+﻿using NAPS2.ImportExport;
 
 namespace NAPS2.Scan;
 
@@ -100,10 +100,18 @@ public record DocumentWorkflowSettings
     public List<BarcodeSymbology> BarcodeSymbologies { get; init; } = [];
 
     /// <summary>
-    /// Optional regex. A page's barcode only starts a new document if it matches. If the pattern has a
-    /// capturing group, group 1 becomes the document's barcode value, otherwise the whole match does.
-    /// This lets one barcode both mark the boundary and supply the file name.
+    /// The profile's one barcode regex. A page's barcode only starts a new document if it matches, and
+    /// the same pattern decides which of a page's barcodes is the one the operator means. If the pattern
+    /// has a capturing group, group 1 becomes the value, otherwise the whole match does -- so one barcode
+    /// can both mark the boundary and contribute only part of itself.
     /// </summary>
+    /// <remarks>
+    /// Named for separation because that is the name already in every stored profile, but it is no longer
+    /// only about separating. There used to be a second regex on the SAP settings deciding the object
+    /// key, which meant a profile could select one barcode for its file name and a different one for the
+    /// archive -- the two drifting apart is exactly the failure that is invisible afterwards. The SAP one
+    /// is now folded in here on load and the archive takes the document's identification.
+    /// </remarks>
     public string? SeparationPattern { get; init; }
 
     /// <summary>
@@ -219,6 +227,7 @@ public record DocumentWorkflowSettings
                 LocalFolder = FolderOf(autoSave?.FilePath),
                 DocumentNameTemplate = NameOf(autoSave?.FilePath),
                 PromptForFilePath = autoSave?.PromptForFilePath ?? false,
+                SeparationPattern = FoldInSapRegex(stored.SeparationPattern, profile),
                 // The old manual-input mode aborted the save when the operator cancelled the prompt, so
                 // "no value entered" already meant "don't file this document".
                 RequireIdentifier = stored.IdMode == DocumentIdMode.ManualInput
@@ -231,7 +240,7 @@ public record DocumentWorkflowSettings
             BarcodeSymbologies = autoSave?.Separator == SaveSeparator.Code39Barcode
                 ? [BarcodeSymbology.Code39]
                 : [],
-            SeparationPattern = autoSave?.Code39SeparationPattern,
+            SeparationPattern = FoldInSapRegex(autoSave?.Code39SeparationPattern, profile),
             // Legacy Code 39 separation kept the barcode page, legacy patch-T dropped it.
             KeepSeparatorPage = autoSave?.Separator != SaveSeparator.PatchT,
             // A patch-T sheet carries no value to compare, so every sheet has to keep separating. Barcode
@@ -246,6 +255,21 @@ public record DocumentWorkflowSettings
             PromptForFilePath = autoSave?.PromptForFilePath ?? false,
             CleanupAfterCompletion = autoSave?.ClearImagesAfterSaving ?? false
         };
+    }
+
+    /// <summary>
+    /// A profile that only ever set the SAP object key regex keeps it, now as the profile's one barcode
+    /// pattern. Without this the pattern such a profile relied on would simply be gone after the update,
+    /// and it would start archiving under whichever barcode happened to come first on the page.
+    /// </summary>
+    private static string? FoldInSapRegex(string? pattern, ScanProfile? profile)
+    {
+        if (!string.IsNullOrWhiteSpace(pattern))
+        {
+            return pattern;
+        }
+        var sapRegex = profile?.SapArchiveSettings?.BarcodeRegex;
+        return string.IsNullOrWhiteSpace(sapRegex) ? pattern : sapRegex;
     }
 
     private static DocumentSeparationMode SeparationModeFor(SaveSeparator? separator) => separator switch

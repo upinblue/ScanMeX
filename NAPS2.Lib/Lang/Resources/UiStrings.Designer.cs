@@ -4144,5 +4144,116 @@ namespace NAPS2.Lang.Resources {
             }
         }
 
+
+        /// <summary>
+        ///   Looks up a localized string similar to Selected document.
+        /// </summary>
+        internal static string DocumentInspectorTitle {
+            get {
+                return ResourceManager.GetString("DocumentInspectorTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Select a document above to edit its identification..
+        /// </summary>
+        internal static string DocumentInspectorNoSelection {
+            get {
+                return ResourceManager.GetString("DocumentInspectorNoSelection", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Detected barcodes.
+        /// </summary>
+        internal static string DocumentBarcodesSection {
+            get {
+                return ResourceManager.GetString("DocumentBarcodesSection", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Own value.
+        /// </summary>
+        internal static string DocumentOwnValueOption {
+            get {
+                return ResourceManager.GetString("DocumentOwnValueOption", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to File name.
+        /// </summary>
+        internal static string DocumentFileNameLabel {
+            get {
+                return ResourceManager.GetString("DocumentFileNameLabel", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Target.
+        /// </summary>
+        internal static string DocumentTargetsLabel {
+            get {
+                return ResourceManager.GetString("DocumentTargetsLabel", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to stays in the window.
+        /// </summary>
+        internal static string DocumentTargetsNone {
+            get {
+                return ResourceManager.GetString("DocumentTargetsNone", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Folder.
+        /// </summary>
+        internal static string DocumentTargetLocal {
+            get {
+                return ResourceManager.GetString("DocumentTargetLocal", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Remove this barcode from the document.
+        /// </summary>
+        internal static string RemoveBarcodeTooltip {
+            get {
+                return ResourceManager.GetString("RemoveBarcodeTooltip", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} document(s) dropped because their pages were deleted..
+        /// </summary>
+        internal static string DocumentsRemovedWithPages {
+            get {
+                return ResourceManager.GetString("DocumentsRemovedWithPages", resourceCulture);
+            }
+        }
+
+
+        /// <summary>
+        ///   Looks up a localized string similar to Document {0} · {1} page(s).
+        /// </summary>
+        internal static string DocumentListRow {
+            get {
+                return ResourceManager.GetString("DocumentListRow", resourceCulture);
+            }
+        }
+
+
+        /// <summary>
+        ///   Looks up a localized string similar to (no identification).
+        /// </summary>
+        internal static string DocumentNameMissingShort {
+            get {
+                return ResourceManager.GetString("DocumentNameMissingShort", resourceCulture);
+            }
+        }
+
     }
 }

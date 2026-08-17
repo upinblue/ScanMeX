@@ -184,18 +184,15 @@ public class ScanProfile
     /// profile doesn't distinguish them.
     /// </summary>
     /// <remarks>
-    /// The separation pattern comes first because it is what names the document's file, so the barcode
-    /// variables agreeing with it keeps the file name and everything derived from it consistent. A
-    /// profile that archives to SAP without separating has no separation pattern, and there the SAP
-    /// object key regex is the only statement of which barcode matters.
+    /// One pattern, used everywhere. It names the document's file, decides which barcode the variables
+    /// yield, and -- through the document's identification -- supplies the SAP object key, so all of
+    /// those necessarily agree. There was a second regex on the SAP settings; a profile could then select
+    /// one barcode for its file name and another for the archive, and nothing afterwards showed that the
+    /// two had parted company. <see cref="DocumentWorkflowSettings.ForProfile"/> folds the old SAP value
+    /// in for profiles that only ever set that one.
     /// </remarks>
-    public string? GetBarcodeSelectionPattern()
-    {
-        var separationPattern = DocumentWorkflowSettings.ForProfile(this).SeparationPattern;
-        return string.IsNullOrWhiteSpace(separationPattern)
-            ? SapArchiveSettings?.BarcodeRegex
-            : separationPattern;
-    }
+    public string? GetBarcodeSelectionPattern() =>
+        DocumentWorkflowSettings.ForProfile(this).SeparationPattern;
 
     /// <summary>
     /// Whether anything on this profile needs the pages' barcodes decoded.
