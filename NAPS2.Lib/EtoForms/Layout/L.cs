@@ -63,4 +63,14 @@ public static class L
     {
         return new LayoutLeftPanel(left, right);
     }
+
+    public static LayoutRightPanel RightPanel(LayoutElement left, LayoutElement right)
+    {
+        return new LayoutRightPanel(left, right);
+    }
+
+    public static LayoutTabs Tabs(params (string Title, LayoutElement Content)[] tabs)
+    {
+        return new LayoutTabs(tabs);
+    }
 }

@@ -45,6 +45,11 @@ public static class DocumentSeparator
                 ? [new DocumentSegment(pages.ToList(), null, 0)]
                 : [];
         }
+        if (settings.SeparationMode == DocumentSeparationMode.OnePerPage)
+        {
+            return pages.Select((page, index) =>
+                new DocumentSegment([page], null, index)).ToList();
+        }
         return SeparateCore(pages, settings, CompilePattern(settings.SeparationPattern));
     }
 
@@ -121,7 +126,7 @@ public static class DocumentSeparator
                     $"Page {pageIndex + 1} carries '{separatorValue}' again, which is the value the " +
                     "current document was started with, so it continues that document rather than " +
                     "starting a new one.");
-                if (!settings.KeepSeparatorPage)
+                if (!settings.KeepsSeparatorPage())
                 {
                     page.Dispose();
                     continue;
@@ -141,7 +146,7 @@ public static class DocumentSeparator
                 currentValue = separatorValue == string.Empty ? null : separatorValue;
                 documentIsOpen = true;
 
-                if (!settings.KeepSeparatorPage)
+                if (!settings.KeepsSeparatorPage())
                 {
                     // The sheet only marks the boundary and is not part of the output.
                     page.Dispose();

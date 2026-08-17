@@ -32,11 +32,11 @@ public class MacDesktopForm : DesktopForm
         Sidebar sidebar,
         IIconProvider iconProvider,
         NAPS2.EtoForms.Desktop.DocumentUploadController documentUploadController,
-        NAPS2.PostScan.DocumentUploadQueue documentUploadQueue)
+        NAPS2.PostScan.DocumentQueue documentQueue)
         : base(config, keyboardShortcuts, notificationManager, cultureHelper, colorScheme, profileManager, imageList,
             thumbnailController, thumbnailProvider, desktopController, desktopScanController, imageListActions,
             imageListViewBehavior, desktopFormProvider, desktopSubFormController, commands, sidebar, iconProvider,
-            documentUploadController, documentUploadQueue)
+            documentUploadController, documentQueue)
     {
     }
 

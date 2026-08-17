@@ -14,12 +14,11 @@ namespace NAPS2.Lib.Tests.PostScan;
 /// <summary>
 /// The single path every document takes to the target systems, used by both the automatic and the manual
 /// upload trigger. What matters here is what happens around the two uploads: that one target failing
-/// still lets the other run, that the operator is told, and that a staging file is only removed once
-/// everything actually succeeded.
+/// still lets the other run, and that the operator is told which half got through.
 /// </summary>
 /// <remarks>
-/// This replaces the sink-pipeline tests that used to describe the same behaviour against
-/// PostScanOrchestrator, which nothing in the shipped app ever constructed.
+/// The staging file's lifetime used to be decided here too; it now belongs to
+/// <see cref="Scan.DocumentPipelineTests"/>, which is where writing and deleting the file happens.
 /// </remarks>
 public class DocumentUploadServiceTests : ContextualTests
 {
@@ -45,14 +44,14 @@ public class DocumentUploadServiceTests : ContextualTests
 
         await service.UploadAsync(document);
 
-        Assert.Equal(DocumentUploadStatus.Failed, document.Status);
+        Assert.Equal(DocumentStatus.Failed, document.Status);
         Assert.Contains("403 Forbidden", document.Message);
         Assert.Contains("HTTP 500", document.Message);
         _notify.Received().DocumentUploadFailed(document.FileName, document.Message!);
     }
 
     [Fact]
-    public async Task ASucceededUploadIsMarkedUploadedAndNotified()
+    public async Task ASucceededUploadIsMarkedDoneAndNotified()
     {
         var service = CreateService();
         var document = CreateDocument(sharePoint: true, sap: true);
@@ -60,7 +59,7 @@ public class DocumentUploadServiceTests : ContextualTests
         var success = await service.UploadAsync(document);
 
         Assert.True(success);
-        Assert.Equal(DocumentUploadStatus.Uploaded, document.Status);
+        Assert.Equal(DocumentStatus.Done, document.Status);
         Assert.Null(document.Message);
         _notify.Received().DocumentUploaded(document.FileName, Arg.Any<string>());
     }
@@ -77,47 +76,37 @@ public class DocumentUploadServiceTests : ContextualTests
     }
 
     /// <summary>
-    /// A profile that keeps no local copy writes the file only so it can be uploaded. Deleting it after a
-    /// failure would destroy the only copy of a scan that never reached the archive.
+    /// One target failing does not undo the other, so the document has to record which one it reached.
+    /// Without that the list can only say "failed", and an operator retrying it has no way to know the
+    /// document is already in SharePoint and only SAP is outstanding.
     /// </summary>
     [Fact]
-    public async Task AStagingFileSurvivesAFailedUpload()
+    public async Task TheTargetThatSucceededIsRecordedEvenWhenTheOtherFailed()
     {
         var service = CreateService(sapError: "HTTP 500");
-        var document = CreateDocument(sap: true, deleteAfterUpload: true);
+        var document = CreateDocument(sharePoint: true, sap: true);
 
         await service.UploadAsync(document);
 
-        Assert.True(File.Exists(document.FilePath), "the staged file must survive a failed upload");
+        Assert.Equal(new[] { "SharePoint" }, document.CompletedTargets);
     }
 
     [Fact]
-    public async Task AStagingFileIsRemovedOnceEveryTargetSucceeded()
+    public async Task ARetryDoesNotAccumulateTargets()
     {
         var service = CreateService();
-        var document = CreateDocument(sap: true, deleteAfterUpload: true);
+        var document = CreateDocument(sharePoint: true, sap: true);
 
         await service.UploadAsync(document);
-
-        Assert.False(File.Exists(document.FilePath));
-    }
-
-    [Fact]
-    public async Task AKeptLocalCopyIsNotRemovedAfterASuccessfulUpload()
-    {
-        var service = CreateService();
-        var document = CreateDocument(sap: true, deleteAfterUpload: false);
-
         await service.UploadAsync(document);
 
-        Assert.True(File.Exists(document.FilePath));
+        Assert.Equal(2, document.CompletedTargets.Count);
     }
 
     private FakeUploadService CreateService(string? sharePointError = null, string? sapError = null) =>
         new(Naps2Config.Stub(), Substitute.For<OperationProgress>(), _notify, sharePointError, sapError);
 
-    private PendingDocument CreateDocument(
-        bool sharePoint = false, bool sap = false, bool deleteAfterUpload = false)
+    private ScannedDocument CreateDocument(bool sharePoint = false, bool sap = false)
     {
         var path = Path.Combine(FolderPath, "4711.pdf");
         File.WriteAllText(path, "pdf");
@@ -127,20 +116,22 @@ public class DocumentUploadServiceTests : ContextualTests
             // The flag is what enables the target; the settings object is always present on a profile.
             EnableSharePointUpload = sharePoint,
             SharePointUploadSettings = new SharePointUploadSettings { SiteUrl = "https://x" },
-            SapArchiveSettings = sap ? new SapArchiveProfileSettings { EnableUpload = true, ArchiveId = "PS" } : null
+            SapArchiveSettings = sap
+                ? new SapArchiveProfileSettings { EnableUpload = true, ArchiveId = "PS" }
+                : null
         };
-        return new PendingDocument
+        return new ScannedDocument
         {
             Profile = profile,
-            Context = new ScanContext { Profile = profile, Timestamp = DateTime.Now },
-            FilePath = path,
-            DeleteFileAfterUpload = deleteAfterUpload
+            Pages = CreateScannedImages(ImageResources.dog),
+            SequenceIndex = 0,
+            SavedPath = path
         };
     }
 
     /// <summary>
     /// Replaces only the two network calls, so everything the service does around them -- the ordering,
-    /// the failure aggregation, the notifications and the staging-file cleanup -- is the real code.
+    /// the failure aggregation and the notifications -- is the real code.
     /// </summary>
     private sealed class FakeUploadService : DocumentUploadService
     {
@@ -157,13 +148,13 @@ public class DocumentUploadServiceTests : ContextualTests
 
         public IReadOnlyList<string> AttemptedTargets => _attempted;
 
-        protected override Task<string?> UploadToSharePointAsync(PendingDocument document)
+        protected override Task<string?> UploadToSharePointAsync(ScannedDocument document)
         {
             _attempted.Add("SharePoint");
             return Task.FromResult(_sharePointError);
         }
 
-        protected override Task<string?> UploadToSapAsync(PendingDocument document)
+        protected override Task<string?> UploadToSapAsync(ScannedDocument document)
         {
             _attempted.Add("SAP");
             return Task.FromResult(_sapError);

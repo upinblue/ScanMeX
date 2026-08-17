@@ -227,8 +227,11 @@ public class ScanProfile
     /// </summary>
     private bool UsesBarcodePlaceholder()
     {
+        var workflow = DocumentWorkflowSettings.ForProfile(this);
         var templates = new[]
         {
+            workflow.LocalFolder,
+            workflow.DocumentNameTemplate,
             AutoSaveSettings?.FilePath,
             SharePointUploadSettings?.SiteUrl,
             SharePointUploadSettings?.LibraryNameOrPath,
@@ -240,7 +243,7 @@ public class ScanProfile
             SapArchiveSettings?.FixedBarcode,
             SapArchiveSettings?.BarcodeRegex
         };
-        var wantsId = DocumentWorkflowSettings.ForProfile(this).IdMode != DocumentIdMode.ManualInput;
+        var wantsId = workflow.IdMode != DocumentIdMode.ManualInput;
         return templates.Any(x => ContainsPlaceholder(x, "$(barcode") ||
                                   wantsId && ContainsPlaceholder(x, "$(id)"));
     }

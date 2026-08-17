@@ -20,14 +20,18 @@ public class PlaceholdersForm : EtoDialogBase
             (Placeholders.NUMBER_3_DIGITS, UiStrings.AutoIncrementing3Digit),
             (Placeholders.NUMBER_2_DIGITS, UiStrings.AutoIncrementing2Digit),
             (Placeholders.NUMBER_1_DIGIT, UiStrings.AutoIncrementing1Digit),
-            ("$(barcode)", "Barcode (Beispiel: 12345678)"),
-            ("$(barcode:2)", "Zweiter Barcode"),
-            ("$(barcode:type=QR)", "Erster QR-Barcode"),
-            ("$(barcode:regex=BC-(\\d+))", "Barcode per Regex, Gruppe 1"),
-            ("$(profile)", "Profilname"),
-            ("$(user)", "Benutzername"),
-            ("$(host)", "Computername"),
-            ("$(ext)", "Dateiendung ohne Punkt")
+            // $(id) leads because it is the value a document is filed under, whether that came off the
+            // paper or was typed in the document list. It existed and worked long before it appeared
+            // here, which meant nobody could find it.
+            ("$(id)", UiStrings.PlaceholderIdentification),
+            ("$(barcode)", UiStrings.PlaceholderBarcode),
+            ("$(barcode:2)", UiStrings.PlaceholderBarcodeSecond),
+            ("$(barcode:type=QR)", UiStrings.PlaceholderBarcodeType),
+            ("$(barcode:regex=BC-(\\d+))", UiStrings.PlaceholderBarcodeRegex),
+            ("$(profile)", UiStrings.PlaceholderProfile),
+            ("$(user)", UiStrings.PlaceholderUser),
+            ("$(host)", UiStrings.PlaceholderHost),
+            ("$(ext)", UiStrings.PlaceholderExtension)
         };
 
     private readonly TextBox _fileName = new();
@@ -100,13 +104,17 @@ public class PlaceholdersForm : EtoDialogBase
         {
             Timestamp = DateTime.Now,
             SequenceIndex = 0,
-            Profile = new ScanProfile { DisplayName = "ScanMe Profil" },
+            Profile = new ScanProfile { DisplayName = "ScanMe" },
             Barcodes = new[]
             {
                 new DetectedBarcode("12345678", "CODE128", 0, false),
                 new DetectedBarcode("QR-12345678", "QR", 0, false),
                 new DetectedBarcode("BC-12345678", "CODE128", 0, false)
             },
+            // Without this the $(id) preview falls back to the barcode, which hides the difference
+            // between the two exactly where it is being explained.
+            DocumentId = "4711",
+            SeparatorBarcodeValue = "12345678",
             OutputExtension = "pdf",
             FileFormat = "pdf"
         };

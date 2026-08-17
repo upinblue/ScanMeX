@@ -73,11 +73,14 @@ public class CommonModule : Module
         builder.RegisterType<AutofacOperationFactory>().As<IOperationFactory>();
         builder.RegisterType<UiImageList>().AsSelf().SingleInstance();
         builder.RegisterType<StillImage>().AsSelf().SingleInstance();
-        builder.RegisterType<AutoSaver>().AsSelf().SingleInstance();
         // Shared between the automatic and the manual upload trigger, so it has to outlive a single scan.
-        builder.RegisterType<DocumentUploadQueue>().AsSelf().SingleInstance();
+        builder.RegisterType<DocumentQueue>().AsSelf().SingleInstance();
+        builder.RegisterType<DocumentWriter>().AsSelf().SingleInstance();
         builder.RegisterType<DocumentUploadService>().AsSelf().SingleInstance();
+        builder.RegisterType<DocumentPipeline>().AsSelf().SingleInstance();
         builder.RegisterType<DocumentUploadController>().AsSelf().SingleInstance();
+        // Holds the card views, so it has to be the same instance the window built its layout from.
+        builder.RegisterType<DocumentPanel>().AsSelf().SingleInstance();
         // TODO: Use PdfiumWorkerCoordinator?
         builder.RegisterType<PdfiumPdfRenderer>().As<IPdfRenderer>();
         builder.RegisterType<OcrOperationManager>().AsSelf().SingleInstance();

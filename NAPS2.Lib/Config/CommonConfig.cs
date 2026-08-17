@@ -234,6 +234,12 @@ public class CommonConfig
     public int SidebarWidth { get; set; }
 
     [User]
+    public bool DocumentPanelVisible { get; set; }
+
+    [User]
+    public int DocumentPanelWidth { get; set; }
+
+    [User]
     public string? EditWithAppPath { get; set; }
 
     [User]

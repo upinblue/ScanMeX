@@ -63,6 +63,8 @@ public static class InternalDefaults
             ShowPageNumbers = false,
             SidebarVisible = true,
             SidebarWidth = 230,
+            DocumentPanelVisible = true,
+            DocumentPanelWidth = 320,
             EditWithAppPath = "",
             EditWithAppName = "",
             ApplyToAllSelected = false,

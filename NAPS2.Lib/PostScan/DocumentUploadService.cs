@@ -43,10 +43,11 @@ public class DocumentUploadService
     /// them do something with the outcome -- queueing a failure for retry, clearing the window on success
     /// -- that is worth pinning down without reaching a real SharePoint or SAP system.
     /// </remarks>
-    public virtual async Task<bool> UploadAsync(PendingDocument document)
+    public virtual async Task<bool> UploadAsync(ScannedDocument document)
     {
-        document.Status = DocumentUploadStatus.Uploading;
+        document.Status = DocumentStatus.Working;
         document.Message = null;
+        document.CompletedTargets.Clear();
         ScanConsole.Upload($"Uploading '{document.FileName}' ({document.PageCount} page(s)).");
 
         var failures = new List<string>();
@@ -76,9 +77,13 @@ public class DocumentUploadService
             }
         }
 
+        // Recorded whether or not everything worked: one target failing does not undo the other, and the
+        // document list has to be able to say which half got through.
+        document.CompletedTargets.AddRange(reachedTargets);
+
         if (failures.Count > 0)
         {
-            document.Status = DocumentUploadStatus.Failed;
+            document.Status = DocumentStatus.Failed;
             document.Message = string.Join(" | ", failures);
             ScanConsole.Upload($"FAILED '{document.FileName}': {document.Message}");
             // Uploading is the last step of a scan, so its outcome has to be as visible as a saved file.
@@ -86,17 +91,12 @@ public class DocumentUploadService
             return false;
         }
 
-        document.Status = DocumentUploadStatus.Uploaded;
+        document.Status = DocumentStatus.Done;
         document.Message = null;
         if (reachedTargets.Count > 0)
         {
             ScanConsole.Upload($"OK '{document.FileName}' -> {string.Join(", ", reachedTargets)}");
             _notify.DocumentUploaded(document.FileName, string.Join(", ", reachedTargets));
-        }
-        if (document.DeleteFileAfterUpload)
-        {
-            ScanConsole.Upload($"Removing staged file '{document.FilePath}' (profile keeps no local copy).");
-            TryDeleteFile(document.FilePath);
         }
         return true;
     }
@@ -111,7 +111,7 @@ public class DocumentUploadService
     /// reported together, and that the staging file survives a failure -- and none of that should need a
     /// reachable SharePoint tenant to check.
     /// </remarks>
-    protected virtual async Task<string?> UploadToSharePointAsync(PendingDocument document)
+    protected virtual async Task<string?> UploadToSharePointAsync(ScannedDocument document)
     {
         try
         {
@@ -143,7 +143,7 @@ public class DocumentUploadService
     /// Sends the document to SAP ArchiveLink. Returns null on success, otherwise why it failed.
     /// See <see cref="UploadToSharePointAsync"/> for why this is virtual.
     /// </summary>
-    protected virtual async Task<string?> UploadToSapAsync(PendingDocument document)
+    protected virtual async Task<string?> UploadToSapAsync(ScannedDocument document)
     {
         try
         {
@@ -154,21 +154,6 @@ public class DocumentUploadService
         {
             Log.ErrorException("SAP ArchiveLink upload failed", ex);
             return ex.Message;
-        }
-    }
-
-    private static void TryDeleteFile(string path)
-    {
-        try
-        {
-            if (File.Exists(path))
-            {
-                File.Delete(path);
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.ErrorException($"Could not delete staged document {path}", ex);
         }
     }
 

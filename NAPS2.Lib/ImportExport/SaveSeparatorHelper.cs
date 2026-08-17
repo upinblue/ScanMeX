@@ -73,40 +73,4 @@ internal static class SaveSeparatorHelper
         }
     }
 
-    public static IEnumerable<List<ProcessedImage>> SegmentByPatchTKeepingSeparator(IEnumerable<ProcessedImage> source)
-    {
-        var current = new List<ProcessedImage>();
-        foreach (var image in source)
-        {
-            if (image.PostProcessingData.Barcode.IsPatchT && current.Count > 0)
-            {
-                yield return current;
-                current = [];
-            }
-            // Keep the separator sheet: it carries the visual/business barcode used by SAP ArchiveLink.
-            current.Add(image);
-        }
-        if (current.Count > 0)
-        {
-            yield return current;
-        }
-    }
-
-    /// <summary>
-    /// Extended separation for a specific profile. Barcode-driven separation is delegated to
-    /// <see cref="DocumentSeparator"/> so document boundaries are decided in exactly one place.
-    /// </summary>
-    public static IEnumerable<List<ProcessedImage>> SeparateScans(
-        IEnumerable<IEnumerable<ProcessedImage>> scans, ScanProfile? profile, AutoSaveSettings settings,
-        int splitSize = 1)
-    {
-        var workflow = profile?.DocumentWorkflow ?? DocumentWorkflowSettings.ForProfile(
-            new ScanProfile { AutoSaveSettings = settings });
-        if (workflow.SeparationMode == DocumentSeparationMode.None)
-        {
-            return SeparateScans(scans, settings.Separator, splitSize);
-        }
-        return DocumentSeparator.Separate(scans.SelectMany(x => x), workflow)
-            .Select(x => x.Images.ToList());
-    }
 }

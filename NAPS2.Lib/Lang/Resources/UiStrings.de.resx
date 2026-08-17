@@ -333,15 +333,6 @@
   <data name="ContrastLabel" xml:space="preserve">
     <value>Kontrast:</value>
   </data>
-  <data name="EnableAutoSave" xml:space="preserve">
-    <value>Erlaube automatisches Speichern</value>
-  </data>
-  <data name="AutoSaveSettings" xml:space="preserve">
-    <value>Einstellungen zum automatischen Speichern</value>
-  </data>
-  <data name="AutoSaveSettingsFormTitle" xml:space="preserve">
-    <value>Einstellungen zum automatischen Speichern</value>
-  </data>
   <data name="Advanced" xml:space="preserve">
     <value>Erweitert</value>
   </data>
@@ -1122,12 +1113,6 @@
   <data name="UploadAutoSavedDocumentToSap" xml:space="preserve">
     <value>Automatisch gespeichertes Dokument nach SAP ArchiveLink hochladen</value>
   </data>
-  <data name="ProfileScannerSection" xml:space="preserve">
-    <value>Scanner</value>
-  </data>
-  <data name="ProfileAutoSaveUploadsSection" xml:space="preserve">
-    <value>Automatisch speichern &amp; Uploads</value>
-  </data>
   <data name="ProfileSharePointSection" xml:space="preserve">
     <value>SharePoint</value>
   </data>
@@ -1137,17 +1122,8 @@
   <data name="ProfileDocumentSection" xml:space="preserve">
     <value>Dokumententrennung und Upload</value>
   </data>
-  <data name="UploadRequiresAutoSaveInfo" xml:space="preserve">
-    <value>SharePoint- und SAP-Uploads laufen nach dem automatischen Speichern. Dateiname und Trennung stellen Sie in den Einstellungen für automatisches Speichern ein.</value>
-  </data>
-  <data name="DocumentIdPromptTitle" xml:space="preserve">
-    <value>Dokumentkennzeichnung</value>
-  </data>
   <data name="DocumentIdPrompt" xml:space="preserve">
     <value>Kennzeichnungsnummer für dieses Dokument eingeben:</value>
-  </data>
-  <data name="DocumentIdPromptDescription" xml:space="preserve">
-    <value>Dokument {0}, {1} Seite(n)</value>
   </data>
   <data name="DocumentUploadFailed" xml:space="preserve">
     <value>Upload von {0} fehlgeschlagen: {1}</value>
@@ -1212,9 +1188,6 @@
   <data name="UploadTriggerManual" xml:space="preserve">
     <value>Manuell über Schaltfläche</value>
   </data>
-  <data name="KeepLocalCopy" xml:space="preserve">
-    <value>Lokale Datei nach dem Upload behalten</value>
-  </data>
   <data name="CleanupAfterCompletion" xml:space="preserve">
     <value>Dokumente nach Abschluss aus dem Fenster und dem Temp-Ordner entfernen</value>
   </data>
@@ -1226,12 +1199,6 @@
   </data>
   <data name="UploadAllSucceeded" xml:space="preserve">
     <value>Alle Dokumente hochgeladen.</value>
-  </data>
-  <data name="UploadTargetsEnabled" xml:space="preserve">
-    <value>Aktivierte Upload-Ziele: {0}. Änderbar in den Profileinstellungen.</value>
-  </data>
-  <data name="UploadTargetsNone" xml:space="preserve">
-    <value>Es ist kein Upload-Ziel aktiviert. Aktivieren Sie SharePoint oder SAP ArchiveLink in den Profileinstellungen.</value>
   </data>
   <data name="SharePointUploadFailedShort" xml:space="preserve">
     <value>SharePoint-Upload fehlgeschlagen.</value>
@@ -1263,16 +1230,175 @@
   <data name="SapPasswordKeepHint" xml:space="preserve">
     <value>Leer lassen, um das gespeicherte Passwort zu behalten</value>
   </data>
-  <data name="CleanupAfterCompletionUnavailableHint" xml:space="preserve">
-    <value>Nicht verfügbar, solange „Entferne Bilder nach dem Speichern“ aktiv ist: Die Seiten erreichen das Fenster gar nicht, es bleibt nichts zu entfernen.</value>
-  </data>
-  <data name="UploadNeedsAutoSaveWarning" xml:space="preserve">
-    <value>Automatisches Speichern ist aus, daher wird nichts geschrieben und die aktivierten Upload-Ziele laufen nie. Schalten Sie automatisches Speichern ein, um hochzuladen.</value>
-  </data>
   <data name="EmptyStateNoPages" xml:space="preserve">
     <value>Noch keine Seiten</value>
   </data>
   <data name="EmptyStateHint" xml:space="preserve">
     <value>Legen Sie ein Dokument ein und starten Sie den Scan.</value>
+  </data>
+  <data name="UploadBlockedByMissingId" xml:space="preserve">
+    <value>{0} Dokument(e) haben noch keine Kennzeichnung und wurden nicht hochgeladen. Bitte zuerst in der Dokumentenliste eintragen.</value>
+  </data>
+  <data name="DocumentSaveCancelled" xml:space="preserve">
+    <value>Das Speichern wurde abgebrochen, das Dokument wurde nicht abgelegt.</value>
+  </data>
+  <data name="DocumentNameEmpty" xml:space="preserve">
+    <value>Das Profil legt keinen Dateinamen fÃ¼r seine Dokumente fest.</value>
+  </data>
+  <data name="DocumentPanelTitle" xml:space="preserve">
+    <value>Dokumente</value>
+  </data>
+  <data name="DocumentPanelEmpty" xml:space="preserve">
+    <value>Dokumente aus dem nÃ¤chsten Scan erscheinen hier.</value>
+  </data>
+  <data name="DocumentPageCount" xml:space="preserve">
+    <value>{0} Seite(n)</value>
+  </data>
+  <data name="DocumentIdentifierLabel" xml:space="preserve">
+    <value>Kennzeichnung</value>
+  </data>
+  <data name="DocumentIdentifierRequired" xml:space="preserve">
+    <value>erforderlich</value>
+  </data>
+  <data name="DocumentNoBarcodes" xml:space="preserve">
+    <value>Auf diesem Dokument wurden keine Barcodes gefunden.</value>
+  </data>
+  <data name="AddBarcodeAction" xml:space="preserve">
+    <value>Wert hinzufÃ¼gen</value>
+  </data>
+  <data name="RemoveBarcodeAction" xml:space="preserve">
+    <value>Entfernen</value>
+  </data>
+  <data name="UseAsIdentifierAction" xml:space="preserve">
+    <value>Als Kennzeichnung</value>
+  </data>
+  <data name="BarcodeSourceManual" xml:space="preserve">
+    <value>manuell</value>
+  </data>
+  <data name="UploadDocumentAction" xml:space="preserve">
+    <value>Hochladen</value>
+  </data>
+  <data name="RetryDocumentAction" xml:space="preserve">
+    <value>Erneut versuchen</value>
+  </data>
+  <data name="DiscardDocumentAction" xml:space="preserve">
+    <value>Verwerfen</value>
+  </data>
+  <data name="DocumentStatusWaiting" xml:space="preserve">
+    <value>Wartet auf den Upload.</value>
+  </data>
+  <data name="DocumentStatusSavedWaiting" xml:space="preserve">
+    <value>Lokal abgelegt, wartet auf den Upload.</value>
+  </data>
+  <data name="DocumentStatusNeedsIdentifier" xml:space="preserve">
+    <value>Noch keine Kennzeichnung, das Dokument wird zurÃ¼ckgehalten.</value>
+  </data>
+  <data name="DocumentStatusWorking" xml:space="preserve">
+    <value>Wird verarbeitet...</value>
+  </data>
+  <data name="DocumentStatusFailed" xml:space="preserve">
+    <value>Es ist ein Fehler aufgetreten.</value>
+  </data>
+  <data name="DocumentStatusUploaded" xml:space="preserve">
+    <value>Hochgeladen nach {0}.</value>
+  </data>
+  <data name="DocumentStatusSaved" xml:space="preserve">
+    <value>Lokal abgelegt.</value>
+  </data>
+  <data name="DocumentStatusDone" xml:space="preserve">
+    <value>Abgeschlossen.</value>
+  </data>
+  <data name="DocumentSummaryTotal" xml:space="preserve">
+    <value>{0} Dokument(e)</value>
+  </data>
+  <data name="DocumentSummaryDone" xml:space="preserve">
+    <value>{0} fertig</value>
+  </data>
+  <data name="DocumentSummaryFailed" xml:space="preserve">
+    <value>{0} fehlgeschlagen</value>
+  </data>
+  <data name="DocumentSummaryNeedsIdentifier" xml:space="preserve">
+    <value>{0} ohne Kennzeichnung</value>
+  </data>
+  <data name="ToggleDocumentPanel" xml:space="preserve">
+    <value>Dokumentenliste ein-/ausblenden</value>
+  </data>
+  <data name="DocumentNameNotYetKnown" xml:space="preserve">
+    <value>(Name folgt der Kennzeichnung)</value>
+  </data>
+  <data name="PlaceholderIdentification" xml:space="preserve">
+    <value>Die Kennzeichnung des Dokuments, eingegeben oder aus dem Barcode gelesen</value>
+  </data>
+  <data name="PlaceholderBarcode" xml:space="preserve">
+    <value>Der Barcode, den der Regex des Profils ausgewÃ¤hlt hat</value>
+  </data>
+  <data name="PlaceholderBarcodeSecond" xml:space="preserve">
+    <value>Zweiter Barcode auf dem Dokument</value>
+  </data>
+  <data name="PlaceholderBarcodeType" xml:space="preserve">
+    <value>Erster Barcode eines bestimmten Typs</value>
+  </data>
+  <data name="PlaceholderBarcodeRegex" xml:space="preserve">
+    <value>Barcode per Regex, Gruppe 1</value>
+  </data>
+  <data name="PlaceholderProfile" xml:space="preserve">
+    <value>Profilname</value>
+  </data>
+  <data name="PlaceholderUser" xml:space="preserve">
+    <value>Benutzername</value>
+  </data>
+  <data name="PlaceholderHost" xml:space="preserve">
+    <value>Computername</value>
+  </data>
+  <data name="PlaceholderExtension" xml:space="preserve">
+    <value>Dateiendung ohne Punkt</value>
+  </data>
+  <data name="ProfileTabScanner" xml:space="preserve">
+    <value>Scanner</value>
+  </data>
+  <data name="ProfileTabDocuments" xml:space="preserve">
+    <value>Dokumente &amp; Barcodes</value>
+  </data>
+  <data name="SeparationModeOnePerScan" xml:space="preserve">
+    <value>Ein Dokument pro Scan</value>
+  </data>
+  <data name="SeparationModeOnePerPage" xml:space="preserve">
+    <value>Ein Dokument pro Seite</value>
+  </data>
+  <data name="DocumentNameSection" xml:space="preserve">
+    <value>Dateiname</value>
+  </data>
+  <data name="DocumentNameHint" xml:space="preserve">
+    <value>Auch der Name, unter dem das Dokument in SharePoint und im SAP-Archiv abgelegt wird.</value>
+  </data>
+  <data name="DocumentDestinationSection" xml:space="preserve">
+    <value>Wohin die Dokumente gehen</value>
+  </data>
+  <data name="SaveLocally" xml:space="preserve">
+    <value>Kopie in einem Ordner ablegen</value>
+  </data>
+  <data name="LocalFolderLabel" xml:space="preserve">
+    <value>Ordner</value>
+  </data>
+  <data name="LocalFolderRequired" xml:space="preserve">
+    <value>Bitte einen Ordner auswÃ¤hlen oder "Bei jedem Scan nach dem Dateipfad fragen" aktivieren.</value>
+  </data>
+  <data name="DocumentNameRequired" xml:space="preserve">
+    <value>Bitte einen Dateinamen fÃ¼r die Dokumente eingeben. Er wird auch in SharePoint und SAP verwendet.</value>
+  </data>
+  <data name="RequireIdentifier" xml:space="preserve">
+    <value>Dokument ohne Kennzeichnung nicht ablegen</value>
+  </data>
+  <data name="NoDestinationWarning" xml:space="preserve">
+    <value>Dieses Profil legt Dokumente weder ab noch lÃ¤dt es sie hoch. Gescannte Seiten erscheinen nur im Fenster.</value>
+  </data>
+  <data name="EanUpcPhantomWarning" xml:space="preserve">
+    <value>EAN/UPC-Codes werden auf dicht bedruckten Formularen hÃ¤ufig fÃ¤lschlich erkannt. Nur auswÃ¤hlen, wenn Ihre Belege sie wirklich tragen.</value>
+  </data>
+  <data name="SapConnectionSection" xml:space="preserve">
+    <value>Verbindung</value>
+  </data>
+  <data name="SapArchiveSection" xml:space="preserve">
+    <value>Archiv</value>
   </data>
 </root>

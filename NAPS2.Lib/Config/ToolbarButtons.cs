@@ -25,5 +25,6 @@ public enum ToolbarButtons
     Donate = 1 << 18,
     Sidebar = 1 << 19,
     UploadSharePoint = 1 << 20,
-    Console = 1 << 21
+    Console = 1 << 21,
+    DocumentPanel = 1 << 22
 }

@@ -352,6 +352,11 @@ public class DesktopCommands
             Text = UiStrings.ToggleSidebar,
             IconName = "application_side_list_small"
         };
+        ToggleDocumentPanel = new ActionCommand(() => _desktopFormProvider.DesktopForm.ToggleDocumentPanel())
+        {
+            Text = UiStrings.ToggleDocumentPanel,
+            IconName = "document_small"
+        };
     }
 
     public DesktopCommands WithSelection(Func<ListSelection<UiImage>> selectionFunc)
@@ -437,4 +442,5 @@ public class DesktopCommands
     public ActionCommand Undo { get; set; }
     public ActionCommand Redo { get; set; }
     public ActionCommand ToggleSidebar { get; set; }
+    public ActionCommand ToggleDocumentPanel { get; set; }
 }

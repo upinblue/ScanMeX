@@ -4,46 +4,85 @@ using NAPS2.Scan;
 namespace NAPS2.EtoForms.Desktop;
 
 /// <summary>
-/// Drives the manual upload button: sends everything waiting in the queue to its target systems and,
-/// once that succeeded, clears the finished documents out of the window and the temp folder.
+/// Drives the upload button and the per-document actions in the document list: takes documents the rest
+/// of the way to their target systems and, once that succeeded, clears the finished ones out of the
+/// window.
 /// </summary>
+/// <remarks>
+/// The work itself goes through <see cref="DocumentPipeline.Advance"/>, the same method the automatic
+/// trigger uses, so a document uploaded by hand is written, named and archived exactly like one uploaded
+/// automatically. The two used to be separate code paths and drifted.
+/// </remarks>
 public class DocumentUploadController
 {
-    private readonly DocumentUploadQueue _queue;
-    private readonly DocumentUploadService _uploadService;
+    private readonly DocumentQueue _queue;
+    private readonly DocumentPipeline _pipeline;
     private readonly ErrorOutput _errorOutput;
-    private readonly ImageListActions _imageListActions;
-    private readonly UiImageList _imageList;
 
-    public DocumentUploadController(DocumentUploadQueue queue, DocumentUploadService uploadService,
-        ErrorOutput errorOutput, ImageListActions imageListActions, UiImageList imageList)
+    public DocumentUploadController(DocumentQueue queue, DocumentPipeline pipeline, ErrorOutput errorOutput)
     {
         _queue = queue;
-        _uploadService = uploadService;
+        _pipeline = pipeline;
         _errorOutput = errorOutput;
-        _imageListActions = imageListActions;
-        _imageList = imageList;
     }
 
     /// <summary>
-    /// Whether there is anything for the operator to upload right now.
+    /// Whether there is anything for the operator to upload right now. Documents still missing an
+    /// identifier don't count: they are outstanding, but pressing upload must not file them.
     /// </summary>
-    public bool HasPendingDocuments => _queue.HasPending;
+    public bool HasPendingDocuments => _queue.HasReadyToUpload;
+
+    /// <summary>
+    /// Whether anything at all is unfinished, including documents held back for want of an identifier.
+    /// </summary>
+    public bool HasOutstandingDocuments => _queue.HasOutstanding;
 
     public async Task UploadPendingDocuments()
     {
-        var pending = _queue.Documents
-            .Where(x => x.Status is DocumentUploadStatus.Pending or DocumentUploadStatus.Failed)
-            .ToList();
-        if (pending.Count == 0)
+        var ready = _queue.ReadyToUpload;
+        var blocked = _queue.Outstanding.Count - ready.Count;
+        if (ready.Count == 0)
         {
+            if (blocked > 0)
+            {
+                // Pressing upload and having nothing happen is the failure this whole console exists for.
+                ScanConsole.Upload(
+                    $"Upload pressed, but all {blocked} outstanding document(s) are still missing an " +
+                    "identifier. Enter one in the document list first.");
+                _errorOutput.DisplayError(string.Format(UiStrings.UploadBlockedByMissingId, blocked));
+            }
             return;
         }
 
-        var succeeded = 0;
-        foreach (var document in pending)
+        await UploadDocuments(ready);
+
+        if (blocked > 0)
         {
-            if (await _uploadService.UploadAsync(document))
+            ScanConsole.Upload(
+                $"{blocked} document(s) were left alone because they are still missing an identifier.");
+        }
+    }
+
+    /// <summary>
+    /// Uploads one document, for the per-row button in the document list.
+    /// </summary>
+    public async Task UploadDocument(ScannedDocument document)
+    {
+        if (!document.HasEverythingItNeeds())
+        {
+            _errorOutput.DisplayError(string.Format(UiStrings.UploadBlockedByMissingId, 1));
+            return;
+        }
+        await UploadDocuments([document]);
+    }
+
+    private async Task UploadDocuments(IReadOnlyList<ScannedDocument> documents)
+    {
+        var succeeded = 0;
+        foreach (var document in documents)
+        {
+            await _pipeline.Advance(document, triggeredByOperator: true);
+            if (document.Status == DocumentStatus.Done)
             {
                 succeeded++;
             }
@@ -51,43 +90,11 @@ public class DocumentUploadController
             _queue.NotifyChanged();
         }
 
-        if (succeeded < pending.Count)
+        if (succeeded < documents.Count)
         {
             // Failed documents stay in the queue so the operator can fix the cause and press upload again.
-            _errorOutput.DisplayError(string.Format(UiStrings.UploadSomeFailed, pending.Count - succeeded, pending.Count));
-            _queue.RemoveUploaded();
-            return;
-        }
-
-        CleanupCompleted(pending);
-    }
-
-    /// <summary>
-    /// Removes documents that were uploaded successfully, for the profiles that ask for it.
-    /// </summary>
-    private void CleanupCompleted(IReadOnlyList<PendingDocument> uploaded)
-    {
-        var cleanupWanted = uploaded
-            .Where(x => DocumentWorkflowSettings.ForProfile(x.Profile).CleanupAfterCompletion)
-            .ToList();
-
-        _queue.RemoveUploaded();
-
-        if (cleanupWanted.Count == 0)
-        {
-            return;
-        }
-
-        // Mark as saved first so closing the window doesn't warn about unsaved pages, then drop them.
-        var cleanedPages = cleanupWanted.SelectMany(x => x.Context.Images).ToList();
-        _imageList.MarkSaved(_imageList.CurrentState, cleanedPages);
-        // Only clear the window when it holds nothing beyond the archived documents. The queue can now
-        // also contain documents whose automatic upload failed, and those may be retried long after the
-        // operator has started scanning something else -- which must not be thrown away here.
-        if (cleanupWanted.Count == uploaded.Count && !_queue.HasPending &&
-            _imageList.Images.Count <= cleanedPages.Count)
-        {
-            Invoker.Current.Invoke(() => _imageListActions.DeleteAll());
+            _errorOutput.DisplayError(
+                string.Format(UiStrings.UploadSomeFailed, documents.Count - succeeded, documents.Count));
         }
     }
 }

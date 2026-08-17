@@ -9,21 +9,56 @@ lives in `NAPS2.Lib/PostScan`, `NAPS2.Lib/Sap`, `NAPS2.Lib/SharePoint` and the `
 There is exactly one, and it is worth knowing by heart before changing anything downstream of scanning:
 
 ```
-ScanPerformer            decides whether barcodes are decoded (ScanProfile.NeedsBarcodeValues)
-  -> AutoSaver           splits into documents, resolves the file name, writes the PDF
-     -> DocumentUploadService   one document -> SharePoint and/or SAP, aggregates the failures
-        -> SharePointUploadService        (Microsoft Graph)
-        -> SapArchivePostScanService      (ScanMe.Sap / HttpSapArchiveUploader)
-     -> DocumentUploadQueue  holds manual-trigger documents and failed automatic uploads
-        -> DocumentUploadController  the manual upload button
+ScanPerformer            BarcodeDetectionPlan decides whether barcodes are decoded, and with what
+                         restriction; refuses to decode rather than decode unrestricted
+  -> DocumentPipeline    splits into documents, attaches their barcodes and identifying value,
+     |                   puts them in the queue, then advances each as far as the profile allows
+     |-> DocumentWriter          renders a document to a file *when it is needed*, from the
+     |                          document's state at that moment
+     |-> DocumentUploadService   one document -> SharePoint and/or SAP, aggregates the failures
+     |      -> SharePointUploadService        (Microsoft Graph)
+     |      -> SapArchivePostScanService      (ScanMe.Sap / HttpSapArchiveUploader)
+     -> DocumentQueue    every document of the session, finished ones included
+           -> DocumentPanel            the document list beside the pages
+           -> DocumentUploadController the upload button, which calls DocumentPipeline.Advance
 ```
 
 Autofac registers these explicitly in `CommonModule`; there is **no assembly scanning**, so a type that
 nothing constructs by name is dead. A second, sink-based pipeline (`PostScanOrchestrator` plus
 `AutoSaveSink`/`SharePointSink`/`SapArchiveSink`) once existed alongside this one, was never wired into
 the container, and carried drifting copies of the barcode and path logic while its tests suggested the
-behaviour was covered. It was deleted; don't reintroduce a parallel post-scan path. If the upload flow
-needs to change, change `DocumentUploadService`.
+behaviour was covered. It was deleted; don't reintroduce a parallel post-scan path.
+
+### A document is an object, not a file
+
+`ScannedDocument` lives from the moment a scan is split until it has reached everywhere the profile
+sends it: its pages, its barcodes, the value it is filed under, its status. **The file is not part of
+its identity.** It used to be — a document *was* the path auto save had already written — and that is
+why a barcode corrected afterwards could not change the name the document was filed under, and why a
+profile that only wanted to archive to SAP still had to nominate a folder first.
+
+`DocumentWriter` produces the file on demand: into the profile's folder when it keeps one, otherwise
+into a staging folder under `Paths.Temp` that is deleted once every target succeeded. Because the
+`ScanContext` is rebuilt from the document at that moment, a correction made in the document list
+reaches the file name, the SharePoint folder and the SAP object key together.
+
+`DocumentPipeline.Advance` is the single method that takes a document further, used by both the
+automatic trigger and the upload button, so the two cannot drift.
+
+### Saving, uploading and the trigger are three settings, not one
+
+`DocumentWorkflowSettings` carries `SaveLocally` + `LocalFolder`, the upload targets (on the profile),
+and `UploadTrigger` independently. "Keep nothing locally, upload on the button" is therefore a
+combination that can simply be selected. `EnableAutoSave` and `AutoSaveSettings` still exist, are
+written from the workflow on save, and are read only by the command line scanner — don't edit them
+directly from the UI.
+
+**`DocumentWorkflowSettings.Version` guards the migration.** A profile written before the split has no
+`SaveLocally` in its file, and taking the deserialized `false` at face value would stop saving for a
+profile that had been saving all along; `ForProfile` fills it in from the legacy settings and stamps the
+version so it happens once. `SeparationMode.None` used to mean "ask the auto save separator", so a
+stored `None` is re-read through the legacy separator — otherwise every one-file-per-page profile
+silently starts merging a day's pages into one file. `DocumentWorkflowMigrationTests` pins all of this.
 
 ---
 
@@ -106,17 +141,24 @@ up in the same console.
   `DocumentWorkflowSettings.NewDocumentOnlyOnValueChange` (default on) is what prevents that, and a stack
   of several orders still splits where the order number changes. Patch-T sheets carry no value to compare
   and always separate.
-- **A document that fails to upload goes into `DocumentUploadQueue`**, whether the trigger was manual or
-  automatic, so it can be retried from the upload button. A failed upload must never be a dead end.
-  `AutoSaverUploadTests` pins this down, along with the other half of it: a document that failed to
-  *save* has nothing to upload and must not be queued either.
+- **A document that fails stays in `DocumentQueue` as `Failed`**, whether the trigger was manual or
+  automatic, so it can be retried from the upload button or from its own row in the document list. A
+  failed upload must never be a dead end. `DocumentPipelineUploadTests` pins this down, along with the
+  other half of it: a document that failed to *write* has nothing to upload and must not be uploaded.
+- **A document whose identification is missing is held back, not filed under a stand-in name.** Only
+  when the profile sets `RequireIdentifier`; the upload button then uploads the rest and says how many
+  it left alone. A wrongly named document in an archive is not something anyone finds again.
 - **One target failing does not stop the other.** `DocumentUploadService` attempts every enabled target
   and joins the failures into one message, so a SharePoint outage still lets the document reach SAP.
   `UploadToSharePointAsync`/`UploadToSapAsync` are `protected virtual` purely so
   `DocumentUploadServiceTests` can drive that logic without a reachable tenant or gateway.
-- **A staging file is only deleted once every target succeeded.** For a profile with `KeepLocalCopy` off
+- **A staging file is only deleted once every target succeeded.** For a profile with `SaveLocally` off
   it is the only copy of the scan, so removing it after a failure would destroy a document that never
-  reached the archive.
+  reached the archive. `ScannedDocument.DiscardStagingFile` only ever touches the temporary copy — a
+  file in the operator's own folder is theirs.
+- **Patch-T separator sheets are never part of the document.** They are reusable blank cards, so
+  `KeepsSeparatorPage()` ignores `KeepSeparatorPage` for patch-T; the setting only means something for
+  barcode separation, where the sheet carrying the order number is the document's own cover sheet.
 - Uploads use `ShowBackgroundProgress`, not `ShowProgress`: a batch produces one upload per document and
   modal dialogs would block the window throughout.
 - **Progress is reported through `InlineProgress<T>`, not `Progress<T>`.** An upload runs on a background
@@ -135,11 +177,22 @@ up in the same console.
   pattern, falling back to the SAP object key regex for profiles that archive without separating.
   `$(barcode)` differs on purpose: it is the document's identifying value, so the regex's capturing group
   has been applied. Both must always name the *same* barcode.
-- **`ScanProfile.NeedsBarcodeValues()` is the single gate for barcode detection.** It is what
-  `ScanPerformer.BuildOptions` asks, and it covers templates as well as separation: an auto save path of
-  `$(barcode).pdf`, a SharePoint folder of `$(barcode)` or a SAP object id of `$(barcode)` needs the pages
-  decoded just as much. Missing one of those doesn't fail — the placeholder expands to nothing and the
-  document is filed under a name with a hole in it. Add every new template to `UsesBarcodePlaceholder`.
+- **`ScanProfile.NeedsBarcodeValues()` is the single gate for barcode detection.** It covers templates
+  as well as separation: a file name of `$(barcode).pdf`, a SharePoint folder of `$(barcode)` or a SAP
+  object id of `$(barcode)` needs the pages decoded just as much. Missing one of those doesn't fail —
+  the placeholder expands to nothing and the document is filed under a name with a hole in it. Add every
+  new template to `UsesBarcodePlaceholder`.
+- **Detection is refused rather than run unrestricted.** `BarcodeDetectionPlan` gates it on an explicit
+  symbology (or the patch-T path). With no restriction ZXing tries every format it knows, and ITF,
+  Codabar and the EAN/UPC family decode the ruled tables and print noise of a real form into barcodes
+  that are not on the paper — measured on a customer certificate carrying two Code 128 codes, noisy
+  renderings yielded three to five, and one of the phantoms sorted ahead of the real codes and became
+  the page's primary value. A profile that decodes nothing says so in the console on every scan; a
+  phantom that names a file or an archive key is indistinguishable from a correct scan afterwards.
+  `PhantomBarcodeTests` builds a form-shaped noisy page and pins the restricted direction.
+- **EAN/UPC is the risky one.** Eight digits with no usable self-check, so it is the symbology that most
+  readily reads out of noise. It stays selectable — some paperwork really carries an article code — but
+  the profile dialog and the console both warn when it is on.
 
 ## SharePoint upload
 
@@ -216,6 +269,30 @@ pwsh tools/icons/Generate-Icons.ps1
   corners and the dark title bar. Both attributes are Windows 11 only and fail silently on Windows
   10, which the app still targets (`net9.0-windows10.0.17763.0`).
 
+## The Eto layout engine — three things that will bite you
+
+The layout system in `NAPS2.Lib/EtoForms/Layout` is custom: `LayoutElement`s are measured and placed by
+`LayoutController`, not by Eto's own containers. Three consequences, each of which cost a round of
+"why is nothing showing":
+
+- **`Control.Visible = false` does not stick.** The engine re-shows controls as it lays them out. To
+  hide something, wrap it in `L.Column(x).Visible(vis)` with a `LayoutVisibility` and toggle that.
+- **A label that starts empty has no height, and setting its text later doesn't give it any** until the
+  layout is redone. Give warning labels their text up front and toggle their visibility, or call
+  `LayoutController.Invalidate()` after changing the text.
+- **Controls paint their own background.** On a tinted surface (a status card, a coloured panel) every
+  label shows as a pale box unless its `BackgroundColor` is set to match — see `DocumentCardView`, which
+  keeps a list of the controls it has to repaint when the card's severity changes.
+
+A nested layout element also has to ask for its space: `LayoutRightPanel` sets `Scale = true` in its
+constructor because, unlike `LayoutLeftPanel` at the root of a window, it sits inside a row and would
+otherwise take only its natural width.
+
+`L.Tabs(...)` follows `LayoutScrollable`: each page owns a container from
+`EtoPlatform.Current.CreateContainer()` and its content is laid out into that. **Every page is laid out,
+not only the selected one** — switching tabs doesn't go through the layout system, so a page sized only
+when it became visible would come up empty the first time it is opened.
+
 ## Localization
 
 All user-visible strings go through `NAPS2.Lib/Lang/Resources/UiStrings.resx`, with a German translation
@@ -242,6 +319,11 @@ showing English is not a bug.
   installed. The same applies to building `ScanMe.sln` as a whole — build the individual projects.
 
 ## Tests
+
+The document pipeline's own coverage: `DocumentPipelineTests` (splitting and writing),
+`DocumentPipelineUploadTests` (the hand-off to the archive and everything that must not happen),
+`DocumentWorkflowMigrationTests` (reading old profiles), `BarcodeDetectionPlanTests` (whether to decode
+at all) and `PhantomBarcodeTests` (what a noisy page yields).
 
 `dotnet test NAPS2.Lib.Tests` currently has 5 pre-existing failures unrelated to ScanMe changes
 (`Naps2ConfigTests`, `CommandLineIntegrationTests.ScanPdfSettings_*`,

@@ -1,9 +1,11 @@
-using System.Globalization;
+﻿using System.Globalization;
+using System.Text.RegularExpressions;
 using System.Threading;
 using Eto.Drawing;
 using Eto.Forms;
 using NAPS2.EtoForms.Layout;
 using NAPS2.EtoForms.Widgets;
+using NAPS2.ImportExport;
 using NAPS2.Scan;
 using NAPS2.Scan.Internal;
 using NAPS2.Sap;
@@ -27,14 +29,48 @@ public class EditProfileForm : EtoDialogBase
     private readonly EnumDropDownWidget<ScanBitDepth> _bitDepth = new();
     private readonly EnumDropDownWidget<ScanHorizontalAlign> _horAlign = new();
     private readonly EnumDropDownWidget<ScanScale> _scale = new();
-    private readonly CheckBox _enableAutoSave = new() { Text = UiStrings.EnableAutoSave };
-    private readonly LinkButton _autoSaveSettings = C.Link(UiStrings.AutoSaveSettings);
-    // Ticking an upload target without auto save leaves a profile that scans and then does nothing at
-    // all, which nothing in the scan window reports. This line says so where the mistake is made.
-    private readonly Label _uploadNeedsAutoSave = C.Label("");
     private readonly Button _advanced = new() { Text = UiStrings.Advanced };
     private readonly SliderWithTextBox _brightnessSlider = new();
     private readonly SliderWithTextBox _contrastSlider = new();
+
+    // Documents & barcodes -- everything that used to live behind the "auto save settings" link. Keeping
+    // it in a second dialog meant the settings that decide what a document is were somewhere else from
+    // the settings that decide where it goes, and the two could contradict each other unnoticed.
+    private readonly RadioButton _sepOnePerScan;
+    private readonly RadioButton _sepOnePerPage;
+    private readonly RadioButton _sepPatchT;
+    private readonly RadioButton _sepBarcode;
+    private readonly CheckBox _symbologyCode39 = new() { Text = UiStrings.BarcodeTypeCode39 };
+    private readonly CheckBox _symbologyCode128 = new() { Text = UiStrings.BarcodeTypeCode128 };
+    private readonly CheckBox _symbologyEanUpc = new() { Text = UiStrings.BarcodeTypeEanUpc };
+    private readonly Label _eanUpcWarning = C.Label(UiStrings.EanUpcPhantomWarning);
+    // A label that starts empty has no height, and setting its text later doesn't give it any until the
+    // layout is redone. Both warnings therefore carry their text from the start and are shown or hidden.
+    private readonly LayoutVisibility _eanUpcWarningVis = new(false);
+    private readonly TextBox _separationPattern = new();
+    private readonly CheckBox _keepSeparatorPage = new() { Text = UiStrings.KeepSeparatorPage };
+    private readonly CheckBox _newDocumentOnlyOnValueChange =
+        new() { Text = UiStrings.NewDocumentOnlyOnValueChange };
+    private readonly LayoutVisibility _barcodeOptionsVis = new(false);
+
+    private readonly DropDownWidget<DocumentIdMode> _idMode = new();
+    private readonly TextBox _idPromptLabel = new();
+    private readonly LayoutVisibility _idPromptLabelVis = new(false);
+    private readonly CheckBox _requireIdentifier = new() { Text = UiStrings.RequireIdentifier };
+
+    private readonly TextBox _documentName = new();
+    private readonly LinkButton _documentNamePlaceholders = C.Link(UiStrings.Placeholders);
+    private readonly CheckBox _saveLocally = new() { Text = UiStrings.SaveLocally };
+    private readonly FilePathWithPlaceholders _localFolder;
+    private readonly CheckBox _promptForFilePath = new() { Text = UiStrings.PromptForFilePath };
+    private readonly LayoutVisibility _localFolderVis = new(false);
+
+    private readonly DropDownWidget<UploadTrigger> _uploadTrigger = new();
+    private readonly CheckBox _cleanupAfterCompletion = new() { Text = UiStrings.CleanupAfterCompletion };
+    // A profile with no destination at all scans and then keeps nothing, which nothing in the scan
+    // window reports. This line says so where the mistake is made.
+    private readonly Label _noDestinationWarning = C.Label(UiStrings.NoDestinationWarning);
+    private readonly LayoutVisibility _noDestinationWarningVis = new(false);
 
     // SharePoint upload controls
     private readonly CheckBox _enableSharePointUpload = new() { Text = UiStrings.EnableSharePointUpload };
@@ -80,7 +116,7 @@ public class EditProfileForm : EtoDialogBase
 
     public EditProfileForm(Naps2Config config, IScanPerformer scanPerformer, ErrorOutput errorOutput,
         ProfileNameTracker profileNameTracker, DeviceCapsCache deviceCapsCache,
-        IIconProvider iconProvider) : base(config)
+        IIconProvider iconProvider, DialogHelper dialogHelper) : base(config)
     {
         Title = UiStrings.EditProfileFormTitle;
         IconName = "blueprints_small";
@@ -88,6 +124,7 @@ public class EditProfileForm : EtoDialogBase
         _errorOutput = errorOutput;
         _profileNameTracker = profileNameTracker;
         _deviceCapsCache = deviceCapsCache;
+        _localFolder = new FilePathWithPlaceholders(this, dialogHelper);
         _deviceSelectorWidget = new(scanPerformer, deviceCapsCache, iconProvider, this)
         {
             ProfileFunc = GetUpdatedScanProfile,
@@ -103,11 +140,36 @@ public class EditProfileForm : EtoDialogBase
         _predefinedSettings.CheckedChanged += PredefinedSettings_CheckedChanged;
         _nativeUi.CheckedChanged += NativeUi_CheckedChanged;
 
-        _enableAutoSave.CheckedChanged += EnableAutoSave_CheckedChanged;
-        _autoSaveSettings.Click += AutoSaveSettings_LinkClicked;
         _advanced.Click += Advanced_Click;
 
         _enableSharePointUpload.CheckedChanged += EnableSharePointUpload_CheckedChanged;
+
+        _sepOnePerScan = new RadioButton { Text = UiStrings.SeparationModeOnePerScan };
+        _sepOnePerPage = new RadioButton(_sepOnePerScan) { Text = UiStrings.SeparationModeOnePerPage };
+        _sepPatchT = new RadioButton(_sepOnePerScan) { Text = UiStrings.SeparationModePatchT };
+        _sepBarcode = new RadioButton(_sepOnePerScan) { Text = UiStrings.SeparationModeBarcode };
+        foreach (var button in new[] { _sepOnePerScan, _sepOnePerPage, _sepPatchT, _sepBarcode })
+        {
+            button.CheckedChanged += (_, _) => UpdateDocumentControls();
+        }
+        foreach (var box in new[] { _symbologyCode39, _symbologyCode128, _symbologyEanUpc })
+        {
+            box.CheckedChanged += (_, _) => UpdateDocumentControls();
+        }
+        _idMode.Format = x => x switch
+        {
+            DocumentIdMode.Barcode => UiStrings.DocumentIdModeBarcode,
+            DocumentIdMode.ManualInput => UiStrings.DocumentIdModeManual,
+            _ => UiStrings.DocumentIdModeNone
+        };
+        _idMode.Items = EnumDropDownWidget<DocumentIdMode>.DefaultItems;
+        _idMode.SelectedItemChanged += (_, _) => UpdateDocumentControls();
+        _uploadTrigger.Format = x => x == UploadTrigger.Manual
+            ? UiStrings.UploadTriggerManual
+            : UiStrings.UploadTriggerAutomatic;
+        _uploadTrigger.Items = EnumDropDownWidget<UploadTrigger>.DefaultItems;
+        _saveLocally.CheckedChanged += (_, _) => UpdateDocumentControls();
+        _documentNamePlaceholders.Click += (_, _) => EditDocumentName();
 
         _sapBarcodeObjectKey = new RadioButton(_sapPromptObjectKey) { Text = UiStrings.SapObjectKeyFromBarcode };
         _sapFilenameObjectKey = new RadioButton(_sapPromptObjectKey) { Text = UiStrings.SapObjectKeyFromFilename };
@@ -144,143 +206,22 @@ public class EditProfileForm : EtoDialogBase
 
     protected override void BuildLayout()
     {
-        FormStateController.DefaultExtraLayoutSize = new Size(60, 0);
-        FormStateController.FixedHeightLayout = true;
-
-        var scannerSettings = L.GroupBox(
-            UiStrings.ProfileScannerSection,
-            L.Column(
-                C.Label(UiStrings.DisplayNameLabel),
-                _displayName,
-                C.Spacer(),
-                _deviceSelectorWidget,
-                C.Spacer(),
-                PlatformCompat.System.IsWiaDriverSupported || PlatformCompat.System.IsTwainDriverSupported
-                    ? L.Row(
-                        _predefinedSettings,
-                        _nativeUi
-                    ).Visible(_nativeUiVis)
-                    : C.None(),
-                C.Spacer(),
-                L.Row(
-                    L.Column(
-                        C.Label(UiStrings.PaperSourceLabel),
-                        _paperSource,
-                        C.Label(UiStrings.PageSizeLabel),
-                        _pageSize,
-                        C.Label(UiStrings.ResolutionLabel),
-                        _resolution,
-                        C.Label(UiStrings.BrightnessLabel),
-                        _brightnessSlider
-                    ).Scale(),
-                    L.Column(
-                        C.Label(UiStrings.BitDepthLabel),
-                        _bitDepth,
-                        C.Label(UiStrings.HorizontalAlignLabel),
-                        _horAlign,
-                        C.Label(UiStrings.ScaleLabel),
-                        _scale,
-                        C.Label(UiStrings.ContrastLabel),
-                        _contrastSlider
-                    ).Scale()
-                )
-            )
-        );
-
-        var autoSaveUploadSettings = L.GroupBox(
-            UiStrings.ProfileAutoSaveUploadsSection,
-            L.Column(
-                L.Row(
-                    _enableAutoSave,
-                    _autoSaveSettings
-                ),
-                C.Label(UiStrings.UploadRequiresAutoSaveInfo),
-                _uploadNeedsAutoSave
-            )
-        );
-
-        var sharePointSettings = L.GroupBox(
-            UiStrings.SharePointUpload,
-            L.Column(
-                _enableSharePointUpload,
-                C.Label(UiStrings.SharePointSiteUrlLabel),
-                _sharePointSiteUrl,
-                C.Label(UiStrings.SharePointLibraryPathLabel),
-                _sharePointLibraryPath,
-                C.Label(UiStrings.SharePointFolderPathLabel),
-                _sharePointFolderPath,
-                C.Label(UiStrings.AzureAdTenantIdLabel),
-                _azureAdTenantId,
-                C.Label(UiStrings.AzureAdClientIdLabel),
-                _azureAdClientId,
-                C.Label(UiStrings.AzureAdClientSecretLabel),
-                _azureAdClientSecret
-            )
-        );
-
-        var sapSettings = L.GroupBox(
-            UiStrings.SapArchiveLink,
-            L.Column(
-                _enableSapArchiveUpload,
-                L.Row(
-                    L.Column(
-                        C.Label(UiStrings.SapHostLabel),
-                        _sapHost,
-                        C.Label(UiStrings.SapServiceNameLabel),
-                        _sapServiceName,
-                        C.Label(UiStrings.SapClientLabel),
-                        _sapClient,
-                        C.Label(UiStrings.SapLanguageLabel),
-                        _sapLanguage
-                    ).Scale(),
-                    L.Column(
-                        C.Label(UiStrings.SapUserLabel),
-                        _sapUser,
-                        C.Label(UiStrings.SapPasswordLabel),
-                        _sapPassword,
-                        C.Label(UiStrings.SapPasswordKeepHint),
-                        _sapIgnoreSsl
-                    ).Scale()
-                ),
-                C.Spacer(),
-                L.Row(
-                    L.Column(
-                        C.Label(UiStrings.SapArchiveIdLabel),
-                        _sapArchiveId,
-                        C.Label(UiStrings.SapArObjectLabel),
-                        _sapObjectType,
-                        C.Label(UiStrings.SapObjectLabel),
-                        _sapDocumentType
-                    ).Scale(),
-                    L.Column(
-                        C.Label(UiStrings.SapObjectKeySourceLabel),
-                        _sapPromptObjectKey,
-                        _sapBarcodeObjectKey,
-                        _sapFilenameObjectKey,
-                        _sapFixedObjectKey,
-                        _sapFixedObjectKeyValue,
-                        C.Spacer(),
-                        _sapObjectKeyRegexLabel,
-                        _sapObjectKeyRegex,
-                        C.Label(UiStrings.SapObjectKeyFromSeparatorInfo),
-                        C.Spacer(),
-                        C.Label(UiStrings.SapObjectIdLabel),
-                        _sapDescriptionTemplate
-                    ).Scale()
-                ),
-                _sapTestConnection
-            )
-        );
-
-        var scrollableContent = L.Column(
-            scannerSettings,
-            autoSaveUploadSettings,
-            sharePointSettings,
-            sapSettings
-        );
+        // Resizable in both directions, and started at a size that fits the densest tab rather than at
+        // whatever the widest row happens to measure. The old form sized itself to its content, which is
+        // how a settings dialog ends up wider than the screen it is configuring.
+        FormStateController.AutoLayoutSize = false;
+        FormStateController.FixedHeightLayout = false;
+        FormStateController.DefaultClientSize = new Size(560, 640);
+        EtoPlatform.Current.AttachDpiDependency(this, scale =>
+            MinimumSize = Size.Round(new SizeF(480, 460) * scale));
 
         LayoutController.Content = L.Column(
-            L.Scrollable(scrollableContent),
+            L.Tabs(
+                (UiStrings.ProfileTabScanner, ScannerTab()),
+                (UiStrings.ProfileTabDocuments, DocumentsTab()),
+                (UiStrings.SharePointUpload, SharePointTab()),
+                (UiStrings.SapArchiveLink, SapTab())
+            ),
             L.Row(
                 _advanced,
                 C.Filler(),
@@ -289,7 +230,183 @@ public class EditProfileForm : EtoDialogBase
                     C.CancelButton(this))
             )
         );
+
+        UpdateDocumentControls();
     }
+
+    /// <summary>
+    /// The widest a single-line text field is allowed to get. A site URL and a SAP client number were
+    /// both being stretched to the full width of the dialog, which is what made the dialog wide: a row
+    /// of controls that all scale has no natural width to settle at.
+    /// </summary>
+    private const int FIELD_WIDTH = 320;
+
+    private LayoutElement ScannerTab() => L.Scrollable(L.Column(
+        C.Label(UiStrings.DisplayNameLabel),
+        _displayName.MaxWidth(FIELD_WIDTH),
+        C.Spacer(),
+        _deviceSelectorWidget,
+        C.Spacer(),
+        PlatformCompat.System.IsWiaDriverSupported || PlatformCompat.System.IsTwainDriverSupported
+            ? L.Row(_predefinedSettings, _nativeUi).Visible(_nativeUiVis)
+            : C.None(),
+        C.Spacer(),
+        L.Row(
+            L.Column(
+                C.Label(UiStrings.PaperSourceLabel),
+                _paperSource,
+                C.Label(UiStrings.PageSizeLabel),
+                _pageSize,
+                C.Label(UiStrings.ResolutionLabel),
+                _resolution,
+                C.Label(UiStrings.BrightnessLabel),
+                _brightnessSlider
+            ).Scale(),
+            L.Column(
+                C.Label(UiStrings.BitDepthLabel),
+                _bitDepth,
+                C.Label(UiStrings.HorizontalAlignLabel),
+                _horAlign,
+                C.Label(UiStrings.ScaleLabel),
+                _scale,
+                C.Label(UiStrings.ContrastLabel),
+                _contrastSlider
+            ).Scale()
+        ),
+        C.Filler()
+    ).Padding(10));
+
+    /// <summary>
+    /// What a document is, what it is called, and when it leaves. These three used to be split between
+    /// this dialog and a second one behind a link, which is how a profile could end up uploading to SAP
+    /// while separating by a rule nobody looking at it could see.
+    /// </summary>
+    private LayoutElement DocumentsTab() => L.Scrollable(L.Column(
+        C.BodyStrong(UiStrings.SeparationModeLabel),
+        _sepOnePerScan,
+        _sepOnePerPage,
+        _sepPatchT,
+        _sepBarcode,
+        L.Column(
+            C.Spacer(),
+            C.Label(UiStrings.BarcodeTypesLabel),
+            L.Row(_symbologyCode39, _symbologyCode128, _symbologyEanUpc),
+            L.Column(_eanUpcWarning).Visible(_eanUpcWarningVis),
+            C.Label(UiStrings.SeparationPatternLabel),
+            _separationPattern.MaxWidth(FIELD_WIDTH),
+            C.Secondary(UiStrings.SeparationPatternHint),
+            _keepSeparatorPage,
+            _newDocumentOnlyOnValueChange,
+            C.Secondary(UiStrings.NewDocumentOnlyOnValueChangeHint)
+        ).Visible(_barcodeOptionsVis),
+
+        C.Spacer(),
+        C.BodyStrong(UiStrings.DocumentIdModeLabel),
+        _idMode.AsControl().MaxWidth(FIELD_WIDTH),
+        L.Column(
+            C.Label(UiStrings.DocumentIdPromptLabelLabel),
+            _idPromptLabel.MaxWidth(FIELD_WIDTH)
+        ).Visible(_idPromptLabelVis),
+        _requireIdentifier,
+
+        C.Spacer(),
+        C.BodyStrong(UiStrings.DocumentNameSection),
+        L.Row(_documentName.MaxWidth(FIELD_WIDTH), _documentNamePlaceholders.AlignCenter()),
+        C.Secondary(UiStrings.DocumentNameHint),
+
+        C.Spacer(),
+        C.BodyStrong(UiStrings.DocumentDestinationSection),
+        _saveLocally,
+        L.Column(
+            C.Label(UiStrings.LocalFolderLabel),
+            _localFolder,
+            _promptForFilePath
+        ).Visible(_localFolderVis),
+        C.Spacer(),
+        C.Label(UiStrings.UploadTriggerLabel),
+        _uploadTrigger.AsControl().MaxWidth(FIELD_WIDTH),
+        L.Column(_noDestinationWarning).Visible(_noDestinationWarningVis),
+        C.Spacer(),
+        _cleanupAfterCompletion,
+        C.Filler()
+    ).Padding(10));
+
+    private LayoutElement SharePointTab() => L.Scrollable(L.Column(
+        _enableSharePointUpload,
+        C.Spacer(),
+        C.Label(UiStrings.SharePointSiteUrlLabel),
+        _sharePointSiteUrl.MaxWidth(FIELD_WIDTH),
+        C.Label(UiStrings.SharePointLibraryPathLabel),
+        _sharePointLibraryPath.MaxWidth(FIELD_WIDTH),
+        C.Label(UiStrings.SharePointFolderPathLabel),
+        _sharePointFolderPath.MaxWidth(FIELD_WIDTH),
+        C.Spacer(),
+        C.Label(UiStrings.AzureAdTenantIdLabel),
+        _azureAdTenantId.MaxWidth(FIELD_WIDTH),
+        C.Label(UiStrings.AzureAdClientIdLabel),
+        _azureAdClientId.MaxWidth(FIELD_WIDTH),
+        C.Label(UiStrings.AzureAdClientSecretLabel),
+        _azureAdClientSecret.MaxWidth(FIELD_WIDTH),
+        C.Filler()
+    ).Padding(10));
+
+    private LayoutElement SapTab() => L.Scrollable(L.Column(
+        _enableSapArchiveUpload,
+        C.Spacer(),
+        C.BodyStrong(UiStrings.SapConnectionSection),
+        L.Row(
+            L.Column(
+                C.Label(UiStrings.SapHostLabel),
+                _sapHost,
+                C.Label(UiStrings.SapClientLabel),
+                _sapClient,
+                C.Label(UiStrings.SapUserLabel),
+                _sapUser
+            ).Scale(),
+            L.Column(
+                C.Label(UiStrings.SapServiceNameLabel),
+                _sapServiceName,
+                C.Label(UiStrings.SapLanguageLabel),
+                _sapLanguage,
+                C.Label(UiStrings.SapPasswordLabel),
+                _sapPassword
+            ).Scale()
+        ),
+        C.Secondary(UiStrings.SapPasswordKeepHint),
+        _sapIgnoreSsl,
+        C.Spacer(),
+        C.BodyStrong(UiStrings.SapArchiveSection),
+        L.Row(
+            L.Column(
+                C.Label(UiStrings.SapArchiveIdLabel),
+                _sapArchiveId,
+                C.Label(UiStrings.SapArObjectLabel),
+                _sapObjectType,
+                C.Label(UiStrings.SapObjectLabel),
+                _sapDocumentType
+            ).Scale(),
+            L.Column(
+                C.Label(UiStrings.SapObjectIdLabel),
+                _sapDescriptionTemplate,
+                C.Spacer(),
+                C.None()
+            ).Scale()
+        ),
+        C.Spacer(),
+        C.BodyStrong(UiStrings.SapObjectKeySourceLabel),
+        _sapPromptObjectKey,
+        _sapBarcodeObjectKey,
+        _sapFilenameObjectKey,
+        _sapFixedObjectKey,
+        _sapFixedObjectKeyValue.MaxWidth(FIELD_WIDTH),
+        C.Spacer(),
+        _sapObjectKeyRegexLabel,
+        _sapObjectKeyRegex.MaxWidth(FIELD_WIDTH),
+        C.Secondary(UiStrings.SapObjectKeyFromSeparatorInfo),
+        C.Spacer(),
+        _sapTestConnection.AlignLeading(),
+        C.Filler()
+    ).Padding(10));
 
     public bool Result => _result;
 
@@ -462,7 +579,7 @@ public class EditProfileForm : EtoDialogBase
         _scale.SelectedItem = ScanProfile.AfterScanScale;
         _horAlign.SelectedItem = ScanProfile.PageAlign;
 
-        _enableAutoSave.Checked = ScanProfile.EnableAutoSave;
+        LoadDocumentSettings();
 
         _nativeUi.Checked = ScanProfile.UseNativeUI;
         _predefinedSettings.Checked = !ScanProfile.UseNativeUI;
@@ -509,6 +626,167 @@ public class EditProfileForm : EtoDialogBase
         _suppressChangeEvent = false;
     }
 
+    /// <summary>
+    /// Fills the Documents tab from the profile, migrating a profile written before saving, uploading and
+    /// the upload trigger became separate settings.
+    /// </summary>
+    private void LoadDocumentSettings()
+    {
+        var workflow = DocumentWorkflowSettings.ForProfile(ScanProfile);
+        switch (workflow.SeparationMode)
+        {
+            case DocumentSeparationMode.OnePerPage: _sepOnePerPage.Checked = true; break;
+            case DocumentSeparationMode.PatchT: _sepPatchT.Checked = true; break;
+            case DocumentSeparationMode.Barcode: _sepBarcode.Checked = true; break;
+            default: _sepOnePerScan.Checked = true; break;
+        }
+        _symbologyCode39.Checked = workflow.BarcodeSymbologies.Contains(BarcodeSymbology.Code39);
+        _symbologyCode128.Checked = workflow.BarcodeSymbologies.Contains(BarcodeSymbology.Code128);
+        _symbologyEanUpc.Checked = workflow.BarcodeSymbologies.Contains(BarcodeSymbology.EanUpc);
+        _separationPattern.Text = workflow.SeparationPattern ?? "";
+        _keepSeparatorPage.Checked = workflow.KeepSeparatorPage;
+        _newDocumentOnlyOnValueChange.Checked = workflow.NewDocumentOnlyOnValueChange;
+
+        _idMode.SelectedItem = workflow.IdMode;
+        _idPromptLabel.Text = workflow.IdPromptLabel ?? "";
+        _requireIdentifier.Checked = workflow.RequireIdentifier;
+
+        _documentName.Text = workflow.GetDocumentNameTemplate();
+        _saveLocally.Checked = workflow.SaveLocally;
+        _localFolder.Text = workflow.LocalFolder ?? "";
+        _promptForFilePath.Checked = workflow.PromptForFilePath;
+        _uploadTrigger.SelectedItem = workflow.UploadTrigger;
+        _cleanupAfterCompletion.Checked = workflow.CleanupAfterCompletion;
+    }
+
+    private DocumentWorkflowSettings BuildDocumentWorkflow(string? separationPattern)
+    {
+        var symbologies = new List<BarcodeSymbology>();
+        if (_symbologyCode39.IsChecked()) symbologies.Add(BarcodeSymbology.Code39);
+        if (_symbologyCode128.IsChecked()) symbologies.Add(BarcodeSymbology.Code128);
+        if (_symbologyEanUpc.IsChecked()) symbologies.Add(BarcodeSymbology.EanUpc);
+
+        return new DocumentWorkflowSettings
+        {
+            Version = DocumentWorkflowSettings.CURRENT_VERSION,
+            SeparationMode = _sepBarcode.Checked ? DocumentSeparationMode.Barcode
+                : _sepPatchT.Checked ? DocumentSeparationMode.PatchT
+                : _sepOnePerPage.Checked ? DocumentSeparationMode.OnePerPage
+                : DocumentSeparationMode.None,
+            BarcodeSymbologies = symbologies,
+            SeparationPattern = separationPattern,
+            KeepSeparatorPage = _keepSeparatorPage.IsChecked(),
+            NewDocumentOnlyOnValueChange = _newDocumentOnlyOnValueChange.IsChecked(),
+            IdMode = _idMode.SelectedItem,
+            IdPromptLabel = string.IsNullOrWhiteSpace(_idPromptLabel.Text) ? null : _idPromptLabel.Text!.Trim(),
+            RequireIdentifier = _requireIdentifier.IsChecked(),
+            SaveLocally = _saveLocally.IsChecked(),
+            LocalFolder = string.IsNullOrWhiteSpace(_localFolder.Text) ? null : _localFolder.Text!.Trim(),
+            DocumentNameTemplate = string.IsNullOrWhiteSpace(_documentName.Text)
+                ? null
+                : _documentName.Text!.Trim(),
+            PromptForFilePath = _promptForFilePath.IsChecked(),
+            UploadTrigger = _uploadTrigger.SelectedItem,
+            CleanupAfterCompletion = _cleanupAfterCompletion.IsChecked()
+        };
+    }
+
+    /// <summary>
+    /// Shows only the settings that are in force, and says so where a combination cannot work.
+    /// </summary>
+    private void UpdateDocumentControls()
+    {
+        // The barcode settings are not only about separating: the regex also decides which of a page's
+        // barcodes $(barcode) yields, and the type selection decides what is decoded at all. So they stay
+        // visible whenever anything is configured -- hiding a setting that is still in force is how it
+        // becomes impossible to correct.
+        var barcodesConfigured = !string.IsNullOrWhiteSpace(_separationPattern.Text) ||
+                                 _symbologyCode39.IsChecked() || _symbologyCode128.IsChecked() ||
+                                 _symbologyEanUpc.IsChecked();
+        _barcodeOptionsVis.IsVisible = _sepBarcode.Checked || barcodesConfigured;
+        // Only separation reads these two, so they don't invite changes when nothing separates. Patch-T
+        // sheets are reusable blank cards and are never part of the document, hence no choice there.
+        _keepSeparatorPage.Enabled = _sepBarcode.Checked;
+        _newDocumentOnlyOnValueChange.Enabled = _sepBarcode.Checked;
+
+        _eanUpcWarningVis.IsVisible = _symbologyEanUpc.IsChecked();
+        _eanUpcWarning.TextColor = EtoPlatform.Current.ColorScheme.CautionColor;
+
+        _idPromptLabelVis.IsVisible = _idMode.SelectedItem == DocumentIdMode.ManualInput;
+        _localFolderVis.IsVisible = _saveLocally.IsChecked();
+
+        UpdateNoDestinationWarning();
+        LayoutController.Invalidate();
+    }
+
+    private void UpdateNoDestinationWarning()
+    {
+        var hasDestination = _saveLocally.IsChecked() || _enableSharePointUpload.IsChecked() ||
+                             _enableSapArchiveUpload.IsChecked();
+        _noDestinationWarningVis.IsVisible = !hasDestination;
+        _noDestinationWarning.TextColor = EtoPlatform.Current.ColorScheme.CautionColor;
+    }
+
+    /// <summary>
+    /// Opens the placeholder helper on the file name, which is where <c>$(id)</c> and the barcode
+    /// variables are documented.
+    /// </summary>
+    private void EditDocumentName()
+    {
+        var form = FormFactory.Create<PlaceholdersForm>();
+        form.FileName = _documentName.Text;
+        form.ShowModal();
+        if (form.Updated)
+        {
+            _documentName.Text = form.FileName;
+        }
+    }
+
+    /// <summary>
+    /// Refuses the combinations that would quietly produce nothing, or the wrong thing.
+    /// </summary>
+    private bool ValidateDocumentSettings()
+    {
+        // With no symbology the detector is refused rather than let loose on every format it knows, so a
+        // profile that separates by barcode without picking one would simply never separate.
+        if (_sepBarcode.Checked && !_symbologyCode39.IsChecked() && !_symbologyCode128.IsChecked() &&
+            !_symbologyEanUpc.IsChecked())
+        {
+            _errorOutput.DisplayError(UiStrings.BarcodeTypeRequired);
+            return false;
+        }
+
+        var pattern = _separationPattern.Text?.Trim();
+        if (!string.IsNullOrEmpty(pattern))
+        {
+            try
+            {
+                _ = new Regex(pattern);
+            }
+            catch (Exception)
+            {
+                _errorOutput.DisplayError(UiStrings.InvalidSeparationPattern);
+                return false;
+            }
+        }
+
+        if (_saveLocally.IsChecked() && string.IsNullOrWhiteSpace(_localFolder.Text) &&
+            !_promptForFilePath.IsChecked())
+        {
+            _errorOutput.DisplayError(UiStrings.LocalFolderRequired);
+            return false;
+        }
+
+        // The name is not only a local matter: it is what SharePoint and the SAP archive store the
+        // document under, so a profile that uploads still has to have one.
+        if (string.IsNullOrWhiteSpace(_documentName.Text))
+        {
+            _errorOutput.DisplayError(UiStrings.DocumentNameRequired);
+            return false;
+        }
+        return true;
+    }
+
     private bool SaveSettings()
     {
         if (_displayName.Text == "")
@@ -540,6 +818,11 @@ public class EditProfileForm : EtoDialogBase
             }
         }
 
+        if (!ValidateDocumentSettings())
+        {
+            return false;
+        }
+
         var sapValidation = BuildSapArchiveSettings().Validate();
         if (sapValidation.Count > 0)
         {
@@ -568,6 +851,8 @@ public class EditProfileForm : EtoDialogBase
     private ScanProfile GetUpdatedScanProfile()
     {
         var pageSize = _pageSize.SelectedItem!;
+        var pattern = _separationPattern.Text?.Trim();
+        var workflow = BuildDocumentWorkflow(string.IsNullOrEmpty(pattern) ? null : pattern);
         return new ScanProfile
         {
             Version = ScanProfile.CURRENT_VERSION,
@@ -592,15 +877,18 @@ public class EditProfileForm : EtoDialogBase
             Resolution = new ScanResolution { Dpi = _resolution.SelectedItem?.Dpi ?? 0 },
             PaperSource = _paperSource.SelectedItem,
 
-            EnableAutoSave = _enableAutoSave.IsChecked(),
-            AutoSaveSettings = BuildAutoSaveSettings(),
+            DocumentWorkflow = workflow,
+            // The legacy pair is kept in step with the workflow rather than edited directly. Nothing in
+            // the scan window reads it any more, but the command line scanner still does, and a profile
+            // that behaves differently from the CLI than from the window is worse than either.
+            EnableAutoSave = workflow.SaveLocally,
+            AutoSaveSettings = BuildAutoSaveSettings(workflow),
             SapArchiveSettings = BuildSapArchiveSettings(),
             Quality = ScanProfile.Quality,
 
-            // Settings this dialog doesn't edit. They are only reachable from the auto save dialog or
-            // the advanced dialog, and this method builds a brand new profile, so anything not copied
-            // here is silently reset the next time a profile is opened and confirmed.
-            DocumentWorkflow = ScanProfile.DocumentWorkflow,
+            // Settings this dialog doesn't edit. They are only reachable from the advanced dialog, and
+            // this method builds a brand new profile, so anything not copied here is silently reset the
+            // next time a profile is opened and confirmed.
             BarcodeRecognitionEnabled = ScanProfile.BarcodeRecognitionEnabled,
             RotateDegrees = ScanProfile.RotateDegrees,
             KeyValueOptions = ScanProfile.KeyValueOptions,
@@ -671,9 +959,7 @@ public class EditProfileForm : EtoDialogBase
             _brightnessSlider.Enabled = settingsEnabled;
             _contrastSlider.Enabled = settingsEnabled;
 
-            _enableAutoSave.Enabled = !locked && !Config.Get(c => c.DisableAutoSave);
-            _autoSaveSettings.Enabled = _enableAutoSave.IsChecked();
-            _autoSaveSettings.Visible = !locked && !Config.Get(c => c.DisableAutoSave);
+            _saveLocally.Enabled = !locked && !Config.Get(c => c.DisableAutoSave);
 
             _advanced.Enabled = !locked;
 
@@ -690,28 +976,25 @@ public class EditProfileForm : EtoDialogBase
     }
 
     /// <summary>
-    /// Keeps the auto save upload flags in step with the enable checkboxes shown next to the credentials.
-    /// The two used to be set in separate dialogs and could contradict each other, so ticking "enable
-    /// SharePoint upload" here had no effect unless the auto save dialog was opened as well.
+    /// Mirrors the workflow onto the legacy auto save settings, which is the shape the command line
+    /// scanner and older config files still speak. Nothing edits these directly any more.
     /// </summary>
-    /// <summary>
-    /// Mirrors the enable checkboxes onto the profile object shared with the auto save dialog.
-    /// </summary>
-    private void SyncUploadTargetsToProfile()
-    {
-        ScanProfile.EnableSharePointUpload = _enableSharePointUpload.IsChecked();
-        ScanProfile.AutoSaveSettings = BuildAutoSaveSettings();
-        if (ScanProfile.SapArchiveSettings != null)
-        {
-            ScanProfile.SapArchiveSettings.EnableUpload = _enableSapArchiveUpload.IsChecked();
-        }
-    }
-
-    private AutoSaveSettings BuildAutoSaveSettings()
+    private AutoSaveSettings BuildAutoSaveSettings(DocumentWorkflowSettings workflow)
     {
         var settings = ScanProfile.AutoSaveSettings ?? new AutoSaveSettings();
         return settings with
         {
+            FilePath = Path.Combine(workflow.LocalFolder ?? "", workflow.GetDocumentNameTemplate()),
+            PromptForFilePath = workflow.PromptForFilePath,
+            ClearImagesAfterSaving = workflow.CleanupAfterCompletion,
+            Separator = workflow.SeparationMode switch
+            {
+                DocumentSeparationMode.Barcode => SaveSeparator.Code39Barcode,
+                DocumentSeparationMode.PatchT => SaveSeparator.PatchT,
+                DocumentSeparationMode.OnePerPage => SaveSeparator.FilePerPage,
+                _ => SaveSeparator.FilePerScan
+            },
+            Code39SeparationPattern = workflow.SeparationPattern,
             UploadToSharePoint = _enableSharePointUpload.IsChecked(),
             UploadToSap = _enableSapArchiveUpload.IsChecked()
         };
@@ -762,18 +1045,6 @@ public class EditProfileForm : EtoDialogBase
         };
     }
 
-    /// <summary>
-    /// Shows the warning only for the combination it is about, so it doesn't become another line of
-    /// standing text the operator learns to read past.
-    /// </summary>
-    private void UpdateUploadNeedsAutoSave()
-    {
-        var anyTarget = _enableSharePointUpload.IsChecked() || _enableSapArchiveUpload.IsChecked();
-        _uploadNeedsAutoSave.Text = anyTarget && !_enableAutoSave.IsChecked()
-            ? UiStrings.UploadNeedsAutoSaveWarning
-            : "";
-    }
-
     private void UpdateSapObjectTypeTooltip()
     {
         _sapObjectType.AsControl().ToolTip = _sapObjectType.SelectedItem?.KeyFormatHint ?? "";
@@ -814,7 +1085,7 @@ public class EditProfileForm : EtoDialogBase
         _sapFixedObjectKeyValue.Enabled = enabled && _sapFixedObjectKey.Checked;
         _sapDescriptionTemplate.Enabled = enabled;
         _sapTestConnection.Enabled = enabled;
-        UpdateUploadNeedsAutoSave();
+        UpdateNoDestinationWarning();
     }
 
     private async void SapTestConnection_Click(object? sender, EventArgs e)
@@ -949,7 +1220,7 @@ public class EditProfileForm : EtoDialogBase
 
     private void UpdateSharePointControlsEnabled()
     {
-        UpdateUploadNeedsAutoSave();
+        UpdateNoDestinationWarning();
         bool enabled = _enableSharePointUpload.IsChecked() && !_scanProfile.IsLocked;
         _sharePointSiteUrl.Enabled = enabled;
         _sharePointLibraryPath.Enabled = enabled;
@@ -970,22 +1241,6 @@ public class EditProfileForm : EtoDialogBase
         UpdateUiForCaps();
     }
 
-    private void AutoSaveSettings_LinkClicked(object? sender, EventArgs eventArgs)
-    {
-        if (Config.Get(c => c.DisableAutoSave))
-        {
-            return;
-        }
-        var form = FormFactory.Create<AutoSaveSettingsForm>();
-        ScanProfile.DriverName = DeviceDriver.ToString().ToLowerInvariant();
-        ScanProfile.EnableAutoSave = _enableAutoSave.IsChecked();
-        // Push the not-yet-saved target selection across so the auto save dialog reports the targets the
-        // operator just ticked here rather than the ones last written to disk.
-        SyncUploadTargetsToProfile();
-        form.ScanProfile = ScanProfile;
-        form.ShowModal();
-    }
-
     private void Advanced_Click(object? sender, EventArgs e)
     {
         var form = FormFactory.Create<AdvancedProfileForm>();
@@ -993,26 +1248,5 @@ public class EditProfileForm : EtoDialogBase
         ScanProfile.BitDepth = _bitDepth.SelectedItem;
         form.ScanProfile = ScanProfile;
         form.ShowModal();
-    }
-
-    private void EnableAutoSave_CheckedChanged(object? sender, EventArgs e)
-    {
-        if (!_suppressChangeEvent)
-        {
-            if (_enableAutoSave.IsChecked())
-            {
-                _autoSaveSettings.Enabled = true;
-                ScanProfile.EnableAutoSave = true;
-                var form = FormFactory.Create<AutoSaveSettingsForm>();
-                form.ScanProfile = ScanProfile;
-                form.ShowModal();
-                if (!form.Result)
-                {
-                    _enableAutoSave.Checked = false;
-                }
-            }
-        }
-        _autoSaveSettings.Enabled = _enableAutoSave.IsChecked();
-        UpdateUploadNeedsAutoSave();
     }
 }

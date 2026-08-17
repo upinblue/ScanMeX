@@ -3,6 +3,7 @@ using System.Threading;
 using Microsoft.Extensions.Logging;
 using NAPS2.ImportExport;
 using NAPS2.Ocr;
+using NAPS2.PostScan;
 using NAPS2.Sap;
 using NAPS2.Scan.Exceptions;
 using NAPS2.Scan.Internal;
@@ -35,7 +36,7 @@ internal class ScanPerformer : IScanPerformer
     private readonly IDevicePrompt _devicePrompt;
     private readonly Naps2Config _config;
     private readonly OperationProgress _operationProgress;
-    private readonly AutoSaver _autoSaver;
+    private readonly DocumentPipeline _documentPipeline;
     private readonly IProfileManager _profileManager;
     private readonly ErrorOutput _errorOutput;
     private readonly ScanOptionsValidator _scanOptionsValidator;
@@ -43,14 +44,14 @@ internal class ScanPerformer : IScanPerformer
     private readonly OcrOperationManager _ocrOperationManager;
 
     public ScanPerformer(IDevicePrompt devicePrompt, Naps2Config config, OperationProgress operationProgress,
-        AutoSaver autoSaver, IProfileManager profileManager, ErrorOutput errorOutput,
+        DocumentPipeline documentPipeline, IProfileManager profileManager, ErrorOutput errorOutput,
         ScanOptionsValidator scanOptionsValidator, IScanBridgeFactory scanBridgeFactory,
         ScanningContext scanningContext, OcrOperationManager ocrOperationManager)
     {
         _devicePrompt = devicePrompt;
         _config = config;
         _operationProgress = operationProgress;
-        _autoSaver = autoSaver;
+        _documentPipeline = documentPipeline;
         _profileManager = profileManager;
         _errorOutput = errorOutput;
         _scanOptionsValidator = scanOptionsValidator;
@@ -103,7 +104,7 @@ internal class ScanPerformer : IScanPerformer
             yield break;
         }
 
-        LogScanStart(scanProfile, options);
+        LogScanStart(scanProfile, options, BarcodeDetectionPlan.For(scanProfile, scanParams.DetectPatchT));
 
         var controller = CreateScanController(scanParams);
         var op = new ScanOperation(options);
@@ -140,15 +141,20 @@ internal class ScanPerformer : IScanPerformer
         // downstream -- the console still has to show that pages were scanned.
         var images = LogPages(controller.Scan(options, op.CancelToken));
 
-        if (scanProfile.EnableAutoSave && scanProfile.AutoSaveSettings != null && !scanParams.NoAutoSave)
+        // The pipeline runs whenever the profile does anything with a finished document -- files it
+        // locally, uploads it, or both. Saving and uploading used to be one switch, so a profile that
+        // only wanted to archive to SAP had to nominate a folder it didn't want in order to get there.
+        var workflow = DocumentWorkflowSettings.ForProfile(scanProfile);
+        if (workflow.HasPostScanWork(scanProfile) && !scanParams.NoAutoSave)
         {
-            images = _autoSaver.Save(scanProfile, scanProfile.AutoSaveSettings, images);
+            images = _documentPipeline.Process(scanProfile, images);
         }
         else
         {
-            ScanConsole.Profile(scanProfile.EnableAutoSave
-                ? "Auto save is enabled but has no settings, so nothing is saved or uploaded."
-                : "Auto save is disabled, so this scan is not saved or uploaded automatically.");
+            ScanConsole.Profile(scanParams.NoAutoSave
+                ? "This scan was asked not to save or upload, so the pages only go to the window."
+                : "The profile neither files documents locally nor uploads them, so this scan is not " +
+                  "saved or uploaded automatically.");
         }
 
         int pageCount = 0;
@@ -187,7 +193,7 @@ internal class ScanPerformer : IScanPerformer
     /// a profile setting, so the settings that decide whether anything is saved, separated or uploaded are
     /// recorded before the first page arrives.
     /// </summary>
-    private static void LogScanStart(ScanProfile scanProfile, ScanOptions options)
+    private static void LogScanStart(ScanProfile scanProfile, ScanOptions options, BarcodeDetectionPlan plan)
     {
         ScanConsole.Scan(
             $"Scan started. Profile='{scanProfile.DisplayName}', Device='{scanProfile.Device?.Name ?? "(none)"}', " +
@@ -198,10 +204,11 @@ internal class ScanPerformer : IScanPerformer
         ScanConsole.Profile(
             $"Separation={workflow.SeparationMode}, Symbologies={(symbologies.Count == 0 ? "(none)" : string.Join("+", symbologies))}, " +
             $"Pattern='{workflow.SeparationPattern ?? ""}', IdMode={workflow.IdMode}, " +
-            $"UploadTrigger={workflow.UploadTrigger}, KeepLocalCopy={workflow.KeepLocalCopy}");
+            $"UploadTrigger={workflow.UploadTrigger}, RequireIdentifier={workflow.RequireIdentifier}");
         ScanConsole.Profile(
             $"BarcodeDetection={options.BarcodeDetectionOptions.DetectBarcodes}, " +
-            $"AutoSave={scanProfile.EnableAutoSave}, AutoSavePath='{scanProfile.AutoSaveSettings?.FilePath ?? ""}'");
+            $"SaveLocally={workflow.SaveLocally}, Folder='{workflow.LocalFolder ?? ""}', " +
+            $"FileName='{workflow.GetDocumentNameTemplate()}'");
 
         // Which barcode ends up in $(barcode) and $(barcode:1) is decided by this pattern, and getting it
         // wrong names the file after the article number instead of the order number -- which looks like a
@@ -213,14 +220,22 @@ internal class ScanPerformer : IScanPerformer
                 ? "No barcode regex is set, so $(barcode) and $(barcode:1) take the first barcode in " +
                   "reading order on the page."
                 : $"Barcode regex '{selection}' decides which barcode $(barcode) and $(barcode:1) yield.");
-            if (symbologies.Count == 0)
+            if (symbologies.Contains(BarcodeSymbology.EanUpc))
             {
-                // With no symbology restriction ZXing reads anything it can, and dense production sheets
-                // yield codes that are not on the paper at all.
+                // EAN-8 and UPC-E are eight digits with no usable self-check, so ZXing accepts patterns
+                // that were never printed. They are still selectable because some paperwork carries a
+                // real article code, but on a form full of ruled tables they are the one symbology that
+                // regularly reports a barcode that is not there.
                 ScanConsole.Profile(
-                    "WARNING: no barcode type is selected, so every symbology is decoded. Dense sheets can " +
-                    "produce phantom EAN/UPC reads; select the types the paperwork actually carries.");
+                    "WARNING: EAN/UPC is selected. Those codes read out of the print noise of dense forms " +
+                    "more readily than the others, so check the barcodes reported per page below.");
             }
+        }
+        else if (plan.SuppressedReason != null)
+        {
+            // Refusing to decode is the safe outcome, but it looks exactly like a scanner that reads
+            // nothing, so the reason has to be on the record for every scan it happens on.
+            ScanConsole.Profile($"WARNING: barcodes are NOT being decoded because {plan.SuppressedReason}");
         }
 
         // Measured against real Code 39 production papers: nothing decodes below 200 dpi, and detection
@@ -240,14 +255,29 @@ internal class ScanPerformer : IScanPerformer
             ? "No upload target is enabled for this profile."
             : $"Upload targets: {string.Join(", ", targets)}");
 
-        // Uploading is driven by auto save: it is the step that produces the file. With auto save off the
-        // ticked upload targets do nothing at all, and nothing else in the scan reports that, so a whole
-        // batch can be scanned before anyone notices nothing was archived.
-        if (targets.Count > 0 && !scanProfile.EnableAutoSave)
+        // A profile that neither files documents nor sends them anywhere scans and then keeps nothing.
+        // That is a legitimate setup -- scan, look, decide -- but it is also what a half-configured
+        // profile looks like, and nothing else in the scan says so.
+        if (!workflow.HasPostScanWork(scanProfile))
         {
             ScanConsole.Profile(
-                $"WARNING: {string.Join(" and ", targets)} upload is enabled but auto save is off for this " +
-                "profile. Uploading runs on the file auto save writes, so nothing will be saved or uploaded.");
+                "WARNING: this profile does not file documents locally and has no upload target, so the " +
+                "pages will only appear in the window.");
+        }
+        else if (targets.Count > 0 && workflow.UploadTrigger == UploadTrigger.Manual)
+        {
+            ScanConsole.Profile(
+                $"{string.Join(" and ", targets)} upload is set to manual, so documents wait in the " +
+                "document list until the upload button is pressed.");
+        }
+        if (workflow.IdMode == DocumentIdMode.ManualInput && workflow.UploadTrigger == UploadTrigger.Automatic &&
+            targets.Count > 0)
+        {
+            // The two settings contradict each other: nothing can be uploaded automatically if a person
+            // has to type the value it is filed under first.
+            ScanConsole.Profile(
+                "WARNING: identification is entered by hand but uploading is automatic. Documents will " +
+                "wait in the document list for their identification rather than being uploaded.");
         }
     }
 
@@ -366,9 +396,7 @@ internal class ScanPerformer : IScanPerformer
     private ScanOptions BuildOptions(ScanProfile scanProfile, ScanParams scanParams, IntPtr dialogParent,
         bool isDeviceQuery)
     {
-        var separator = scanProfile.AutoSaveSettings?.Separator;
-        var workflow = DocumentWorkflowSettings.ForProfile(scanProfile);
-        var symbologies = workflow.GetEffectiveSymbologies().ToList();
+        var plan = BarcodeDetectionPlan.For(scanProfile, scanParams.DetectPatchT);
 
         var options = new ScanOptions
         {
@@ -411,19 +439,13 @@ internal class ScanPerformer : IScanPerformer
             ExcludeLocalIPs = true,
             BarcodeDetectionOptions =
             {
-                // NeedsBarcodeValues covers separation, the SAP object key and -- the case that used to be
-                // missed -- any template that expands to a barcode, such as an auto save path of
-                // "$(barcode).pdf" on a profile that doesn't separate.
-                DetectBarcodes = scanParams.DetectPatchT ||
-                                 scanProfile.NeedsBarcodeValues() ||
-                                 separator is SaveSeparator.PatchT or SaveSeparator.Code39Barcode,
-                // The profile's symbologies drive which formats ZXing looks for and which barcode wins
-                // when a page carries several. Empty means "anything".
-                Symbologies = symbologies,
-                // Legacy fallback for profiles that only ever asked for patch-t separator sheets.
-                PatchTOnly = symbologies.Count == 0 &&
-                             (scanParams.DetectPatchT ||
-                              separator is SaveSeparator.PatchT or SaveSeparator.Code39Barcode)
+                // BarcodeDetectionPlan decides both halves of this: whether the profile needs barcodes at
+                // all (separation, the SAP object key, or any template that expands to one) and whether
+                // the search is restricted enough to be trustworthy. An unrestricted search is refused
+                // rather than run -- see the remarks there.
+                DetectBarcodes = plan.Detect,
+                Symbologies = plan.Symbologies.ToList(),
+                PatchTOnly = plan.PatchTOnly
             },
             OcrParams = scanParams.OcrParams ?? OcrParams.Empty,
             Brightness = scanProfile.Brightness,
@@ -451,10 +473,12 @@ internal class ScanPerformer : IScanPerformer
             PageSize = null // Set after
         };
 
-        if (separator == SaveSeparator.Code39Barcode)
-        {
-            _scanningContext.Logger.LogDebug("Code39 separation enabled. Regex: {Regex}", scanProfile.AutoSaveSettings?.Code39SeparationPattern ?? "<none>");
-        }
+        _scanningContext.Logger.LogDebug(
+            "Barcode detection plan: detect={Detect} symbologies={Symbologies} patchTOnly={PatchTOnly} suppressed={Reason}",
+            plan.Detect,
+            plan.Symbologies.Count == 0 ? "<none>" : string.Join("+", plan.Symbologies),
+            plan.PatchTOnly,
+            plan.SuppressedReason ?? "<no>");
 
         var pageDimensions = scanProfile.PageSize.PageDimensions() ?? scanProfile.CustomPageSize;
         if (pageDimensions == null)

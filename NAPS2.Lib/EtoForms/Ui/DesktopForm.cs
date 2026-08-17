@@ -1,4 +1,4 @@
-using System.Collections.Immutable;
+﻿using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Threading;
 using Eto.Drawing;
@@ -30,6 +30,7 @@ public abstract class DesktopForm : EtoFormBase
     private readonly ImageTransfer _imageTransfer = new();
     private readonly Lazy<DesktopCommands> _commands;
     private readonly Sidebar _sidebar;
+    private readonly DocumentPanel _documentPanel;
     private readonly DocumentUploadController _documentUploadController;
     protected readonly IIconProvider _iconProvider;
 
@@ -60,9 +61,10 @@ public abstract class DesktopForm : EtoFormBase
         IDesktopSubFormController desktopSubFormController,
         Lazy<DesktopCommands> commands,
         Sidebar sidebar,
+        DocumentPanel documentPanel,
         IIconProvider iconProvider,
         DocumentUploadController documentUploadController,
-        DocumentUploadQueue documentUploadQueue) : base(config)
+        DocumentQueue documentQueue) : base(config)
     {
         Icon = EtoPlatform.Current.IsGtk ? new Icon(1f, Icons.scanner_128.ToEtoImage()) : Icons.favicon.ToEtoIcon();
 
@@ -80,12 +82,13 @@ public abstract class DesktopForm : EtoFormBase
         _desktopFormProvider = desktopFormProvider;
         _desktopSubFormController = desktopSubFormController;
         _sidebar = sidebar;
+        _documentPanel = documentPanel;
         _iconProvider = iconProvider;
         _commands = commands;
         _documentUploadController = documentUploadController;
         // Documents can be queued while the window is idle, so the button has to react to the queue
         // rather than only to image list changes.
-        documentUploadQueue.Changed += (_, _) => Invoker.Current.Invoke(UpdateToolbar);
+        documentQueue.Changed += (_, _) => Invoker.Current.Invoke(UpdateToolbar);
 
         _desktopFormProvider.DesktopForm = this;
         _keyboardShortcuts.Assign(Commands);
@@ -133,21 +136,36 @@ public abstract class DesktopForm : EtoFormBase
             MinimumSize = Size.Round(new SizeF(600, 300) * EtoPlatform.Current.GetLayoutScaleFactor(this)));
 
         LayoutController.RootPadding = 0;
+
+        var pages = L.Overlay(
+            // For WinForms, we add 1px of top padding to give us room to draw a border above the listview
+            _listView.Control.Padding(top: EtoPlatform.Current.IsWinForms ? 1 : 0),
+            L.Column(
+                C.Filler(),
+                L.Row(
+                    GetControlButtons(),
+                    C.Filler(),
+                    _notificationArea.Content)
+            ).Padding(8)
+        ).Scale();
+
+        // Pages on the left, documents on the right. The two answer different questions -- what came off
+        // the scanner, and what is going to the archive -- and the second one had nowhere to be shown.
+        LayoutElement pagesAndDocuments = Config.Get(c => c.HiddenButtons).HasFlag(ToolbarButtons.DocumentPanel)
+            ? pages
+            : L.RightPanel(
+                pages,
+                _documentPanel.CreateView(LayoutController)
+            ).SizeConfig(
+                () => Config.Get(c => c.DocumentPanelWidth),
+                width => Config.User.Set(c => c.DocumentPanelWidth, width),
+                260);
+
         LayoutController.Content = L.LeftPanel(
             Config.Get(c => c.HiddenButtons).HasFlag(ToolbarButtons.Sidebar)
                 ? C.None()
                 : _sidebar.CreateView(this),
-            L.Overlay(
-                // For WinForms, we add 1px of top padding to give us room to draw a border above the listview
-                _listView.Control.Padding(top: EtoPlatform.Current.IsWinForms ? 1 : 0),
-                L.Column(
-                    C.Filler(),
-                    L.Row(
-                        GetControlButtons(),
-                        C.Filler(),
-                        _notificationArea.Content)
-                ).Padding(8)
-            ).Scale()
+            pagesAndDocuments
         ).SizeConfig(
             () => Config.Get(c => c.SidebarWidth),
             width => Config.User.Set(c => c.SidebarWidth, width),
@@ -474,7 +492,18 @@ public abstract class DesktopForm : EtoFormBase
 
     protected virtual LayoutElement GetControlButtons()
     {
-        return L.Row(GetSidebarButton(), GetZoomButtons());
+        return L.Row(GetSidebarButton(), GetDocumentPanelButton(), GetZoomButtons());
+    }
+
+    protected LayoutElement GetDocumentPanelButton()
+    {
+        if (Config.Get(c => c.HiddenButtons).HasFlag(ToolbarButtons.DocumentPanel))
+        {
+            return C.None();
+        }
+        var toggle = C.ImageButton(Commands.ToggleDocumentPanel);
+        EtoPlatform.Current.ConfigureZoomButton(toggle, "document_small");
+        return toggle.AlignTrailing();
     }
 
     protected LayoutElement GetSidebarButton()
@@ -661,5 +690,10 @@ public abstract class DesktopForm : EtoFormBase
     public void ToggleSidebar()
     {
         _sidebar.ToggleVisibility();
+    }
+
+    public void ToggleDocumentPanel()
+    {
+        _documentPanel.ToggleVisibility();
     }
 }

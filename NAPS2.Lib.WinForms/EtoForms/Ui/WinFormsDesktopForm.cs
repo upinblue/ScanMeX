@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Drawing;
 using Eto.Forms;
 using Eto.WinForms;
@@ -50,13 +50,14 @@ public class WinFormsDesktopForm : DesktopForm
         IDesktopSubFormController desktopSubFormController,
         Lazy<DesktopCommands> commands,
         Sidebar sidebar,
+        DocumentPanel documentPanel,
         IIconProvider iconProvider,
         DocumentUploadController documentUploadController,
-        DocumentUploadQueue documentUploadQueue)
+        DocumentQueue documentQueue)
         : base(config, keyboardShortcuts, notificationManager, cultureHelper, colorScheme, profileManager, imageList,
             thumbnailController, thumbnailProvider, desktopController, desktopScanController, imageListActions,
-            imageListViewBehavior, desktopFormProvider, desktopSubFormController, commands, sidebar, iconProvider,
-            documentUploadController, documentUploadQueue)
+            imageListViewBehavior, desktopFormProvider, desktopSubFormController, commands, sidebar, documentPanel, iconProvider,
+            documentUploadController, documentQueue)
     {
         _form = this.ToNative();
         _form.FormClosing += OnFormClosing;
@@ -136,6 +137,7 @@ public class WinFormsDesktopForm : DesktopForm
         };
         return L.Row(
             GetSidebarButton(),
+            GetDocumentPanelButton(),
             L.Overlay(
                 L.Row(mouseCatcher.ToEto().AlignTrailing()),
                 GetZoomButtons()
