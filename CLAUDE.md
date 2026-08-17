@@ -186,7 +186,16 @@ pwsh tools/icons/Generate-Icons.ps1
 - **The script only writes names that already have an `Icons.resx` entry**, so it cannot create an
   icon nothing looks up. Adding a new icon therefore means adding the resx entry (and the
   `Icons.Designer.cs` property) first. The naming convention is `foo_small` → `Icons\foo-small.png`
-  at 16px, `foo` → `Icons\foo.png` at 32px, `foo_hires` → `Icons\foo-hires.png` at 64px.
+  at 16px, `foo` → `Icons\foo.png` at 32px, `foo_hires` → `Icons\foo-hires.png` at 64px, and
+  `foo_96` → `Icons\foo_96.png` at 96px (note the underscore — that is the existing convention for
+  the oversized variants, which `DefaultIconProvider` serves when asked for `foo_48`).
+- **The left column of the mapping is always the *base* name**, never a variant: the generator
+  derives the variants from it and writes the ones that have a resx entry. An exact variant name on
+  the left is an override for that one size, which is how `arrow_up` can be the upload arrow at 32px
+  and a plain up arrow at 16px.
+- **`name:filled` selects Fluent's filled style**, a bare name the regular one. Fluent draws state
+  with the filled style, which is why the notification severity icons use it — at 16px a filled disc
+  reads as a status badge where an outline reads as another button.
 - **The generated PNGs must declare 192 dpi**, which the script does explicitly. This is not
   metadata hygiene: `ToolStripDoubleButton` (the stacked *Move up/Move down* and *Settings/About*
   buttons) paints with `Graphics.DrawImage(image, Point)`, the overload that sizes an image by its
