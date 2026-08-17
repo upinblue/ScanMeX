@@ -3,6 +3,7 @@ using Eto.Drawing;
 using Eto.Forms;
 using NAPS2.Dependencies;
 using NAPS2.EtoForms.Layout;
+using NAPS2.EtoForms.Widgets;
 using NAPS2.Scan;
 
 namespace NAPS2.EtoForms.Ui;
@@ -11,8 +12,8 @@ public class DownloadProgressForm : EtoDialogBase
 {
     private readonly Label _totalStatus = new();
     private readonly Label _fileStatus = new();
-    private readonly ProgressBar _totalProgressBar = new();
-    private readonly ProgressBar _fileProgressBar = new();
+    private readonly FluentProgressBar _totalProgressBar = new();
+    private readonly FluentProgressBar _fileProgressBar = new();
 
     public DownloadProgressForm(ScanningContext scanningContext, Naps2Config config, IIconProvider iconProvider) :
         base(config)

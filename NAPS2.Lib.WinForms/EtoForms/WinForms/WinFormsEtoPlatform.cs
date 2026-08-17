@@ -312,11 +312,6 @@ public class WinFormsEtoPlatform : EtoPlatform
         container.ToNative().Controls.Remove(control.ToNative());
     }
 
-    public override LayoutElement FormatProgressBar(ProgressBar progressBar)
-    {
-        return progressBar.Size(420, 40);
-    }
-
     public override void InitForm(Window window)
     {
         var form = window.ToNative();

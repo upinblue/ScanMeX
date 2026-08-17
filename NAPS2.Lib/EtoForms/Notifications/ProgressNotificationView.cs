@@ -1,5 +1,6 @@
 using Eto.Forms;
 using NAPS2.EtoForms.Layout;
+using NAPS2.EtoForms.Widgets;
 
 namespace NAPS2.EtoForms.Notifications;
 
@@ -10,7 +11,7 @@ public class ProgressNotificationView : NotificationView
 
     private readonly Label _textLabel = new();
     private readonly Label _numberLabel = new();
-    private readonly ProgressBar _progressBar = new();
+    private readonly FluentProgressBar _progressBar = new();
     private readonly LayoutVisibility _numberVis = new(true);
 
     public ProgressNotificationView(ProgressNotification model)
@@ -80,5 +81,15 @@ public class ProgressNotificationView : NotificationView
         C.Filler().Visible(_numberVis),
         _numberLabel.Visible(_numberVis));
 
-    protected override LayoutElement SecondaryContent => _progressBar.MaxHeight(10);
+    protected override LayoutElement SecondaryContent
+    {
+        get
+        {
+            // The notification is a tinted card and controls paint their own background, so a bar left on
+            // the default surface colour draws as a pale box across it. Read here rather than in the
+            // constructor because the manager -- and with it the colour scheme -- is attached afterwards.
+            _progressBar.SurfaceColor = BackgroundColor;
+            return _progressBar.Height(FluentProgressBar.NATURAL_HEIGHT);
+        }
+    }
 }

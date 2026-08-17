@@ -270,7 +270,31 @@ public class DocumentPipeline
     {
         if (document.SavedPath != null && File.Exists(document.SavedPath))
         {
-            return true;
+            if (document.FileMatchesIdentifier)
+            {
+                return true;
+            }
+            // The identification changed after the file was written -- corrected in the document list
+            // before pressing upload, or before retrying a failed one. The SharePoint folder and the SAP
+            // object key are expanded from the identification at upload time, so reusing the file would
+            // archive the document under the new key with the old name still on it.
+            if (document.SavedPathIsTemporary)
+            {
+                ScanConsole.Document(
+                    $"{document.Describe()}: the identification changed since '{document.FileName}' was " +
+                    "staged, so the staged copy is replaced.");
+                document.DiscardStagingFile();
+            }
+            else
+            {
+                // The operator's own folder: the earlier file is theirs and is left where it is. Deleting
+                // it here would remove a document they may already have filed by hand.
+                ScanConsole.Document(
+                    $"{document.Describe()}: the identification changed since it was written, so it is " +
+                    $"written again under the new name. '{document.SavedPath}' stays where it is.");
+                document.SavedPath = null;
+                document.WrittenUnderIdentifier = null;
+            }
         }
 
         var result = workflow.SaveLocally
@@ -290,6 +314,7 @@ public class DocumentPipeline
 
         document.SavedPath = result.Path;
         document.SavedPathIsTemporary = !workflow.SaveLocally;
+        document.WrittenUnderIdentifier = document.Identifier;
         if (workflow.SaveLocally)
         {
             // Keeps closing the window from warning about pages that are on disk. Only for a file the

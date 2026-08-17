@@ -42,10 +42,10 @@ public class MacDesktopForm : DesktopForm
 
     protected override void UpdateTitle(ScanProfile? defaultProfile)
     {
-        Title = UiStrings.Naps2;
+        Title = AppBranding.Name;
         if (OperatingSystem.IsMacOSVersionAtLeast(11))
         {
-            this.ToNative().Subtitle = defaultProfile?.DisplayName ?? UiStrings.Naps2FullName;
+            this.ToNative().Subtitle = defaultProfile?.DisplayName ?? "";
         }
     }
 

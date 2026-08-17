@@ -59,7 +59,7 @@
       <Directory Id="SystemFolder" />
 
       <!-- Registry -->
-      <Component Id="RegistryEntries" Guid="5A1EA674-0ED2-42DF-817A-772F1B91EAE3">
+      <Component Id="RegistryEntries" Guid="B97335A8-9481-4E4E-8F1C-486758F5259D">
         <RegistryKey Root="HKLM" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\WIA_{1c3a7177-f3a7-439e-be47-e304a185f932}">
           <RegistryValue Type="string" Name="Action" Value="Scan with ScanMe" />
           <RegistryValue Type="string" Name="CLSID" Value="WIACLSID" />
@@ -97,51 +97,69 @@
         <RegistryKey Root="HKCR" Key=".bmp\OpenWithProgids">
           <RegistryValue Type="string" Name="ScanMe" Value="" />
         </RegistryKey>
+        <!-- The ProgID the OpenWithProgids entries above name is "ScanMe", so its icon and open command
+             have to hang off HKCR\ScanMe. They were left under HKCR\NAPS2 by the rebranding, which gave
+             the registered ProgID no open command at all: ScanMe appeared in Explorer's "Open with" list
+             and then did nothing when picked. -->
         <RegistryKey Root="HKCR" Key="ScanMe">
           <RegistryValue Type="string" Value="ScanMe" />
         </RegistryKey>
-        <RegistryKey Root="HKCR" Key="NAPS2\DefaultIcon">
+        <RegistryKey Root="HKCR" Key="ScanMe\DefaultIcon">
           <RegistryValue Type="string" Value="[INSTALLFOLDER]ScanMe.exe,0" />
         </RegistryKey>
-        <RegistryKey Root="HKCR" Key="NAPS2\shell\open\command">
+        <RegistryKey Root="HKCR" Key="ScanMe\shell\open\command">
           <RegistryValue Type="string" Value="&quot;[INSTALLFOLDER]ScanMe.exe&quot; &quot;%1&quot;" />
         </RegistryKey>
       </Component>
     </Directory>
 
     <DirectoryRef Id="INSTALLFOLDER">
-      <Component Id="Exec" Guid="3ED24800-E1D9-4D64-A106-6DC3597D9266">
+      <Component Id="Exec" Guid="B4093C7A-F808-41F8-90FF-D7FD92D50D59">
         <!-- !root -->
       </Component>
     </DirectoryRef>
 
     <DirectoryRef Id="LIBFOLDER">
-      <Component Id="Deps" Guid="04AC2B17-BDFA-4AA0-B8CA-0AE208D9193A">
+      <Component Id="Deps" Guid="4035DF7E-BD1D-4DFD-B2F0-AD53F0B5C789">
         <!-- !lib -->
       </Component>
     </DirectoryRef>
 
     <!-- Platform-specific dependencies -->
     <DirectoryRef Id="LIBWIN32FOLDER">
-      <Component Id="DepsWin32" Guid="2BE3E5A4-7526-4074-90A1-5B4E830EA337">
+      <Component Id="DepsWin32" Guid="62327E92-9CE1-4CBE-A009-18FB3951953C">
         <!-- !win32 -->
       </Component>
     </DirectoryRef>
     <DirectoryRef Id="LIBWIN64FOLDER">
-      <Component Id="DepsWin64" Guid="9F734E22-7835-43B9-8B58-E10EF6484DD7">
+      <Component Id="DepsWin64" Guid="12E0B652-D60F-4B45-9D36-6F5B2C42403B">
         <!-- !win64 -->
       </Component>
     </DirectoryRef>
 
+    <!-- The Start menu entry. Two things here are what make it actually appear:
+
+         The component GUID is ScanMe's own. It used to be the one upstream NAPS2 ships, and Windows
+         Installer reference-counts components by GUID across products: on a machine that has (or once
+         had) NAPS2 installed, that component was already registered against NAPS2's own Start menu
+         folder, so installing ScanMe found it "already installed" and created no shortcut at all. Every
+         other component below carried an inherited GUID for the same reason; they are all ScanMe's now.
+
+         The key path is HKLM, not HKCU. This is a perMachine install, so the deferred phase runs as
+         SYSTEM and an HKCU key path lands in the service account's hive rather than the operator's,
+         which makes the component's presence untrackable and the shortcut a candidate for repair on
+         every launch. -->
     <DirectoryRef Id="ProgramMenuDir">
-      <Component Id="ApplicationShortcut" Guid="F5122C0C-7DCA-4D0A-AF70-C87C972267AB">
+      <Component Id="ApplicationShortcut" Guid="110CA516-7570-41D4-90E8-8F2568FBCEA9">
         <Shortcut Id="ApplicationStartMenuShortcut"
                   Name="ScanMe"
-                  Description="Not Another PDF Scanner"
+                  Description="ScanMe"
                   Target="[INSTALLFOLDER]ScanMe.exe"
-                  WorkingDirectory="INSTALLFOLDER" />
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="icon.ico"
+                  IconIndex="0" />
         <RemoveFolder Id="ProgramMenuDir" On="uninstall"/>
-        <RegistryValue Root="HKCU" Key="Software\Microsoft\NAPS2" Name="installed" Type="integer" Value="1" KeyPath="yes"/>
+        <RegistryValue Root="HKLM" Key="SOFTWARE\ScanMe" Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes"/>
       </Component>
     </DirectoryRef>
 

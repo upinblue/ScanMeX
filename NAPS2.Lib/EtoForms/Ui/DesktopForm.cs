@@ -626,7 +626,8 @@ public abstract class DesktopForm : EtoFormBase
 
     protected virtual void UpdateTitle(ScanProfile? defaultProfile)
     {
-        Title = string.Format(UiStrings.Naps2TitleFormat, defaultProfile?.DisplayName ?? UiStrings.Naps2FullName);
+        // Not a resource string; see AppBranding for why the brand can't come out of UiStrings.
+        Title = AppBranding.WindowTitle(defaultProfile?.DisplayName);
     }
 
     private void ListViewMouseWheel(object? sender, MouseEventArgs e)

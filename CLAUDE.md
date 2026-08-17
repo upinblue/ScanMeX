@@ -141,6 +141,13 @@ up in the same console.
   supplies the SAP object key (`SapObjectKeyResolver.FromScannedBarcodes` prefers it over the pages'
   primary barcodes). Deriving the key separately lets the file name and the archive key drift apart,
   which is unnoticeable after the fact — don't reintroduce a second derivation path.
+- **A file already on disk is only reusable while it still carries the name the document would get now.**
+  `DocumentPipeline.EnsureFile` compares `ScannedDocument.WrittenUnderIdentifier` against the current
+  identification and writes again when they differ. Without that comparison the file was reused verbatim
+  while the SharePoint folder and the SAP object key were re-expanded at upload time, so a correction made
+  after the document had been written (a profile that files locally and uploads on the button, or a retry
+  after a failed upload) reached the archive key and not the name. A staging copy is replaced; a file in
+  the operator's folder is left where it is and a second one written, because that file is theirs.
 - **A page's *primary* barcode is not "the" barcode of the page.** It is only the first decoded barcode
   matching the profile's symbologies, so on a sheet with several Code 39 codes it comes down to reading
   order. Whenever a regex is configured, it — not the primary — decides which barcode is meant, and the
@@ -248,6 +255,27 @@ therefore **no unit test that fails without the second pass** — the merge logi
 `MultiBarcodeDetectionTests`, and the end-to-end behaviour was verified against the sample PDFs, which
 live outside the repo (customer documents, not committed).
 
+## Progress reporting
+
+`FluentProgressBar` is drawn, not themed: the native WinForms bar renders the Windows 7-era comctl32
+block, which matches nothing else in the app. The geometry is WinUI 3's own — a 1px track, a 3px rounded
+indicator in the user's accent colour — and the colours all come from `ColorScheme`, so it follows the
+theme like everything else. `EtoPlatform.FormatProgressBar` states its height, because a drawn control
+has no preferred size for the layout engine to ask for.
+
+- **The native bar's own easing is gone, and so is the workaround for it.** `RenderStatus` used to nudge
+  the value up and back down to force the comctl32 bar to catch up with what it had been told; the drawn
+  one repaints from the value it was last set to and eases it itself. Don't reintroduce the nudge.
+- **`Value` is clamped, not validated.** The native control throws when the value leaves the range, and
+  an operation reporting 101% of an estimate must not take down the window it is reporting into.
+- **`MaxProgress <= 1` means indeterminate.** `ImportOperation` sets `MaxProgress = 0` for a single file
+  precisely because it has no page count yet, and that used to draw a determinate bar sitting at empty for
+  the whole import — the "step that quietly does nothing" this app exists to make visible.
+- The bar reads `ColorScheme` at paint time, never in its constructor: the config the scheme needs is
+  attached in an Autofac build callback and only when there is an Eto platform, so a control that touched
+  it while a form's fields were initializing would make construction order load-bearing (and would throw
+  outright in tests). A bar on a tinted surface is told what it sits on through `SurfaceColor`.
+
 ## Icons and theming
 
 The icons come from [Fluent UI System Icons](https://github.com/microsoft/fluentui-system-icons) (MIT)
@@ -335,6 +363,12 @@ otherwise take only its natural width.
   that exactly one character can be typed before the field loses focus. `DocumentInspector` exposes
   `IsEditingIdentifier` for this, and defers that work to `LostFocus`.
 
+- **`AttachDpiDependency` subscribes; it belongs in a constructor, never in a method that runs again.**
+  Each call adds a `DpiChangedAfterParent` handler that is only removed when the control's handle is
+  destroyed, so calling it from a refresh method leaks one subscription per call. `DocumentInspector` had
+  it inside `Refresh`, which runs on every keystroke in the identifier box *and* on every queue change.
+  Attach once, keep the scale in a field, and repaint from that.
+
 A `GridView` does not inherit the theme: its background comes out black on the Fluent surface unless
 `BackgroundColor` is set, and its cell images are bitmaps, so they need the real DPI scale rather than
 `1f`. `&` in a label is an accelerator prefix and eats the following character -- "Documents & barcodes"
@@ -358,6 +392,14 @@ Note that **Debug builds only compile the fr/he/pt-BR satellite assemblies** (se
 Remove`/`Include` block in `NAPS2.Lib.csproj`). German only appears in Release builds — a Debug build
 showing English is not a bug.
 
+**The product name is not a localizable string.** It lives in `AppBranding.Name`, and window titles are
+built with `AppBranding.WindowTitle`. The title used to come from `UiStrings.Naps2TitleFormat`, whose
+neutral value the rebranding fixed — but the key exists in about forty inherited translation files, every
+one of which still reads `NAPS2 - {0}`, so the window came up branded NAPS2 for anyone not running in
+English. It looked intermittent because German only ships in Release builds. Anything that names the app
+to the operator must not go through the resources, or the next translation refresh from upstream rebrands
+it again.
+
 ## Versioning and release
 
 - The single source of truth for the version is `NAPS2.Setup/targets/VersionTargets.targets`.
@@ -369,6 +411,17 @@ showing English is not a bug.
   need. Do **not** run `build msi` first on Windows: it runs `dotnet build -c Release-Msi` over the whole
   solution, which pulls in NAPS2.App.Mac and fails with NETSDK1147 unless the `macos` workload is
   installed. The same applies to building `ScanMe.sln` as a whole — build the individual projects.
+- **Every component GUID in `setup.template.wxs` is ScanMe's own, and must stay that way.** They were
+  inherited unchanged from upstream NAPS2, and Windows Installer reference-counts components by GUID
+  *across products*: on a machine that had NAPS2 installed, the shortcut component was already registered
+  against NAPS2's Start menu folder, so installing ScanMe found it present and created no Start menu
+  entry at all. Never copy a GUID from upstream when adding a component — generate one.
+- **A perMachine install needs an HKLM key path.** The shortcut component's key path was
+  `HKCU\Software\Microsoft\NAPS2`, and the deferred phase of a per-machine install runs as SYSTEM, so the
+  value landed in the service account's hive.
+- The MSI's registry component and the Inno script must agree on the ProgID. Both register `ScanMe` in the
+  `OpenWithProgids` lists, so `HKCR\ScanMe\shell\open\command` is where the open command belongs — it sat
+  under `HKCR\NAPS2`, which put ScanMe in Explorer's "Open with" list with nothing behind it.
 
 ## Tests
 

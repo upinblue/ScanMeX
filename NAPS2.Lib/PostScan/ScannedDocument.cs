@@ -107,6 +107,26 @@ public sealed class ScannedDocument : IDisposable
     public bool SavedPathIsTemporary { get; set; }
 
     /// <summary>
+    /// The identification the existing file was named after, so a later correction can be told from a
+    /// file that is still current.
+    /// </summary>
+    /// <remarks>
+    /// Without this the file was written once and then reused verbatim, while the SharePoint folder and
+    /// the SAP object key were re-expanded from the identification at upload time -- so correcting a
+    /// barcode after the document had been written (a profile that files locally and uploads on the
+    /// button, or a retry after a failed upload) archived the document under the new key with the old
+    /// name on it. That is exactly the drift between the file name and the archive key that nothing
+    /// afterwards can detect.
+    /// </remarks>
+    public string? WrittenUnderIdentifier { get; set; }
+
+    /// <summary>
+    /// Whether the file on disk still carries the name the document would be given now.
+    /// </summary>
+    public bool FileMatchesIdentifier =>
+        string.Equals(WrittenUnderIdentifier, Identifier, StringComparison.Ordinal);
+
+    /// <summary>
     /// The targets the document has already reached, so the list can say what happened rather than only
     /// that something did.
     /// </summary>
@@ -262,6 +282,7 @@ public sealed class ScannedDocument : IDisposable
         }
         SavedPath = null;
         SavedPathIsTemporary = false;
+        WrittenUnderIdentifier = null;
     }
 
     public void Dispose()

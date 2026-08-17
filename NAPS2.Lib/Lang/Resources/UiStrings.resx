@@ -553,7 +553,7 @@
     <value>Run in Background</value>
   </data>
   <data name="ScanMe" xml:space="preserve">
-    <value>NAPS2</value>
+    <value>ScanMe</value>
   </data>
   <data name="Naps2TitleFormat" xml:space="preserve">
     <value>ScanMe - {0}</value>
@@ -934,7 +934,7 @@
     <value>Time between scans (seconds):</value>
   </data>
   <data name="LoadIn" xml:space="preserve">
-    <value>Load images into NAPS2</value>
+    <value>Load images into ScanMe</value>
   </data>
   <data name="SaveToSingleFile" xml:space="preserve">
     <value>Save to a single file</value>
@@ -979,7 +979,7 @@
     <value>Are you sure you want to stop sharing {0}?</value>
   </data>
   <data name="ShareAsService" xml:space="preserve">
-    <value>Share even when ScanMeis closed</value>
+    <value>Share even when ScanMe is closed</value>
   </data>
   <data name="MultipleLanguages" xml:space="preserve">
     <value>Multiple Languages...</value>

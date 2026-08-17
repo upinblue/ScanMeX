@@ -282,6 +282,85 @@ public class DocumentPipelineUploadTests : ContextualTests
         await _uploadService.Received(1).UploadAsync(document);
     }
 
+    /// <summary>
+    /// The same correction, but made after the document had already been written. A profile that files
+    /// locally and uploads on the button writes the file as soon as the scan finishes, so by the time the
+    /// operator fixes a misread barcode there is a file on disk carrying the old name.
+    /// </summary>
+    /// <remarks>
+    /// The file used to be reused verbatim whenever one existed, while the SharePoint folder and the SAP
+    /// object key were expanded from the identification at upload time -- so the correction reached the
+    /// archive key and not the name, and the two silently parted company. Nothing afterwards can tell
+    /// that from a correct scan.
+    /// </remarks>
+    [Fact]
+    public async Task ACorrectionAfterTheDocumentWasWrittenReachesTheFileName()
+    {
+        string? uploadedName = null;
+        _uploadService.UploadAsync(Arg.Any<ScannedDocument>()).Returns(call =>
+        {
+            uploadedName = call.Arg<ScannedDocument>().FileName;
+            return true;
+        });
+        var profile = Profile("$(id).pdf");
+        profile.DocumentWorkflow = profile.DocumentWorkflow! with
+        {
+            UploadTrigger = UploadTrigger.Manual,
+            IdMode = DocumentIdMode.ManualInput
+        };
+        profile.DocumentWorkflow = profile.DocumentWorkflow with { RequireIdentifier = false };
+
+        await Run(profile);
+        var document = Assert.Single(_queue.Documents);
+        document.SetIdentifier("1234", DocumentBarcodeSource.Manual);
+        await CreatePipeline().Advance(document);
+        Assert.True(File.Exists(Path.Combine(FolderPath, "1234.pdf")), "the first write should have happened");
+
+        document.SetIdentifier("4711", DocumentBarcodeSource.Manual);
+        await CreatePipeline().Advance(document, triggeredByOperator: true);
+
+        Assert.Equal("4711.pdf", uploadedName);
+        Assert.True(File.Exists(Path.Combine(FolderPath, "4711.pdf")));
+        // The earlier file is the operator's; it is left where it is rather than deleted behind them.
+        Assert.True(File.Exists(Path.Combine(FolderPath, "1234.pdf")));
+    }
+
+    /// <summary>
+    /// The retry case: the upload failed, the operator corrected the barcode, and pressed upload again.
+    /// The staged copy is ours, so it is replaced rather than left lying next to the new one.
+    /// </summary>
+    [Fact]
+    public async Task ACorrectionBeforeARetryRestagesTheDocument()
+    {
+        _uploadService.UploadAsync(Arg.Any<ScannedDocument>()).Returns(false);
+        var profile = Profile("$(id).pdf");
+        profile.DocumentWorkflow = profile.DocumentWorkflow! with
+        {
+            SaveLocally = false,
+            IdMode = DocumentIdMode.ManualInput
+        };
+
+        await Run(profile);
+        var document = Assert.Single(_queue.Documents);
+        document.SetIdentifier("1234", DocumentBarcodeSource.Manual);
+        await CreatePipeline().Advance(document, triggeredByOperator: true);
+        var firstStaged = document.SavedPath;
+        Assert.NotNull(firstStaged);
+        Assert.Equal("1234.pdf", Path.GetFileName(firstStaged));
+
+        string? uploadedName = null;
+        _uploadService.UploadAsync(Arg.Any<ScannedDocument>()).Returns(call =>
+        {
+            uploadedName = call.Arg<ScannedDocument>().FileName;
+            return true;
+        });
+        document.SetIdentifier("4711", DocumentBarcodeSource.Manual);
+        await CreatePipeline().Advance(document, triggeredByOperator: true);
+
+        Assert.Equal("4711.pdf", uploadedName);
+        Assert.False(File.Exists(firstStaged), "the staged copy under the old name should be gone");
+    }
+
     private async Task Run(ScanProfile profile)
     {
         var scanned = CreateScannedImages(ImageResources.dog);

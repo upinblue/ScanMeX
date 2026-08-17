@@ -2,6 +2,7 @@ using System.ComponentModel;
 using Eto.Drawing;
 using Eto.Forms;
 using NAPS2.EtoForms.Layout;
+using NAPS2.EtoForms.Widgets;
 
 namespace NAPS2.EtoForms.Ui;
 
@@ -9,7 +10,7 @@ public class ProgressForm : EtoDialogBase
 {
     private readonly Label _status = new();
     private readonly Label _numeric = new();
-    private readonly ProgressBar _progressBar = new();
+    private readonly FluentProgressBar _progressBar = new();
     private readonly Button _cancel = new() { Text = UiStrings.Cancel };
     private readonly Button _runInBg = new() { Text = UiStrings.RunInBackground };
 

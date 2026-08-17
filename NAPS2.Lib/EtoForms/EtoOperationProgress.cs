@@ -1,6 +1,7 @@
 using Eto.Forms;
 using NAPS2.EtoForms.Notifications;
 using NAPS2.EtoForms.Ui;
+using NAPS2.EtoForms.Widgets;
 
 namespace NAPS2.EtoForms;
 
@@ -19,16 +20,37 @@ public class EtoOperationProgress : OperationProgress
         _config = config;
     }
 
+    /// <remarks>
+    /// Every access to the set takes the same lock. It used to add under <c>lock (this)</c>, read under
+    /// <c>lock (_activeOperations)</c> and remove -- from the operation's Finished event, which is raised
+    /// on whichever background thread the upload or save ran on -- under no lock at all. A batch produces
+    /// one operation per document, so a document finishing while the notification manager was enumerating
+    /// the set is not a rare interleaving; it is what a normal multi-document scan does, and a HashSet
+    /// mutated during enumeration throws.
+    /// </remarks>
     public override void Attach(IOperation op)
     {
-        lock (this)
+        lock (_activeOperations)
         {
-            if (!_activeOperations.Contains(op))
+            if (!_activeOperations.Add(op))
             {
-                _activeOperations.Add(op);
-                op.Finished += (sender, args) => _activeOperations.Remove(op);
-                if (op.IsFinished) _activeOperations.Remove(op);
+                return;
             }
+        }
+        op.Finished += (_, _) => Detach(op);
+        // Checked after subscribing, not before: an operation that finishes in between would otherwise
+        // raise Finished before the handler existed and stay in the set for the life of the app.
+        if (op.IsFinished)
+        {
+            Detach(op);
+        }
+    }
+
+    private void Detach(IOperation op)
+    {
+        lock (_activeOperations)
+        {
+            _activeOperations.Remove(op);
         }
     }
 
@@ -75,21 +97,21 @@ public class EtoOperationProgress : OperationProgress
         }
     }
 
-    public static void RenderStatus(IOperation op, Label textLabel, Label numberLabel, ProgressBar progressBar)
+    public static void RenderStatus(IOperation op, Label textLabel, Label numberLabel,
+        FluentProgressBar progressBar)
     {
         var status = op.Status ?? new OperationStatus();
         textLabel.Text = status.StatusText;
-        progressBar.Indeterminate = status.MaxProgress == 1 || status.IndeterminateProgress;
-        // TODO: Continuous?
-        if (status.MaxProgress == 1 || status.ProgressType == OperationProgressType.None)
+        // An operation that cannot say how much there is to do is indeterminate, whether it says so
+        // outright or by reporting no total at all. ImportOperation sets MaxProgress to 0 for a single
+        // file precisely because it has no page count yet, and that used to draw a determinate bar sitting
+        // at empty for the whole import -- which is the "step that quietly does nothing" this app exists
+        // to make visible, not a report of progress. MaxProgress == 1 is the same case from the other
+        // side: a bar with one step only ever reads as empty or full.
+        progressBar.Indeterminate = status.MaxProgress <= 1 || status.IndeterminateProgress;
+        if (status.MaxProgress <= 1 || status.ProgressType == OperationProgressType.None)
         {
             numberLabel.Text = "";
-        }
-        else if (status.MaxProgress == 0)
-        {
-            numberLabel.Text = "";
-            progressBar.MaxValue = 1;
-            progressBar.Value = 0;
         }
         else if (status.ProgressType == OperationProgressType.BarOnly)
         {
@@ -106,12 +128,9 @@ public class EtoOperationProgress : OperationProgress
             progressBar.MaxValue = status.MaxProgress;
             progressBar.Value = status.CurrentProgress;
         }
-        // Force the progress bar to render immediately
-        if (progressBar.Value < progressBar.MaxValue)
-        {
-            progressBar.Value += 1;
-            progressBar.Value -= 1;
-        }
+        // The nudge that used to be here -- value += 1; value -= 1 -- existed to defeat the native
+        // control's own easing animation, which lagged behind the value it had been given. FluentProgressBar
+        // owns its animation and repaints from the value it was last set to, so there is nothing to force.
     }
 
     public override List<IOperation> ActiveOperations

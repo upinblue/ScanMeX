@@ -105,9 +105,11 @@ public abstract class EtoPlatform
         return control.GetPreferredSize(availableSpace);
     }
 
-    public virtual LayoutElement FormatProgressBar(ProgressBar progressBar)
+    public virtual LayoutElement FormatProgressBar(FluentProgressBar progressBar)
     {
-        return progressBar.Width(420).Padding(top: 10, bottom: 10);
+        // A drawn control has no preferred size of its own, so the height it needs is stated here rather
+        // than left to the layout engine to guess at.
+        return progressBar.Size(420, FluentProgressBar.NATURAL_HEIGHT).Padding(top: 10, bottom: 10);
     }
 
     public virtual void SetFormLocation(Window window, Point location)

@@ -12,7 +12,7 @@ public class ServerTrayIndicator : TrayIndicator
             : EtoPlatform.Current.IsMac
                 ? Icons.scanner_gray_32.ToEtoImage() // Gray to match macOS tray style
                 : Icons.scanner_32.ToEtoImage();
-        Title = string.Format(UiStrings.Naps2TitleFormat, UiStrings.ScannerSharing);
+        Title = AppBranding.WindowTitle(UiStrings.ScannerSharing);
         Menu = new ContextMenu(
             new ButtonMenuItem
             {

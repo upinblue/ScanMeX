@@ -72,8 +72,10 @@ Type: filesandordirs; Name: "{app}\lib"
 ; !clean32
 
 [Icons]
-Name: "{group}\NAPS2"; Filename: "{app}\{#ExeName}"
-Name: "{commondesktop}\NAPS2"; Filename: "{app}\{#ExeName}"; Tasks: desktopicon
+; The shortcuts carry the app's own name -- they were still called NAPS2, so the EXE installer put a
+; "NAPS2" entry in the Start menu group and on the desktop for a product called ScanMe.
+Name: "{group}\{#AppShortName}"; Filename: "{app}\{#ExeName}"
+Name: "{commondesktop}\{#AppShortName}"; Filename: "{app}\{#ExeName}"; Tasks: desktopicon
 
 [Registry]
 Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\WIA_{{1c3a7177-f3a7-439e-be47-e304a185f932}"; Flags: uninsdeletekey

@@ -40,6 +40,7 @@ public class DocumentInspector
 
     private ScannedDocument? _document;
     private bool _suppressEvents;
+    private float _iconScale = 1f;
     // Rebuilt with the barcode rows; the radio group has to be recreated when the set of values changes,
     // because Eto ties radio buttons together through the instance the first one was constructed with.
     private readonly List<RadioButton> _barcodeChoices = [];
@@ -52,6 +53,16 @@ public class DocumentInspector
         _onChanged = onChanged;
         _onUpload = onUpload;
         _onDiscard = onDiscard;
+
+        // Subscribed once, here. This used to be done from Refresh, which runs on every keystroke in the
+        // identifier box and on every queue change, and each call adds another DpiChangedAfterParent
+        // handler that is never removed -- so a few minutes of correcting barcodes left hundreds of
+        // subscriptions on one ImageView, all of them re-tinting the icon on the next DPI change.
+        EtoPlatform.Current.AttachDpiDependency(_statusIcon, scale =>
+        {
+            _iconScale = scale;
+            UpdateStatusIcon();
+        });
 
         _identifier.TextChanged += IdentifierChanged;
         // The list row and the radio buttons are brought up to date once the box is done being typed in;
@@ -144,12 +155,7 @@ public class DocumentInspector
             _status.TextColor = severity == NotificationSeverity.Neutral
                 ? _colorScheme.SecondaryTextColor
                 : _colorScheme.GetSeverityColor(severity);
-            var iconColor = severity == NotificationSeverity.Neutral
-                ? _colorScheme.SecondaryTextColor
-                : _colorScheme.GetSeverityColor(severity);
-            EtoPlatform.Current.AttachDpiDependency(_statusIcon,
-                scale => _statusIcon.Image =
-                    EtoPlatform.Current.IconProvider.GetIcon(IconOf(_document.Status), scale)?.Tint(iconColor));
+            UpdateStatusIcon();
 
             _identifierLabel.Text = _document.Workflow.IdPromptLabel is { Length: > 0 } label
                 ? label
@@ -182,6 +188,23 @@ public class DocumentInspector
         {
             _suppressEvents = false;
         }
+    }
+
+    /// <summary>
+    /// Repaints the status badge from the document's current status, at the scale the screen is at.
+    /// </summary>
+    private void UpdateStatusIcon()
+    {
+        if (_document == null)
+        {
+            return;
+        }
+        var severity = SeverityOf(_document.Status);
+        var iconColor = severity == NotificationSeverity.Neutral
+            ? _colorScheme.SecondaryTextColor
+            : _colorScheme.GetSeverityColor(severity);
+        _statusIcon.Image = EtoPlatform.Current.IconProvider
+            .GetIcon(IconOf(_document.Status), _iconScale)?.Tint(iconColor);
     }
 
     public static NotificationSeverity SeverityOf(DocumentStatus status) => status switch
