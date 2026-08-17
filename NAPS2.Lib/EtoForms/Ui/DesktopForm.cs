@@ -364,7 +364,7 @@ public abstract class DesktopForm : EtoFormBase
             CreateToolbarButton(Commands.Delete);
         if (!hiddenButtons.HasFlag(ToolbarButtons.Clear))
             CreateToolbarButton(Commands.ClearAll);
-        CreateToolbarSeparator();
+        BeginToolbarUtilityGroup();
         if (!hiddenButtons.HasFlag(ToolbarButtons.Console))
             CreateToolbarButton(Commands.Console);
         if (!hiddenButtons.HasFlag(ToolbarButtons.Language))
@@ -432,6 +432,14 @@ public abstract class DesktopForm : EtoFormBase
         throw new InvalidOperationException();
 
     protected virtual void CreateToolbarSeparator() => throw new InvalidOperationException();
+
+    /// <summary>
+    /// Marks where the document commands end and the ones about the app itself begin (console,
+    /// language, settings, about). Fluent's CommandBar puts that second group at the trailing edge,
+    /// which a platform can do by overriding this; the default keeps the separator the group used to
+    /// be introduced by.
+    /// </summary>
+    protected virtual void BeginToolbarUtilityGroup() => CreateToolbarSeparator();
 
     // TODO: Can we generalize this kind of logic?
     protected SubMenuItem CreateSubMenu(Command menuCommand, MenuProvider menuProvider)

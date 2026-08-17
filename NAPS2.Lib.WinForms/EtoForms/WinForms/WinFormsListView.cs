@@ -11,12 +11,11 @@ namespace NAPS2.EtoForms.WinForms;
 
 public class WinFormsListView<T> : IListView<T> where T : notnull
 {
-    private Pen DefaultPen => new(_behavior.ColorScheme.ForegroundColor.ToSD(), 1);
-    private static readonly Pen BasicSelectionPen = new(Color.FromArgb(0x60, 0xa0, 0xe8), 3);
+    private Pen DefaultPen => new(_behavior.ColorScheme.PageBorderColor.ToSD(), 1);
     private const int PageNumberTextPadding = 6;
     private const int PageNumberSelectionPadding = 3;
-    private SolidBrush PageNumberOutlineBrush => new(_behavior.ColorScheme.HighlightBorderColor.ToSD());
-    private SolidBrush PageNumberSelectionBrush => new(_behavior.ColorScheme.HighlightBackgroundColor.ToSD());
+    /// <summary>How far the drop shadow reaches past the page, before DPI scaling.</summary>
+    private const int PageShadowDepth = 3;
     private static readonly StringFormat PageNumberLabelFormat = new()
         { Alignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter };
 
@@ -183,6 +182,46 @@ public class WinFormsListView<T> : IListView<T> where T : notnull
         e.Graphics.SmoothingMode = oldSmoothing;
     }
 
+    /// <summary>
+    /// The accent-tinted backplate behind a selected page. Rounded, because it is a container --
+    /// the page image itself keeps square corners, since paper has square corners and rounding it
+    /// would clip scanned content at the edges.
+    /// </summary>
+    private void DrawSelectionBackplate(Graphics g, Rectangle rect)
+    {
+        var scheme = _behavior.ColorScheme;
+        var oldSmoothing = g.SmoothingMode;
+        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        float radius = FluentShapes.CONTROL_CORNER_RADIUS * _dpiScale;
+        using (var path = FluentShapes.RoundedRect(rect, radius))
+        using (var brush = new SolidBrush(scheme.HighlightBackgroundColor.ToSD()))
+        {
+            g.FillPath(brush, path);
+        }
+        using (var path = FluentShapes.RoundedRect(rect, radius))
+        using (var pen = new Pen(scheme.HighlightBorderColor.ToSD(), Math.Max(1f, _dpiScale)))
+        {
+            g.DrawPath(pen, path);
+        }
+        g.SmoothingMode = oldSmoothing;
+    }
+
+    /// <summary>
+    /// A soft shadow under a page, so it reads as lying on the canvas rather than being cut out of
+    /// it. GDI+ has no blur, so the softness comes from stacking a few outlines that each reach one
+    /// pixel further out at a lower alpha.
+    /// </summary>
+    private void DrawPageShadow(Graphics g, Rectangle page)
+    {
+        var color = _behavior.ColorScheme.PageShadowColor.ToSD();
+        int depth = Math.Max(1, (int) Math.Round(PageShadowDepth * _dpiScale));
+        for (int i = 1; i <= depth; i++)
+        {
+            using var pen = new Pen(Color.FromArgb(Math.Max(1, color.A / i), color));
+            g.DrawRectangle(pen, page.X - i, page.Y - i + 1, page.Width + 2 * i - 1, page.Height + 2 * i - 1);
+        }
+    }
+
     private void CustomRenderItem(object? sender, DrawListViewItemEventArgs e)
     {
         var image = ImageList.Get(e.Item);
@@ -222,19 +261,21 @@ public class WinFormsListView<T> : IListView<T> where T : notnull
 
                 var selectionRect = new Rectangle(selectionX, y, selectionWidth, selectionHeight);
                 selectionRect.Inflate(sp, sp);
-
-                var outlineRect = selectionRect;
-                outlineRect.Inflate(1, 1);
-                e.Graphics.FillRectangle(PageNumberOutlineBrush, outlineRect);
-
-                e.Graphics.FillRectangle(PageNumberSelectionBrush, selectionRect);
+                DrawSelectionBackplate(e.Graphics, selectionRect);
             }
 
-            // Draw image
-            e.Graphics.DrawImage(image, new Rectangle(x, y, width, height));
+            var pageRect = new Rectangle(x, y, width, height);
+            DrawPageShadow(e.Graphics, pageRect);
+            e.Graphics.DrawImage(image, pageRect);
+            // The page keeps its hairline whether or not it is selected: it is the edge of the sheet,
+            // not a selection cue.
+            using (var borderPen = DefaultPen)
+            {
+                e.Graphics.DrawRectangle(borderPen, x, y, width - 1, height - 1);
+            }
 
             // Draw the text below the image
-            var drawBrush = new SolidBrush(_behavior.ColorScheme.ForegroundColor.ToSD());
+            using var drawBrush = new SolidBrush(_behavior.ColorScheme.ForegroundColor.ToSD());
             float x1 = x + width / 2f;
             float y1 = y + height + tp;
             RectangleF labelRect = new(x1, y1, 0, textSize.Height);
@@ -242,12 +283,6 @@ public class WinFormsListView<T> : IListView<T> where T : notnull
             labelRect.Inflate(maxLabelWidth / 2, 0);
             labelRect.Width += 2;
             e.Graphics.DrawString(label, _view.Font, drawBrush, labelRect, PageNumberLabelFormat);
-
-            // Draw unselected border
-            if (!e.Item.Selected)
-            {
-                e.Graphics.DrawRectangle(DefaultPen, x - 1, y - 1, width + 1, height + 1);
-            }
         }
         else
         {
@@ -266,18 +301,18 @@ public class WinFormsListView<T> : IListView<T> where T : notnull
             var x = e.Bounds.Left + (e.Bounds.Width - width) / 2;
             var y = e.Bounds.Top + (e.Bounds.Height - height) / 2;
 
-            // Draw image
-            e.Graphics.DrawImage(image, new Rectangle(x, y, width, height));
-
-            // Draw border
+            var pageRect = new Rectangle(x, y, width, height);
             if (e.Item.Selected)
             {
-                e.Graphics.DrawRectangle(BasicSelectionPen, x - 2, y - 2, width + 3, height + 3);
+                var backplate = pageRect;
+                backplate.Inflate((int) Math.Round(PageNumberSelectionPadding * _dpiScale),
+                    (int) Math.Round(PageNumberSelectionPadding * _dpiScale));
+                DrawSelectionBackplate(e.Graphics, backplate);
             }
-            else
-            {
-                e.Graphics.DrawRectangle(DefaultPen, x, y, width, height);
-            }
+            DrawPageShadow(e.Graphics, pageRect);
+            e.Graphics.DrawImage(image, pageRect);
+            using var borderPen = DefaultPen;
+            e.Graphics.DrawRectangle(borderPen, x, y, width - 1, height - 1);
         }
     }
 

@@ -102,6 +102,19 @@ public class ColorScheme
     /// </summary>
     public Color CanvasColor => DarkMode ? CanvasDark : CanvasLight;
 
+    /// <summary>
+    /// The hairline around a page thumbnail. Not <see cref="ForegroundColor"/>, which the thumbnails
+    /// used to use and which draws a white outline around every page in dark mode.
+    /// </summary>
+    public Color PageBorderColor => DarkMode ? Color.FromRgb(0x4a4a4a) : Color.FromRgb(0xcfcfcf);
+
+    /// <summary>
+    /// The drop shadow under a page thumbnail, layered a few times to fake a blur. Weaker in dark
+    /// mode, where a black shadow on a near-black canvas does nothing and the border carries the
+    /// separation instead.
+    /// </summary>
+    public Color PageShadowColor => Color.FromArgb(0, 0, 0, DarkMode ? 40 : 26);
+
     public Color SeparatorColor => DarkMode ? DividerDark : DividerLight;
 
     public Color BorderColor => DarkMode ? DividerDark : DividerLight;

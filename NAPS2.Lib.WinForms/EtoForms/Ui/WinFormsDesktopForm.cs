@@ -19,6 +19,13 @@ namespace NAPS2.EtoForms.Ui;
 public class WinFormsDesktopForm : DesktopForm
 {
     private readonly Dictionary<DesktopToolbarMenuType, WF.ToolStripSplitButton> _menuButtons = new();
+
+    /// <summary>
+    /// Where the trailing-aligned utility group starts in the item list, or -1 while the leading
+    /// group is still being built. See <see cref="AddToolbarItem"/>.
+    /// </summary>
+    private int _utilityGroupIndex = -1;
+
     private readonly ToolbarFormatter _toolbarFormatter = new(new StringWrapper());
     private readonly WF.Form _form;
     private WF.ToolStrip _mainToolStrip = null!;
@@ -142,6 +149,37 @@ public class WinFormsDesktopForm : DesktopForm
     {
         SaveToolStripLocation();
         base.SetCulture(cultureId);
+    }
+
+    protected override void CreateToolbarsAndMenus()
+    {
+        // The item list is rebuilt from scratch here, so the marker from the last pass is stale.
+        _utilityGroupIndex = -1;
+        base.CreateToolbarsAndMenus();
+    }
+
+    /// <summary>
+    /// Fluent's CommandBar puts the commands about the app itself at the trailing edge, away from
+    /// the ones that act on the document. No separator is created: the alignment is the separation,
+    /// and a separator would be left floating after the last document button.
+    /// </summary>
+    protected override void BeginToolbarUtilityGroup()
+    {
+        _utilityGroupIndex = _mainToolStrip.Items.Count;
+    }
+
+    private void AddToolbarItem(WF.ToolStripItem item)
+    {
+        if (_utilityGroupIndex < 0)
+        {
+            _mainToolStrip.Items.Add(item);
+            return;
+        }
+        item.Alignment = WF.ToolStripItemAlignment.Right;
+        // Trailing-aligned items are laid out from the right in list order, so the first one added
+        // ends up furthest right. Inserting each at the group's start flips them back into the order
+        // they were created in.
+        _mainToolStrip.Items.Insert(_utilityGroupIndex, item);
     }
 
     protected override void RecreateToolbarsAndMenus()
@@ -298,7 +336,7 @@ public class WinFormsDesktopForm : DesktopForm
             TextImageRelation = WF.TextImageRelation.ImageAboveText
         };
         ApplyCommand(item, command);
-        _mainToolStrip.Items.Add(item);
+        AddToolbarItem(item);
     }
 
     protected override void CreateToolbarButtonWithMenu(Command command, DesktopToolbarMenuType menuType,
@@ -310,7 +348,7 @@ public class WinFormsDesktopForm : DesktopForm
         };
         EtoPlatform.Current.AttachDpiDependency(this, scale => item.DropDownButtonWidth = (int) (scale * 15));
         ApplyCommand(item, command);
-        _mainToolStrip.Items.Add(item);
+        AddToolbarItem(item);
         menu.Handle(subItems => SetUpMenu(item, subItems));
         _menuButtons[menuType] = item;
     }
@@ -364,7 +402,7 @@ public class WinFormsDesktopForm : DesktopForm
             ShowDropDownArrow = false
         };
         ApplyCommand(item, command);
-        _mainToolStrip.Items.Add(item);
+        AddToolbarItem(item);
         menu.Handle(subItems => SetUpMenu(item, subItems));
     }
 
@@ -384,7 +422,7 @@ public class WinFormsDesktopForm : DesktopForm
         command1.EnabledChanged += (_, _) => item.Enabled = command1.Enabled;
         item.FirstClick += (_, _) => command1.Execute();
         item.SecondClick += (_, _) => command2.Execute();
-        _mainToolStrip.Items.Add(item);
+        AddToolbarItem(item);
     }
 
     private WF.ToolStripItem ApplyCommand(WF.ToolStripItem item, Command command)
@@ -421,7 +459,7 @@ public class WinFormsDesktopForm : DesktopForm
 
     protected override void CreateToolbarSeparator()
     {
-        _mainToolStrip.Items.Add(new WF.ToolStripSeparator());
+        AddToolbarItem(new WF.ToolStripSeparator());
     }
 
     public override void ShowToolbarMenu(DesktopToolbarMenuType menuType)
