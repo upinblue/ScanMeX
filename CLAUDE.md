@@ -416,9 +416,12 @@ it again.
   *across products*: on a machine that had NAPS2 installed, the shortcut component was already registered
   against NAPS2's Start menu folder, so installing ScanMe found it present and created no Start menu
   entry at all. Never copy a GUID from upstream when adding a component — generate one.
-- **A perMachine install needs an HKLM key path.** The shortcut component's key path was
-  `HKCU\Software\Microsoft\NAPS2`, and the deferred phase of a per-machine install runs as SYSTEM, so the
-  value landed in the service account's hive.
+- **The shortcut component's key path has to stay under HKCU, and its key has to be ScanMe's own.** ICE38
+  and ICE43 treat `ProgramMenuFolder` as user-profile data and fail the build outright for a component
+  that keeps a non-advertised shortcut there with a per-machine key path — so HKLM is not an option, even
+  though this is a perMachine install. The key was `HKCU\Software\Microsoft\NAPS2`; it is
+  `HKCU\Software\ScanMe` now, because sharing that with NAPS2 as well is part of what made the component
+  indistinguishable from NAPS2's.
 - The MSI's registry component and the Inno script must agree on the ProgID. Both register `ScanMe` in the
   `OpenWithProgids` lists, so `HKCR\ScanMe\shell\open\command` is where the open command belongs — it sat
   under `HKCR\NAPS2`, which put ScanMe in Explorer's "Open with" list with nothing behind it.
