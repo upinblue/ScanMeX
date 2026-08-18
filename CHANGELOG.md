@@ -1,35 +1,16 @@
-# ScanMe — Änderungsverlauf / Changelog
+# ScanMe changelog
 
-Die vollständigen Release Notes einer Version, in einer Fassung, die sich an Kunden weitergeben lässt,
-liegen unter [`docs/releases/`](docs/releases/). Diese Datei fasst sie zusammen.
+The full release notes for a version, in a form that can be handed to a customer, live under
+[`docs/releases/`](docs/releases/). This file summarises them.
 
-Vor dieser Datei stand hier der Änderungsverlauf von NAPS2, dem Projekt, auf dem ScanMe aufbaut. Er ist
-unter https://github.com/cyanfish/naps2/blob/master/CHANGELOG.md weiterhin einsehbar.
+Before this file, the changelog of NAPS2 — the project ScanMe builds on — stood here. It remains
+available at https://github.com/cyanfish/naps2/blob/master/CHANGELOG.md
 
 ---
 
-## 1.0.16.0 — 18. August 2026
+## 1.0.16.0 — 18 August 2026
 
-Erste veröffentlichte Version. Vollständige Release Notes: [`docs/releases/1.0.16.0.md`](docs/releases/1.0.16.0.md)
-
-**Deutsch**
-
-- Scannen von WIA-, TWAIN- und ESCL-Geräten nach PDF, TIFF, JPEG oder PNG, wahlweise mit Texterkennung.
-- Automatische Dokumententrennung an Code 39, Code 128, EAN/UPC und Patch-T-Trennblättern. Ein
-  wiederholter Barcode setzt das Dokument fort, statt eine Kopie davon zu beginnen.
-- Der trennende Barcode ist der Wert, unter dem abgelegt wird: er benennt die Datei, bestimmt den
-  SharePoint-Ordner und liefert den SAP-Objektschlüssel.
-- Upload nach SharePoint über Microsoft Graph und in das SAP-Archiv über ArchiveLink. Fällt ein Ziel
-  aus, wird das andere trotzdem bedient.
-- Dokumentenliste mit Inspektor: Kennzeichnung prüfen und korrigieren, bevor archiviert wird. Ein
-  fehlgeschlagener Upload bleibt in der Liste und lässt sich wiederholen.
-- Diagnose-Konsole, die jeden Schritt protokolliert — auch dann, wenn ein Schritt bewusst nichts tut.
-- Deutschsprachige Oberfläche im Fluent-Stil von Windows 11, hell und dunkel.
-- Der Installer legt wieder einen Startmenü-Eintrag an, nennt „up in blue GmbH" als Herausgeber und
-  zeigt die Lizenz von ScanMe.
-- Der Info-Dialog wurde neu gestaltet.
-
-**English**
+First public release. Full notes: [`docs/releases/1.0.16.0.md`](docs/releases/1.0.16.0.md)
 
 - Scanning from WIA, TWAIN and ESCL devices to PDF, TIFF, JPEG or PNG, optionally with OCR.
 - Automatic document separation at Code 39, Code 128, EAN/UPC and patch-T separator sheets. A repeated

@@ -89,14 +89,12 @@ Two files, same content:
   product and version, so it still makes sense as an email attachment with no surrounding page.
 - **`CHANGELOG.md`** — the same entry, prepended above the previous ones.
 
-Write the entry **in German first, then English**, under `## Deutsch` / `## English` headings. The
-customers are German; the GitHub release page is read in English. One file with both beats two files
-that drift.
+**Write the changelog in English.** Not bilingual, not German — English, even though the interface the
+release describes is German and the customers are. This is settled; do not offer to translate it.
 
 Turn the commits into what changed *for the operator*, not what changed in the code:
 
-- Group under `### Neu` / `### Verbessert` / `### Behoben` (`### New` / `### Improved` / `### Fixed`).
-  Drop empty groups.
+- Group under `### New` / `### Improved` / `### Fixed`. Drop empty groups.
 - One bullet per user-visible change. Several commits that together produced one change are one bullet.
 - Name the thing the operator sees — the button, the dialog, the setting, the file — not the class.
 - **Leave out anything invisible from outside**: refactors, test-only changes, comment and
