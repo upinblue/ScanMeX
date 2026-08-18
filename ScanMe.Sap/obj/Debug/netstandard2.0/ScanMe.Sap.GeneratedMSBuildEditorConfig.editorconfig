@@ -1,8 +1,0 @@
-is_global = true
-build_property.RootNamespace = NAPS2
-build_property.ProjectDir = C:\Users\BastianWirth\source\repos\ScanMeX\ScanMe.Sap\
-build_property.EnableComHosting = 
-build_property.EnableGeneratedComInterfaceComImportInterop = 
-build_property.CsWinRTUseWindowsUIXamlProjections = false
-build_property.EffectiveAnalysisLevelStyle = 
-build_property.EnableCodeStyleSeverity = 
