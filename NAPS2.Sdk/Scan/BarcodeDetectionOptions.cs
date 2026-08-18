@@ -21,5 +21,12 @@ public class BarcodeDetectionOptions
     /// </summary>
     public List<BarcodeSymbology> Symbologies { get; set; } = [];
 
+    /// <summary>
+    /// How much damage a printed barcode may carry and still be accepted. Anything but
+    /// <see cref="BarcodeStrictness.Strict"/> adds a second Code 39 pass that recovers symbols ZXing
+    /// discards -- see <see cref="DamagedCode39Reader"/> for what it does and does not allow.
+    /// </summary>
+    public BarcodeStrictness Strictness { get; set; } = BarcodeStrictness.Strict;
+
     public DecodingOptions? ZXingOptions { get; set; }
 }

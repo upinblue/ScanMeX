@@ -225,6 +225,42 @@ up in the same console.
   readily reads out of noise. It stays selectable — some paperwork really carries an article code — but
   the profile dialog and the console both warn when it is on.
 
+## Barcode strictness, and the damaged stop guard
+
+`DocumentWorkflowSettings.BarcodeStrictness` (a slider under the profile's barcode types) decides how
+damaged a printed barcode may be and still be accepted. `Strict` is the default, is what the enum's zero
+value gives every profile written before the setting existed, and is exactly the old behaviour — so
+nothing starts accepting damaged barcodes because of an update.
+
+The two lowered levels add `DamagedCode39Reader`, a second pass that recovers Code 39 symbols ZXing
+throws away. It exists for a measured defect: on a customer's process-order cover sheets the data
+characters and the start guard decode perfectly, but in the stop guard the edge between the fourth and
+fifth element sits ~1.5 modules too far right (the space 2.5 modules instead of 1, the bar 1.5 instead of
+3, total width unchanged), so the character matches no Code 39 pattern and ZXing discards the whole
+symbol. The same defect is on every sheet from that source, at the same *character* rather than at a
+fixed place on the page, so it comes from whatever prints them — ZXing.Net, zxing-cpp and ZBar all refuse
+those sheets.
+
+- **Code 39 only, and never patch-T.** Code 128, EAN and UPC carry a check character, so tolerating one
+  means overruling the code's own statement that it was misread. A patch-T sheet is a reusable blank card
+  carrying a fixed word: a damaged one gets replaced, and accepting one would separate in the wrong place.
+- **The guards are the whole design, and they are calibrated, not guessed.** An intact `*` start guard to
+  anchor on, every data character decoding cleanly, a terminating group that is character-shaped and
+  followed by a quiet zone, a minimum length, and confirmation across scan lines. Measured with only the
+  geometry guards active, over the customer's eight pages and a form-shaped noisy page under four noise
+  seeds: a real barcode is 14 characters agreed on by 35 scan lines, while the longest thing print noise
+  produces is 3 characters on at most 5 lines. **Length is the guard that does the work** — the scan-line
+  count narrows the gap but decides nothing on its own. A tolerant reader without the geometry guards
+  reads five phantoms (`ZZ`, `$`, `Z`, `M`, `%/%$/`) out of the customer's own document.
+- **Recovered values are merged, not used as a fallback.** A page can carry a readable Code 128 next to a
+  damaged Code 39, and a pass that only ran when the page yielded nothing would drop the second one
+  silently. They join the page's list in reading order and de-duplicate against the strict results;
+  `BarcodeValue.IsRecovered` is only true when no pass read the symbol properly.
+- **A recovered value is named in the console, one line per value**, because it names files and archive
+  keys like any other and nothing on the finished document says a lowered setting let it through.
+  `DamagedCode39Tests` and `PhantomBarcodeTests.LoweringTheStrictnessDoesNotInventBarcodesOnANoisyForm`
+  pin both directions; the second one is the one that matters.
+
 ## SharePoint upload
 
 Graph addresses a drive item by path as `root:/{folder}/{name}:/content` — **one** colon opens the path

@@ -70,6 +70,43 @@ public class PhantomBarcodeTests : ContextualTests
     }
 
     /// <summary>
+    /// Lowering the barcode strictness buys a damaged Code 39 back; it must not buy the ruled tables and
+    /// dense print of a form back with it. This is the same page and the same seeds as above, read at
+    /// every strictness level: the answer has to stay the two codes that were printed on it.
+    /// </summary>
+    /// <remarks>
+    /// This is the guard that actually earns its keep. A tolerant reader that only required a start guard
+    /// and a run of decodable characters reads five phantom values out of the customer's own eight-page
+    /// document -- "ZZ", "$", "Z", "M" and "%/%$/" -- on pages that carry no barcode at all. Requiring the
+    /// terminating group to be character-shaped and followed by a quiet zone, plus a minimum length and
+    /// confirmation across scan lines, takes all five out while still recovering the two real values.
+    /// </remarks>
+    [Theory]
+    [InlineData(1, BarcodeStrictness.Tolerant)]
+    [InlineData(7, BarcodeStrictness.Tolerant)]
+    [InlineData(23, BarcodeStrictness.Tolerant)]
+    [InlineData(1337, BarcodeStrictness.Tolerant)]
+    [InlineData(1, BarcodeStrictness.VeryTolerant)]
+    [InlineData(7, BarcodeStrictness.VeryTolerant)]
+    [InlineData(23, BarcodeStrictness.VeryTolerant)]
+    [InlineData(1337, BarcodeStrictness.VeryTolerant)]
+    public void LoweringTheStrictnessDoesNotInventBarcodesOnANoisyForm(
+        int noiseSeed, BarcodeStrictness strictness)
+    {
+        using var image = CreateNoisyForm(noiseSeed);
+
+        var values = BarcodeDetector.Detect(image, new BarcodeDetectionOptions
+        {
+            DetectBarcodes = true,
+            Symbologies = [BarcodeSymbology.Code39, BarcodeSymbology.Code128],
+            Strictness = strictness
+        }).GetAllValues();
+
+        Assert.Equal([LotCode, SampleCode], values.Select(x => x.Text));
+        Assert.All(values, x => Assert.False(x.IsRecovered));
+    }
+
+    /// <summary>
     /// A form-shaped page: the two real barcodes low on the sheet, a block of ruled table lines and rows
     /// of small dark marks standing in for dense print, plus per-pixel noise.
     /// </summary>

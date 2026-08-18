@@ -2933,6 +2933,69 @@ namespace NAPS2.Lang.Resources {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Barcode check.
+        /// </summary>
+        internal static string BarcodeStrictnessLabel {
+            get {
+                return ResourceManager.GetString("BarcodeStrictnessLabel", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Strict.
+        /// </summary>
+        internal static string BarcodeStrictnessStrict {
+            get {
+                return ResourceManager.GetString("BarcodeStrictnessStrict", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Tolerant.
+        /// </summary>
+        internal static string BarcodeStrictnessTolerant {
+            get {
+                return ResourceManager.GetString("BarcodeStrictnessTolerant", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Very tolerant.
+        /// </summary>
+        internal static string BarcodeStrictnessVeryTolerant {
+            get {
+                return ResourceManager.GetString("BarcodeStrictnessVeryTolerant", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Only barcodes that decode completely, guard characters included. [rest of string was truncated].
+        /// </summary>
+        internal static string BarcodeStrictnessStrictHint {
+            get {
+                return ResourceManager.GetString("BarcodeStrictnessStrictHint", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Also accepts a Code 39 barcode whose stop character is printed wrong [rest of string was truncated].
+        /// </summary>
+        internal static string BarcodeStrictnessTolerantHint {
+            get {
+                return ResourceManager.GetString("BarcodeStrictnessTolerantHint", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to As above, but from 3 characters read on 2 scan lines. [rest of string was truncated].
+        /// </summary>
+        internal static string BarcodeStrictnessVeryTolerantHint {
+            get {
+                return ResourceManager.GetString("BarcodeStrictnessVeryTolerantHint", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Barcode types.
         /// </summary>
         internal static string BarcodeTypesLabel {

@@ -100,6 +100,14 @@ public record DocumentWorkflowSettings
     public List<BarcodeSymbology> BarcodeSymbologies { get; init; } = [];
 
     /// <summary>
+    /// How much damage a printed barcode may carry and still be accepted. Strict is both the default for
+    /// a new profile and what a profile saved before this setting existed reads as, because the element
+    /// is simply absent from those files and the enum's zero value is Strict -- so lowering it is always
+    /// something an operator did on purpose, and nothing starts accepting damaged barcodes on its own.
+    /// </summary>
+    public BarcodeStrictness BarcodeStrictness { get; init; } = BarcodeStrictness.Strict;
+
+    /// <summary>
     /// The profile's one barcode regex. A page's barcode only starts a new document if it matches, and
     /// the same pattern decides which of a page's barcodes is the one the operator means. If the pattern
     /// has a capturing group, group 1 becomes the value, otherwise the whole match does -- so one barcode

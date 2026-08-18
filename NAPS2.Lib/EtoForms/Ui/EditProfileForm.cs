@@ -47,6 +47,19 @@ public class EditProfileForm : EtoDialogBase
     // A label that starts empty has no height, and setting its text later doesn't give it any until the
     // layout is redone. Both warnings therefore carry their text from the start and are shown or hidden.
     private readonly LayoutVisibility _eanUpcWarningVis = new(false);
+    // Three stops rather than a continuous scale: each one is a different rule about what may be
+    // accepted, not more or less of the same thing, and a slider that reads "37% strict" would be
+    // claiming a precision the checks behind it don't have.
+    private readonly Slider _barcodeStrictness = new()
+    {
+        MinValue = 0,
+        MaxValue = 2,
+        TickFrequency = 1,
+        SnapToTick = true,
+        Value = (int) BarcodeStrictness.Strict
+    };
+    private readonly Label _barcodeStrictnessValue = C.Label(UiStrings.BarcodeStrictnessStrict);
+    private readonly Label _barcodeStrictnessHint = C.Label(UiStrings.BarcodeStrictnessStrictHint);
     private readonly TextBox _separationPattern = new();
     private readonly CheckBox _keepSeparatorPage = new() { Text = UiStrings.KeepSeparatorPage };
     private readonly CheckBox _newDocumentOnlyOnValueChange =
@@ -149,6 +162,7 @@ public class EditProfileForm : EtoDialogBase
         {
             box.CheckedChanged += (_, _) => UpdateDocumentControls();
         }
+        _barcodeStrictness.ValueChanged += (_, _) => UpdateDocumentControls();
         _idMode.Format = x => x switch
         {
             DocumentIdMode.Barcode => UiStrings.DocumentIdModeBarcode,
@@ -294,6 +308,14 @@ public class EditProfileForm : EtoDialogBase
             C.Label(UiStrings.BarcodeTypesLabel),
             L.Row(_symbologyCode39, _symbologyCode128, _symbologyEanUpc),
             L.Column(_eanUpcWarning.DynamicWrap(HINT_WRAP_WIDTH)).Visible(_eanUpcWarningVis),
+            C.Spacer(),
+            C.Label(UiStrings.BarcodeStrictnessLabel),
+            L.Row(
+                _barcodeStrictness.Width(200).Align(LayoutAlignment.Center),
+                _barcodeStrictnessValue.Align(LayoutAlignment.Center)
+            ),
+            _barcodeStrictnessHint.DynamicWrap(HINT_WRAP_WIDTH).MaxWidth(HINT_WRAP_WIDTH),
+            C.Spacer(),
             C.Label(UiStrings.SeparationPatternLabel),
             _separationPattern.MaxWidth(FIELD_WIDTH),
             C.Label(UiStrings.SeparationPatternHint).DynamicWrap(HINT_WRAP_WIDTH),
@@ -630,6 +652,7 @@ public class EditProfileForm : EtoDialogBase
         _symbologyCode39.Checked = workflow.BarcodeSymbologies.Contains(BarcodeSymbology.Code39);
         _symbologyCode128.Checked = workflow.BarcodeSymbologies.Contains(BarcodeSymbology.Code128);
         _symbologyEanUpc.Checked = workflow.BarcodeSymbologies.Contains(BarcodeSymbology.EanUpc);
+        _barcodeStrictness.Value = (int) workflow.BarcodeStrictness;
         _separationPattern.Text = workflow.SeparationPattern ?? "";
         _keepSeparatorPage.Checked = workflow.KeepSeparatorPage;
         _newDocumentOnlyOnValueChange.Checked = workflow.NewDocumentOnlyOnValueChange;
@@ -661,6 +684,7 @@ public class EditProfileForm : EtoDialogBase
                 : _sepOnePerPage.Checked ? DocumentSeparationMode.OnePerPage
                 : DocumentSeparationMode.None,
             BarcodeSymbologies = symbologies,
+            BarcodeStrictness = SelectedBarcodeStrictness,
             SeparationPattern = separationPattern,
             KeepSeparatorPage = _keepSeparatorPage.IsChecked(),
             NewDocumentOnlyOnValueChange = _newDocumentOnlyOnValueChange.IsChecked(),
@@ -698,11 +722,46 @@ public class EditProfileForm : EtoDialogBase
         _eanUpcWarningVis.IsVisible = _symbologyEanUpc.IsChecked();
         _eanUpcWarning.TextColor = EtoPlatform.Current.ColorScheme.CautionColor;
 
+        UpdateBarcodeStrictnessText();
+
         _idPromptLabelVis.IsVisible = _idMode.SelectedItem == DocumentIdMode.ManualInput;
         _localFolderVis.IsVisible = _saveLocally.IsChecked();
 
         UpdateNoDestinationWarning();
         LayoutController.Invalidate();
+    }
+
+    private BarcodeStrictness SelectedBarcodeStrictness => _barcodeStrictness.Value switch
+    {
+        (int) BarcodeStrictness.VeryTolerant => BarcodeStrictness.VeryTolerant,
+        (int) BarcodeStrictness.Tolerant => BarcodeStrictness.Tolerant,
+        _ => BarcodeStrictness.Strict
+    };
+
+    /// <summary>
+    /// Says in words what the slider position accepts. A strictness expressed only as a handle position
+    /// would leave the operator guessing what they had just allowed, and this is a setting whose effect
+    /// only shows up much later, on a document that is already in the archive under a wrong name.
+    /// </summary>
+    private void UpdateBarcodeStrictnessText()
+    {
+        var strictness = SelectedBarcodeStrictness;
+        _barcodeStrictnessValue.Text = strictness switch
+        {
+            BarcodeStrictness.Tolerant => UiStrings.BarcodeStrictnessTolerant,
+            BarcodeStrictness.VeryTolerant => UiStrings.BarcodeStrictnessVeryTolerant,
+            _ => UiStrings.BarcodeStrictnessStrict
+        };
+        _barcodeStrictnessHint.Text = strictness switch
+        {
+            BarcodeStrictness.Tolerant => UiStrings.BarcodeStrictnessTolerantHint,
+            BarcodeStrictness.VeryTolerant => UiStrings.BarcodeStrictnessVeryTolerantHint,
+            _ => UiStrings.BarcodeStrictnessStrictHint
+        };
+        // Only the lowered levels are a warning; the default is simply how it works.
+        _barcodeStrictnessHint.TextColor = strictness == BarcodeStrictness.Strict
+            ? EtoPlatform.Current.ColorScheme.SecondaryTextColor
+            : EtoPlatform.Current.ColorScheme.CautionColor;
     }
 
     private void UpdateNoDestinationWarning()

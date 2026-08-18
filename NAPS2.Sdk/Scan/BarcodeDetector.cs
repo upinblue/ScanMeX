@@ -54,12 +54,17 @@ internal static class BarcodeDetector
         // the primary is whatever comes first in it, so a wrong order picks a wrong barcode.
         var found = DecodeAll(reader, image, 1);
         found.AddRange(DecodeDownscaled(reader, image));
+        found.AddRange(DecodeDamagedCode39(image, options));
 
+        // Two passes over the same page report the same barcode twice, and the tolerant pass reports one
+        // ZXing already read. Collapse by value, keeping the topmost-leftmost position so the merged list
+        // is still in page reading order, and preferring the copy that decoded in full -- a value only
+        // counts as recovered when nothing managed to read it properly.
         var all = found
             .OrderBy(x => x.Y)
             .ThenBy(x => x.X)
-            .Select(x => new BarcodeValue(x.Text, x.Format))
-            .Distinct()
+            .GroupBy(x => (x.Text, x.Format))
+            .Select(g => new BarcodeValue(g.Key.Text, g.Key.Format, g.All(x => x.IsRecovered)))
             .ToList();
 
         var primary = PickPrimary(all, options);
@@ -69,7 +74,38 @@ internal static class BarcodeDetector
         };
     }
 
-    private record Detection(string? Text, string? Format, float Y, float X);
+    private record Detection(string? Text, string? Format, float Y, float X, bool IsRecovered = false);
+
+    /// <summary>
+    /// The tolerant Code 39 pass, which only runs when the profile lowered its strictness and asked for
+    /// Code 39. Its results are merged into the page's list rather than used as a fallback: a page can
+    /// carry a readable Code 128 next to a Code 39 whose stop guard is damaged, and a fallback that only
+    /// ran when the page yielded nothing would drop the second one without saying so.
+    /// </summary>
+    private static List<Detection> DecodeDamagedCode39(IMemoryImage image, BarcodeDetectionOptions options)
+    {
+        var tolerance = Code39Tolerance.For(options.Strictness);
+        // Patch-T is deliberately excluded even though it rides on Code 39. A patch-T sheet is a reusable
+        // blank card carrying a fixed word, so a damaged one is replaced, not decoded harder -- and
+        // accepting a damaged one would separate documents in the wrong place.
+        if (tolerance == null || !options.Symbologies.Contains(BarcodeSymbology.Code39))
+        {
+            return [];
+        }
+        try
+        {
+            return DamagedCode39Reader
+                .Read(new MemoryImageLuminanceSource(image), tolerance)
+                .Select(x => new Detection(x.Text, BarcodeFormat.CODE_39.ToString(), x.Y, x.X, true))
+                .ToList();
+        }
+        catch (Exception)
+        {
+            // Recovering a damaged barcode is a bonus on top of what the strict passes found; it must
+            // never be the reason a page reports nothing at all.
+            return [];
+        }
+    }
 
     private static List<Detection> DecodeAll(
         BarcodeReader<IMemoryImage> reader, IMemoryImage image, double positionScale)

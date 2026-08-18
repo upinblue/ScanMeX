@@ -32,6 +32,12 @@ public sealed record BarcodeDetectionPlan
     public bool PatchTOnly { get; private init; }
 
     /// <summary>
+    /// How much damage a barcode may carry and still be accepted. Only meaningful when
+    /// <see cref="Detect"/> is true; a plan that decodes nothing has nothing to be lenient about.
+    /// </summary>
+    public BarcodeStrictness Strictness { get; private init; } = BarcodeStrictness.Strict;
+
+    /// <summary>
     /// Set when the profile wants barcodes but no symbology restricts the search, in which case nothing
     /// is decoded. Null whenever detection runs, and null when the profile never wanted barcodes -- that
     /// is the normal case and not worth a warning.
@@ -71,10 +77,17 @@ public sealed record BarcodeDetectionPlan
         }
         if (symbologies.Count > 0)
         {
-            return new BarcodeDetectionPlan { Detect = true, Symbologies = symbologies };
+            return new BarcodeDetectionPlan
+            {
+                Detect = true,
+                Symbologies = symbologies,
+                Strictness = workflow.BarcodeStrictness
+            };
         }
         if (legacyPatchT)
         {
+            // The legacy path predates the setting and separates on patch-T sheets, which the tolerant
+            // pass deliberately doesn't touch, so there is nothing for a lower strictness to do here.
             return new BarcodeDetectionPlan { Detect = true, PatchTOnly = true };
         }
         return new BarcodeDetectionPlan

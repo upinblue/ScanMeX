@@ -17,6 +17,65 @@ public class DocumentWorkflowMigrationTests
     /// The one that matters most. SaveLocally is not in an old profile's file, so taking the deserialized
     /// value at face value would read as "don't save" for a profile that had been saving all along.
     /// </summary>
+    /// <summary>
+    /// Barcode strictness is absent from every profile written before it existed, and the safe reading of
+    /// an absent value is the strict one. Getting this backwards would silently start accepting damaged
+    /// barcodes on every installation after an update -- a change nobody asked for, visible only as a
+    /// document filed under a value that was never printed on it.
+    /// </summary>
+    [Fact]
+    public void AProfileSavedBeforeStrictnessExistedIsStrict()
+    {
+        var old = new ScanProfile
+        {
+            EnableAutoSave = true,
+            AutoSaveSettings = new AutoSaveSettings { FilePath = @"C:\Scans\$(barcode).pdf" },
+            DocumentWorkflow = new DocumentWorkflowSettings
+            {
+                SeparationMode = DocumentSeparationMode.Barcode,
+                BarcodeSymbologies = [BarcodeSymbology.Code39]
+            }
+        };
+
+        Assert.Equal(BarcodeStrictness.Strict, DocumentWorkflowSettings.ForProfile(old).BarcodeStrictness);
+
+        // Also for a profile with no workflow block at all, which is where the legacy auto save settings
+        // are read instead.
+        var legacy = new ScanProfile
+        {
+            EnableAutoSave = true,
+            AutoSaveSettings = new AutoSaveSettings
+            {
+                FilePath = @"C:\Scans\$(barcode).pdf",
+                Separator = SaveSeparator.Code39Barcode
+            }
+        };
+
+        Assert.Equal(BarcodeStrictness.Strict, DocumentWorkflowSettings.ForProfile(legacy).BarcodeStrictness);
+    }
+
+    /// <summary>
+    /// A lowered strictness has to survive being read back, or the operator sets it, scans, and gets the
+    /// old behaviour with nothing to say why.
+    /// </summary>
+    [Fact]
+    public void ALoweredStrictnessSurvivesReloading()
+    {
+        var profile = new ScanProfile
+        {
+            DocumentWorkflow = new DocumentWorkflowSettings
+            {
+                Version = DocumentWorkflowSettings.CURRENT_VERSION,
+                SeparationMode = DocumentSeparationMode.Barcode,
+                BarcodeSymbologies = [BarcodeSymbology.Code39],
+                BarcodeStrictness = BarcodeStrictness.Tolerant
+            }
+        };
+
+        Assert.Equal(BarcodeStrictness.Tolerant,
+            DocumentWorkflowSettings.ForProfile(profile).BarcodeStrictness);
+    }
+
     [Fact]
     public void AnOldProfileThatSavedKeepsSavingToTheSamePlace()
     {

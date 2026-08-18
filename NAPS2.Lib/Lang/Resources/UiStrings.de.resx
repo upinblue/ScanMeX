@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <resheader name="resmimetype">
     <value>text/microsoft-resx</value>
@@ -1151,6 +1151,27 @@
   </data>
   <data name="BarcodeTypeEanUpc" xml:space="preserve">
     <value>EAN / UPC</value>
+  </data>
+  <data name="BarcodeStrictnessLabel" xml:space="preserve">
+    <value>Barcode-Prüfung</value>
+  </data>
+  <data name="BarcodeStrictnessStrict" xml:space="preserve">
+    <value>Streng</value>
+  </data>
+  <data name="BarcodeStrictnessTolerant" xml:space="preserve">
+    <value>Tolerant</value>
+  </data>
+  <data name="BarcodeStrictnessVeryTolerant" xml:space="preserve">
+    <value>Sehr tolerant</value>
+  </data>
+  <data name="BarcodeStrictnessStrictHint" xml:space="preserve">
+    <value>Nur Barcodes, die vollständig dekodieren, Start- und Stoppzeichen eingeschlossen. Empfohlen — ein falsch gelesener Barcode benennt ein Dokument, das niemand wiederfindet.</value>
+  </data>
+  <data name="BarcodeStrictnessTolerantHint" xml:space="preserve">
+    <value>Akzeptiert zusätzlich einen Code-39-Barcode mit falsch gedrucktem Stoppzeichen, wenn er mindestens 6 Zeichen trägt und derselbe Wert auf mindestens 4 Scanlinien gelesen wurde. So akzeptierte Werte werden in der Konsole benannt.</value>
+  </data>
+  <data name="BarcodeStrictnessVeryTolerantHint" xml:space="preserve">
+    <value>Wie oben, aber ab 4 Zeichen auf 3 Scanlinien, und das beschädigte Zeichen darf stärker verformt sein. Der Abstand zum Druckrauschen wird hier dünn — nur wählen, wenn „Tolerant“ nachweislich Codes übersieht.</value>
   </data>
   <data name="SeparationPatternLabel" xml:space="preserve">
     <value>Trennmuster (Regex, optional)</value>

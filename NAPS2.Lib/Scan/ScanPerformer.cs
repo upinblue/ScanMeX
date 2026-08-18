@@ -220,6 +220,25 @@ internal class ScanPerformer : IScanPerformer
                 ? "No barcode regex is set, so $(barcode) and $(barcode:1) take the first barcode in " +
                   "reading order on the page."
                 : $"Barcode regex '{selection}' decides which barcode $(barcode) and $(barcode:1) yield.");
+            // A lowered strictness accepts barcodes whose printed guard characters are wrong. That is a
+            // deliberate concession to a known bad print run, and it is invisible on the resulting file,
+            // so every scan it is in force on says so -- and says nothing when it is at its default.
+            switch (plan.Strictness)
+            {
+                case BarcodeStrictness.Tolerant:
+                    ScanConsole.Profile(
+                        "Barcode strictness is lowered to 'tolerant': a Code 39 barcode whose stop " +
+                        "character is damaged is accepted when it has at least 6 characters and was " +
+                        "read on at least 4 scan lines. Such values are marked below.");
+                    break;
+                case BarcodeStrictness.VeryTolerant:
+                    ScanConsole.Profile(
+                        "WARNING: barcode strictness is lowered to 'very tolerant': a damaged Code 39 " +
+                        "barcode is accepted from 4 characters on 3 scan lines, with a wider allowance " +
+                        "on the damaged character. Prefer 'tolerant' unless it misses codes.");
+                    break;
+            }
+
             if (symbologies.Contains(BarcodeSymbology.EanUpc))
             {
                 // EAN-8 and UPC-E are eight digits with no usable self-check, so ZXing accepts patterns
@@ -317,6 +336,17 @@ internal class ScanPerformer : IScanPerformer
                 ScanConsole.Barcode(
                     $"Page {pageNumber}: {barcode.DetectedFormat ?? "?"} '{barcode.DetectedText}'" +
                     $"{(barcode.IsPatchT ? " [patch-T]" : "")}{extra}");
+            }
+
+            // A recovered value names the file and the archive key like any other, and nothing on the
+            // finished document says its barcode was only accepted because the profile allowed damage.
+            // Name them one by one, so a wrong value can be traced back to the setting that let it in.
+            foreach (var recovered in all.Where(x => x.IsRecovered))
+            {
+                ScanConsole.Barcode(
+                    $"Page {pageNumber}: '{recovered.Text}' was recovered by the tolerant Code 39 pass -- " +
+                    "the barcode itself is damaged and only the lowered strictness of this profile " +
+                    "accepted it. Check the value against the paper.");
             }
             ScanConsole.Scan($"Page {pageNumber} received.");
             yield return image;
@@ -445,7 +475,8 @@ internal class ScanPerformer : IScanPerformer
                 // rather than run -- see the remarks there.
                 DetectBarcodes = plan.Detect,
                 Symbologies = plan.Symbologies.ToList(),
-                PatchTOnly = plan.PatchTOnly
+                PatchTOnly = plan.PatchTOnly,
+                Strictness = plan.Strictness
             },
             OcrParams = scanParams.OcrParams ?? OcrParams.Empty,
             Brightness = scanProfile.Brightness,

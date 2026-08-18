@@ -46,6 +46,48 @@ public class BarcodeDetectionPlanTests
     }
 
     /// <summary>
+    /// The strictness the operator set has to survive the trip to the detector, because there is nothing
+    /// downstream that would reveal it hadn't: the profile would simply go on reading nothing off the
+    /// damaged sheets it was lowered for, which is exactly the symptom it was lowered to fix.
+    /// </summary>
+    [Theory]
+    [InlineData(BarcodeStrictness.Strict)]
+    [InlineData(BarcodeStrictness.Tolerant)]
+    [InlineData(BarcodeStrictness.VeryTolerant)]
+    public void TheProfilesBarcodeStrictnessIsHandedToTheDetector(BarcodeStrictness strictness)
+    {
+        var profile = new ScanProfile
+        {
+            DocumentWorkflow = new DocumentWorkflowSettings
+            {
+                Version = DocumentWorkflowSettings.CURRENT_VERSION,
+                SeparationMode = DocumentSeparationMode.Barcode,
+                BarcodeSymbologies = [BarcodeSymbology.Code39],
+                BarcodeStrictness = strictness
+            }
+        };
+
+        var plan = BarcodeDetectionPlan.For(profile);
+
+        Assert.True(plan.Detect);
+        Assert.Equal(strictness, plan.Strictness);
+    }
+
+    /// <summary>
+    /// Nothing anyone can set makes a patch-T sheet decodable when it is damaged -- the tolerant pass
+    /// deliberately leaves patch-T alone -- so the legacy path stays strict rather than implying otherwise.
+    /// </summary>
+    [Fact]
+    public void TheLegacyPatchTPathStaysStrict()
+    {
+        var plan = BarcodeDetectionPlan.For(new ScanProfile(), detectPatchT: true);
+
+        Assert.True(plan.Detect);
+        Assert.True(plan.PatchTOnly);
+        Assert.Equal(BarcodeStrictness.Strict, plan.Strictness);
+    }
+
+    /// <summary>
     /// The case that produced barcodes which were not on the paper. Without a symbology ZXing tries every
     /// format it knows, and ITF and the EAN/UPC family decode the ruled tables of a dense form. Refusing
     /// to decode is the visible failure; decoding everything is the invisible one.
