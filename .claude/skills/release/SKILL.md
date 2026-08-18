@@ -107,24 +107,38 @@ Turn the commits into what changed *for the operator*, not what changed in the c
 Then show the draft to the user and let them correct it before anything is committed. This is the file
 that goes to a customer; it is worth one round of review.
 
-### Screenshots
+### The screenshot
 
-The user wants screenshots in the release notes. After the changelog text is agreed:
+**One screenshot per release: the main window.** Not a gallery of dialogs. This was settled after trying
+to automate dialog captures and finding it is not worth the trouble — see below — and the main window is
+the shot that actually tells a customer what the release looks like.
 
-1. Launch the app: `dotnet run --project NAPS2.App.WinForms -c Debug`
-2. Capture the main window, and any dialog this release actually changed — a release that touched the
-   profile dialog gets a shot of the profile dialog, not a generic gallery.
-3. Save them to `docs/releases/assets/<version>/` with descriptive names
-   (`main-window.png`, `document-inspector.png`), and reference them from
-   `docs/releases/<version>.md` with relative paths so the file works both on GitHub and locally.
+```bash
+dotnet build NAPS2.App.WinForms/ScanMe.App.WinForms.csproj -c Release
+```
 
-**Say plainly what the screenshots show.** Without a scanner attached the window comes up empty, so a
-shot of the document list is a shot of an empty list. If a change cannot be shown without real paper, do
-not fake it — tell the user which shot is missing and offer to take it from a real scan on their machine.
-A release note illustrated with empty states is worse than one with no pictures.
+Then run the built exe from `NAPS2.App.WinForms/bin/Release/net9.0-windows10.0.17763.0/win-x64/` and:
 
-Remember that a Debug build shows English, not German: only Release builds compile the `de` satellite
-assembly. If the screenshots need to be German, build `-c Release` instead.
+```bash
+pwsh -NoProfile -File tools/setup/Capture-Window.ps1 -TitlePattern 'ScanMe - ' -OutPath docs/releases/assets/<version>/hauptfenster.png
+```
+
+Reference it from `docs/releases/<version>.md` with a relative path, so the file works both on GitHub and
+as a local attachment.
+
+Two things that will otherwise waste an hour:
+
+- **Build Release, not Debug.** Only Release compiles the `de` satellite assembly, and the screenshot in
+  a German customer's release notes should be German. If the app still comes up English, the UI culture
+  is following the Windows display language — set `<Culture>de</Culture>` in
+  `%APPDATA%\ScanMe\config.xml`, take the shot, and **put the config back afterwards**.
+- **Do not try to click the app open with synthetic input.** `mouse_event`/`SetCursorPos` from this
+  environment do not reach ScanMe's windows at all — verified against a plain toolbar button, not just
+  the stacked Settings/About one. If a dialog ever does need capturing, ask the user to open it and then
+  run the capture script; the script itself works.
+
+**Say plainly what the screenshot shows.** Without a scanner attached the window comes up with no pages,
+so the caption should say so rather than letting a customer wonder what they are looking at.
 
 ## Phase 5 — Commit and tag
 
