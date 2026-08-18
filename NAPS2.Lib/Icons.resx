@@ -277,6 +277,9 @@
   <data name="scanner_96" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\scanner-96.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
+  <data name="scanme_128" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\scanme-128.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
   <data name="scanner_128" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\scanner-128.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>

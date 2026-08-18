@@ -12,7 +12,7 @@
     <Title>ScanMe</Title>
     <Product>ScanMe</Product>
     <Configurations>Debug;Release;DebugLang;Release-Msi;Release-Zip</Configurations>
-    <Copyright>Copyright 2025 ScanMe Contributors</Copyright>
+    <Copyright>Copyright 2025-2026 up in blue GmbH</Copyright>
   </PropertyGroup>
 
   <Import Project="..\NAPS2.Setup\targets\CommonTargets.targets" />

@@ -15,14 +15,15 @@ public class DefaultIconProvider : IIconProvider
 {
     /// <summary>
     /// Icons that are not monochrome and must keep the colours they were drawn with: third-party
-    /// brand logos, the scanner illustrations in the device list (whose default/lock/wireless
-    /// variants encode state through colour) and the application icon. This mirrors the exclusion
-    /// list at the top of tools/icons/icon-map.tsv -- an icon regenerated from the Fluent set is
-    /// monochrome and belongs in neither list.
+    /// brand logos, ScanMe's own wordmark, the scanner illustrations in the device list (whose
+    /// default/lock/wireless variants encode state through colour) and the application icon. This
+    /// mirrors the exclusion list at the top of tools/icons/icon-map.tsv -- an icon regenerated from
+    /// the Fluent set is monochrome and belongs in neither list.
     /// </summary>
     private static readonly string[] UntintedPrefixes =
     [
-        "apple_mail", "favicon", "gmail", "outlooknew", "outlookweb", "scanner_", "thunderbird"
+        "apple_mail", "favicon", "gmail", "outlooknew", "outlookweb", "scanme", "scanner_",
+        "thunderbird"
     ];
 
     public Bitmap? GetIcon(string name, float scale = 1f, bool oversized = false)

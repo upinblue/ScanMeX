@@ -7,7 +7,11 @@
 #define AppCompany               "up in blue GmbH"
 #define AppCopyrightStartYear    "2025"
 #define AppCopyrightEndYear      GetDateTimeString('yyyy','','')
-#define AppCopyrightCompany      "ScanMe Contributors"
+; The copyright holder of ScanMe is the company that publishes it, not a contributor pool. This read
+; "ScanMe Contributors" -- a rebranding of upstream's "NAPS2 Contributors" -- which named a body that
+; does not exist while dropping the attribution the GPL requires be kept. NAPS2's own copyright is
+; retained where it belongs, in LICENSE and the per-project LICENSE files.
+#define AppCopyrightCompany      "up in blue GmbH"
 #define ExeName                  "ScanMe.exe"
 
 [Setup]
@@ -28,7 +32,7 @@ VersionInfoVersion={#AppVersion}
 VersionInfoProductName={#AppShortName}
 VersionInfoProductVersion={#AppVersion}
 VersionInfoCompany={#AppCompany}
-VersionInfoCopyright=(c) {#AppCopyrightStartYear}-{#AppCopyrightEndYear}
+VersionInfoCopyright=Copyright (c) {#AppCopyrightStartYear}-{#AppCopyrightEndYear} {#AppCopyrightCompany}
 
 ShowLanguageDialog=yes
 UsePreviousLanguage=no

@@ -5,11 +5,17 @@
       Name="ScanMe"
       Language="1033"
       Version="{{ !version }}"
-      Manufacturer="ScanMe Software"
+      Manufacturer="up in blue GmbH"
       UpgradeCode="FEB82971-B3E6-4F19-9684-1D543E644D73">
     <!-- TODO: Files aren't updated if the version isn't bumped. How to fix? I guess it doesn't matter for verification if we delete the folder preemptively... -->
-    <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" />
-    <Media Id="1" Cabinet="NAPS2.cab" EmbedCab="yes" CompressionLevel="high" />
+    <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine"
+             Manufacturer="up in blue GmbH" Description="ScanMe {{ !version }} installer" />
+    <Media Id="1" Cabinet="ScanMe.cab" EmbedCab="yes" CompressionLevel="high" />
+
+    <!-- What Apps &amp; features shows next to the entry. Without these it offers a publisher of
+         "ScanMe Software" (a company that does not exist) and no support link at all. -->
+    <Property Id="ARPURLINFOABOUT" Value="https://www.upinblue.com" />
+    <Property Id="ARPHELPLINK" Value="https://www.upinblue.com/contact" />
 
     <Icon Id="icon.ico" SourceFile="NAPS2.Lib\Icons\favicon.ico"/>
     <Property Id="ARPPRODUCTICON" Value="icon.ico" />
@@ -34,8 +40,13 @@
       <ComponentGroupRef Id="LangComponents" />
     </Feature>
 
+    <!-- The EXE installer's uninstaller, which is what tells us this machine has an Inno-installed
+         copy that the MSI cannot upgrade in place. It searched [ProgramFiles64Folder]NAPS2, which is
+         where *upstream's* EXE installer puts its files; ScanMe's setup.template.iss installs to
+         {commonpf}\ScanMe, so the check looked in a folder ScanMe never writes to and the guard below
+         could never fire. -->
     <Property Id="INNOINSTALLATION" Value="NOTEXIST">
-      <DirectorySearch Id="CheckFileDir" Path="[ProgramFiles64Folder]NAPS2" Depth="0">
+      <DirectorySearch Id="CheckFileDir" Path="[ProgramFiles64Folder]ScanMe" Depth="0">
         <FileSearch Id="CheckFile" Name="unins000.exe" />
       </DirectorySearch>
     </Property>

@@ -77,7 +77,43 @@ namespace NAPS2.Lang.Resources {
                 return ResourceManager.GetString("AboutFormTitle", resourceCulture);
             }
         }
-        
+
+        /// <summary>
+        ///   Looks up a localized string similar to Based on {0}. {1}..
+        /// </summary>
+        internal static string AboutBasedOnFormat {
+            get {
+                return ResourceManager.GetString("AboutBasedOnFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Icons: {0}.
+        /// </summary>
+        internal static string AboutIconsFormat {
+            get {
+                return ResourceManager.GetString("AboutIconsFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Licensed under the GNU General Public License, version 2 or later.
+        /// </summary>
+        internal static string AboutLicense {
+            get {
+                return ResourceManager.GetString("AboutLicense", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The complete source code is available from the publisher on request.
+        /// </summary>
+        internal static string AboutSourceAvailable {
+            get {
+                return ResourceManager.GetString("AboutSourceAvailable", resourceCulture);
+            }
+        }
+
         /// <summary>
         ///   Looks up a localized string similar to Action.
         /// </summary>

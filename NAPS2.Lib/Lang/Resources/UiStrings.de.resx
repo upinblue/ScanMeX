@@ -15,6 +15,18 @@
   <data name="AboutFormTitle" xml:space="preserve">
     <value>Über</value>
   </data>
+  <data name="AboutLicense" xml:space="preserve">
+    <value>Lizenziert unter der GNU General Public License, Version 2 oder höher.</value>
+  </data>
+  <data name="AboutSourceAvailable" xml:space="preserve">
+    <value>Der vollständige Quellcode ist auf Anfrage beim Hersteller erhältlich.</value>
+  </data>
+  <data name="AboutBasedOnFormat" xml:space="preserve">
+    <value>Basiert auf {0}. {1}.</value>
+  </data>
+  <data name="AboutIconsFormat" xml:space="preserve">
+    <value>Symbole: {0}</value>
+  </data>
   <data name="CopyrightFormat" xml:space="preserve">
     <value>Copyright {0} up in blue GmbH</value>
   </data>

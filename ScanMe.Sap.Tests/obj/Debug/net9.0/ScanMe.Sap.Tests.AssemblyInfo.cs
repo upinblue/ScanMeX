@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ScanMe.Sap.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+54a39286e77cb403309fd25230d21a43f2431615")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2b1015743328bccfcef9fb156865e6aa6f3868c6")]
 [assembly: System.Reflection.AssemblyProductAttribute("ScanMe.Sap.Tests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ScanMe.Sap.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

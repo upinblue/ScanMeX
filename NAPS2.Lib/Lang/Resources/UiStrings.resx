@@ -120,11 +120,27 @@
   <data name="AboutFormTitle" xml:space="preserve">
     <value>About</value>
   </data>
+  <data name="AboutLicense" xml:space="preserve">
+    <value>Licensed under the GNU General Public License, version 2 or later.</value>
+  </data>
+  <data name="AboutSourceAvailable" xml:space="preserve">
+    <value>The complete source code is available from the publisher on request.</value>
+  </data>
+  <data name="AboutBasedOnFormat" xml:space="preserve">
+    <value>Based on {0}. {1}.</value>
+    <comment>{0} is the upstream project's name, {1} its copyright line. Neither is translated.</comment>
+  </data>
+  <data name="AboutIconsFormat" xml:space="preserve">
+    <value>Icons: {0}</value>
+    <comment>{0} is the icon set's name, which is not translated.</comment>
+  </data>
   <data name="CopyrightFormat" xml:space="preserve">
     <value>Copyright {0} up in blue GmbH</value>
+    <comment>Unused. The About box builds its copyright line from AppBranding instead, because this key exists in 46 inherited translation files and 44 of them still name the NAPS2 Contributors as the copyright holder. Kept only so those files stay loadable.</comment>
   </data>
   <data name="IconsFrom" xml:space="preserve">
     <value>Icons from:</value>
+    <comment>Unused. Superseded by AboutIconsFormat.</comment>
   </data>
   <data name="CheckForUpdates" xml:space="preserve">
     <value>Check for updates</value>

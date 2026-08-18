@@ -26,7 +26,7 @@ public enum ConnectionInsertMode
 public class SapConnectionConfig : IEquatable<SapConnectionConfig>
 {
     /// <summary>
-    /// Gets or sets the display name of this connection, for example <c>PRD - Schwan Cosmetics</c>.
+    /// Gets or sets the display name of this connection, for example <c>PRD - Production</c>.
     /// </summary>
     public string? Name { get; set; }
 

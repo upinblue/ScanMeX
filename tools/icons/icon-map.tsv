@@ -17,6 +17,9 @@
 #
 # Deliberately NOT mapped, and therefore left untouched:
 #   favicon                                       the application icon
+#   scanme_*                                      ScanMe's own wordmark, shown in the About dialog;
+#                                                 a brand mark, not a glyph, so it is neither
+#                                                 generated nor tinted
 #   scanner_*                                     device illustrations in the device picker; the
 #                                                 default/lock/wireless/gray variants encode state
 #                                                 through colour and have no Fluent equivalent

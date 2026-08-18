@@ -1,7 +1,13 @@
-NAPS2 - Not Another PDF Scanner
-https://www.naps2.com
+ScanMe
+https://www.upinblue.com
 
-Copyright 2009-2025 NAPS2 Contributors
+Copyright 2026 up in blue GmbH
+
+ScanMe is a fork of NAPS2 - Not Another PDF Scanner (https://www.naps2.com),
+Copyright 2009-2025 NAPS2 Contributors, and is distributed under the same
+licence. The copyright notices of the original work are retained throughout
+this repository; the per-project LICENSE files continue to name the NAPS2
+Contributors as the copyright holders of the code they cover.
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
