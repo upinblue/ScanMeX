@@ -1,4 +1,4 @@
-using Eto.Forms;
+﻿using Eto.Forms;
 using Eto.GtkSharp;
 using Gdk;
 using Gtk;
@@ -95,6 +95,14 @@ public class GtkListView<T> : IListView<T> where T : notnull
     public event EventHandler? ItemClicked;
 
     public event EventHandler<DropEventArgs>? Drop;
+
+    /// <summary>
+    /// Sections are drawn on Windows only, which is the platform ScanMe ships. Doing nothing here leaves
+    /// the pages in one ungrouped run, which is what this list has always shown.
+    /// </summary>
+    public void SetSections(IReadOnlyList<ListViewSection> sections)
+    {
+    }
 
     public void SetItems(IEnumerable<T> items)
     {

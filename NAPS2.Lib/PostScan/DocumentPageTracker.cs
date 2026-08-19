@@ -32,6 +32,12 @@ public class DocumentPageTracker : IDisposable
     /// </summary>
     private readonly Dictionary<UiImage, ProcessedImage> _asInserted = new();
 
+    /// <summary>
+    /// Which document each page in the window belongs to. Kept here rather than asked of every document
+    /// in turn, because the canvas needs the answer for every page it draws.
+    /// </summary>
+    private Dictionary<UiImage, ScannedDocument> _owners = new();
+
     private readonly object _lock = new();
     private bool _syncing;
 
@@ -43,6 +49,13 @@ public class DocumentPageTracker : IDisposable
     }
 
     private void OnImagesUpdated(object? sender, ImageListEventArgs e) => Sync();
+
+    /// <summary>
+    /// The document a page in the window belongs to, or null for one that belongs to none -- an imported
+    /// page, or one left over from a document that has been discarded.
+    /// </summary>
+    public ScannedDocument? DocumentFor(UiImage image) =>
+        _owners.TryGetValue(image, out var document) ? document : null;
 
     /// <summary>
     /// Brings every document in line with what the window holds. Called on every change to the image
@@ -139,6 +152,23 @@ public class DocumentPageTracker : IDisposable
                 }
             }
         }
+
+        // Rebuilt rather than patched: it has to agree with what the documents say afterwards, and a
+        // stale entry here would draw a page into the wrong section of the canvas.
+        var owners = new Dictionary<UiImage, ScannedDocument>();
+        foreach (var document in _queue.Documents)
+        {
+            foreach (var page in document.WindowPages ?? [])
+            {
+                if (present.Contains(page))
+                {
+                    owners[page] = document;
+                }
+            }
+        }
+        changed |= owners.Count != _owners.Count ||
+                   owners.Any(x => !_owners.TryGetValue(x.Key, out var d) || d != x.Value);
+        _owners = owners;
         return changed;
     }
 

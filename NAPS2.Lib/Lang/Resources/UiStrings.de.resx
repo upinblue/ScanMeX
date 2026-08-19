@@ -1287,6 +1287,9 @@
   <data name="DocumentPageCount" xml:space="preserve">
     <value>{0} Seite(n)</value>
   </data>
+  <data name="SectionUnassigned" xml:space="preserve">
+    <value>Zu keinem Dokument</value>
+  </data>
   <data name="DocumentIdentifierLabel" xml:space="preserve">
     <value>Kennzeichnung</value>
   </data>

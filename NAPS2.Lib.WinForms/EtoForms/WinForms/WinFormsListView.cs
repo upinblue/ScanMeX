@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Eto.WinForms;
@@ -26,6 +26,10 @@ public class WinFormsListView<T> : IListView<T> where T : notnull
     private ListSelection<T> _selection = ListSelection.Empty<T>();
     private bool _refreshing;
     private ContextMenu? _contextMenu;
+    private IReadOnlyList<ListViewSection> _sections = [];
+    /// <summary>Where a drop would insert, drawn by us; see <see cref="DrawDropIndicator"/>.</summary>
+    private int _dropIndex = -1;
+    private bool _dropAfterItem;
     private float _dpiScale = 1f;
     private Eto.Drawing.Size _imageSize = new(48, 48);
     // Held as the Eto bitmap, not the System.Drawing one: ToSD() hands back the *underlying* image
@@ -64,9 +68,17 @@ public class WinFormsListView<T> : IListView<T> where T : notnull
             _view.BackColor = _behavior.ColorScheme.CanvasColor.ToSD();
         }
 
-        if (_behavior.EmptyState != null && _view is OverlayPaintListView overlayView)
+        if (_view is OverlayPaintListView overlayView)
         {
-            overlayView.OverlayPaint += DrawEmptyState;
+            if (_behavior.EmptyState != null)
+            {
+                overlayView.OverlayPaint += DrawEmptyState;
+            }
+            // Section headings and the drop indicator are both drawn over the native control: comctl32
+            // draws its own group headings in the light Explorer blue whatever the window's theme, and
+            // it stops drawing the insertion mark altogether once groups are switched on.
+            overlayView.OverlayPaint += DrawSectionHeaders;
+            overlayView.OverlayPaint += DrawDropIndicator;
         }
 
         _view.AllowDrop = _behavior.AllowDragDrop;
@@ -235,7 +247,12 @@ public class WinFormsListView<T> : IListView<T> where T : notnull
             // When page numbers are shown, we use a completely different drawing path, as we need to offset the image
             // to have room for the page numbers, and the selection rectangle has a completely different style to
             // encompass the page numbers too.
-            string label = $"{e.ItemIndex + 1} / {_view.Items.Count}";
+            // Numbered within its own document where there are sections: which page of this document
+            // it is answers the question the operator has, where its place in the whole batch does not.
+            var section = _sections.FirstOrDefault(x => x.Contains(e.ItemIndex));
+            string label = section != null
+                ? $"{e.ItemIndex - section.StartIndex + 1} / {section.Count}"
+                : $"{e.ItemIndex + 1} / {_view.Items.Count}";
             SizeF textSize = TextRenderer.MeasureText(label, _view.Font);
             int textOffset = (int) (textSize.Height + tp);
 
@@ -329,6 +346,178 @@ public class WinFormsListView<T> : IListView<T> where T : notnull
                 WinFormsHacks.SetImageSize(_view.LargeImageList!, new Size(w, h));
             }
         }
+    }
+
+    // ---------- sections ----------
+
+    /// <summary>The height of a group's heading band, remembered so it can be drawn while scrolled.</summary>
+    private int _headerBandHeight;
+
+    public void SetSections(IReadOnlyList<ListViewSection> sections)
+    {
+        if (_sections.SequenceEqual(sections))
+        {
+            return;
+        }
+        _sections = sections.ToList();
+        _view.BeginUpdate();
+        try
+        {
+            _view.Groups.Clear();
+            _view.ShowGroups = _sections.Count > 0;
+            foreach (var section in _sections)
+            {
+                // The heading text is left blank on purpose: comctl32 draws its own in the light
+                // Explorer blue whatever the window's theme is, and no theming call changes that. It
+                // still reserves the band, which is what DrawSectionHeaders paints into.
+                var group = new ListViewGroup(" ") { HeaderAlignment = HorizontalAlignment.Left };
+                _view.Groups.Add(group);
+                for (int i = section.StartIndex; i <= section.EndIndex && i < Items.Count; i++)
+                {
+                    Items[i].Group = group;
+                }
+            }
+        }
+        finally
+        {
+            _view.EndUpdate();
+        }
+        _view.Invalidate();
+    }
+
+    /// <summary>
+    /// The band a section's heading goes in, in the same coordinates as the item bounds, or null when it
+    /// is not on screen.
+    /// </summary>
+    private Rectangle? HeaderBandFor(int sectionIndex)
+    {
+        var band = NativeHeaderBand(sectionIndex);
+        if (band == null)
+        {
+            // Derived instead: comctl32 reserves the band directly above the section's first item.
+            var section = _sections[sectionIndex];
+            if (section.StartIndex >= Items.Count || _headerBandHeight <= 0)
+            {
+                return null;
+            }
+            var top = Items[section.StartIndex].Bounds.Top - _headerBandHeight;
+            band = new Rectangle(0, top, _view.ClientRectangle.Width, _headerBandHeight);
+        }
+        else
+        {
+            _headerBandHeight = band.Value.Height;
+        }
+        return band.Value.Bottom < 0 || band.Value.Top > _view.ClientRectangle.Height ? null : band;
+    }
+
+    /// <summary>
+    /// Asks the control where the heading is, which only the native list view knows.
+    /// </summary>
+    private Rectangle? NativeHeaderBand(int sectionIndex) =>
+        ListViewGroups.HeaderBounds(_view, sectionIndex);
+
+    /// <summary>
+    /// The heading of each section: a status dot, the document's name, and a quieter line saying how
+    /// many pages it has and where it stands.
+    /// </summary>
+    private void DrawSectionHeaders(object? sender, PaintEventArgs e)
+    {
+        if (_sections.Count == 0 || Items.Count == 0)
+        {
+            return;
+        }
+        var scheme = _behavior.ColorScheme;
+        var oldSmoothing = e.Graphics.SmoothingMode;
+        e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        using var titleFont = new Font(_view.Font, FontStyle.Bold);
+        int pad = (int) Math.Round(6 * _dpiScale);
+        int dotSize = (int) Math.Round(8 * _dpiScale);
+        for (int i = 0; i < _sections.Count; i++)
+        {
+            var band = HeaderBandFor(i);
+            if (band == null)
+            {
+                continue;
+            }
+            var section = _sections[i];
+            var rect = band.Value;
+            using (var background = new SolidBrush(_behavior.ColorScheme.CanvasColor.ToSD()))
+            {
+                e.Graphics.FillRectangle(background, rect);
+            }
+            var dot = new Rectangle(rect.Left + pad, rect.Top + (rect.Height - dotSize) / 2, dotSize, dotSize);
+            using (var brush = new SolidBrush(section.Color.ToSD()))
+            {
+                e.Graphics.FillEllipse(brush, dot);
+            }
+            var titleSize = TextRenderer.MeasureText(section.Title, titleFont);
+            int x = dot.Right + pad;
+            int y = rect.Top + (rect.Height - titleSize.Height) / 2;
+            TextRenderer.DrawText(e.Graphics, section.Title, titleFont, new Point(x, y),
+                scheme.ForegroundColor.ToSD());
+            TextRenderer.DrawText(e.Graphics, section.Meta, _view.Font,
+                new Point(x + titleSize.Width + pad * 2, y), scheme.SecondaryTextColor.ToSD());
+            using var rule = new Pen(Color.FromArgb(60, scheme.ForegroundColor.ToSD()));
+            e.Graphics.DrawLine(rule, rect.Left + pad, rect.Bottom - 1, rect.Right - pad, rect.Bottom - 1);
+        }
+        e.Graphics.SmoothingMode = oldSmoothing;
+    }
+
+    /// <summary>
+    /// Where a drop would put the pages. Drawn here rather than with the control's own insertion mark,
+    /// which stops appearing as soon as the items are grouped.
+    /// </summary>
+    private void DrawDropIndicator(object? sender, PaintEventArgs e)
+    {
+        if (_dropIndex < 0 || _dropIndex >= Items.Count)
+        {
+            return;
+        }
+        var bounds = Items[_dropIndex].Bounds;
+        int width = Math.Max(2, (int) Math.Round(3 * _dpiScale));
+        int inset = (int) Math.Round(8 * _dpiScale);
+        var bar = new Rectangle(
+            _dropAfterItem ? bounds.Right - width : bounds.Left,
+            bounds.Top + inset, width, Math.Max(1, bounds.Height - 2 * inset));
+        var oldSmoothing = e.Graphics.SmoothingMode;
+        e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        using (var path = FluentShapes.RoundedRect(bar, width / 2f))
+        using (var brush = new SolidBrush(_behavior.ColorScheme.AccentColor.ToSD()))
+        {
+            e.Graphics.FillPath(brush, path);
+        }
+        e.Graphics.SmoothingMode = oldSmoothing;
+    }
+
+    private void SetDropIndicator(int index, bool afterItem)
+    {
+        if (_dropIndex == index && _dropAfterItem == afterItem)
+        {
+            return;
+        }
+        _dropIndex = index;
+        _dropAfterItem = afterItem;
+        _view.Invalidate();
+    }
+
+    /// <summary>The section the given y coordinate falls in, heading band included.</summary>
+    private ListViewSection? SectionAt(int y)
+    {
+        for (int i = 0; i < _sections.Count; i++)
+        {
+            var section = _sections[i];
+            if (section.StartIndex >= Items.Count)
+            {
+                continue;
+            }
+            var top = HeaderBandFor(i)?.Top ?? Items[section.StartIndex].Bounds.Top;
+            var last = Math.Min(section.EndIndex, Items.Count - 1);
+            if (y >= top && y <= Items[last].Bounds.Bottom)
+            {
+                return section;
+            }
+        }
+        return null;
     }
 
     private void OnDragEnter(object? sender, DragEventArgs e)
@@ -562,7 +751,7 @@ public class WinFormsListView<T> : IListView<T> where T : notnull
     private void OnDragDrop(object? sender, DragEventArgs e)
     {
         var index = GetDragIndex(e);
-        _view.InsertionMark.Index = -1;
+        SetDropIndicator(-1, false);
         if (index != -1)
         {
             var data = e.Data.ToEto();
@@ -593,7 +782,7 @@ public class WinFormsListView<T> : IListView<T> where T : notnull
 
     private void OnDragLeave(object? sender, EventArgs e)
     {
-        _view.InsertionMark.Index = -1;
+        SetDropIndicator(-1, false);
     }
 
     private void OnDragOver(object? sender, DragEventArgs e)
@@ -603,13 +792,11 @@ public class WinFormsListView<T> : IListView<T> where T : notnull
             var index = GetDragIndex(e);
             if (index == Items.Count)
             {
-                _view.InsertionMark.Index = index - 1;
-                _view.InsertionMark.AppearsAfterItem = true;
+                SetDropIndicator(index - 1, true);
             }
             else
             {
-                _view.InsertionMark.Index = index;
-                _view.InsertionMark.AppearsAfterItem = false;
+                SetDropIndicator(index, false);
             }
         }
     }
@@ -641,7 +828,9 @@ public class WinFormsListView<T> : IListView<T> where T : notnull
         }
         if (dragToItem == null)
         {
-            return -1;
+            // With sections there are bands between the rows that hold no item -- the headings. A drop
+            // on one of those means the section it belongs to, not nowhere.
+            return SectionAt(cp.Y)?.StartIndex ?? -1;
         }
         int dragToIndex = dragToItem.Index;
         if (cp.X > (dragToItem.Bounds.X + dragToItem.Bounds.Width / 2))

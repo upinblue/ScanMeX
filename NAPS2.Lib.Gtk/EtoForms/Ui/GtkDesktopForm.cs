@@ -1,4 +1,4 @@
-using Eto.GtkSharp;
+﻿using Eto.GtkSharp;
 using Eto.GtkSharp.Forms.ToolBar;
 using Gdk;
 using Gtk;
@@ -46,7 +46,7 @@ public class GtkDesktopForm : DesktopForm
         : base(config, keyboardShortcuts, notificationManager, cultureHelper, colorScheme, profileManager, imageList,
             thumbnailController, thumbnailProvider, desktopController, desktopScanController, imageListActions,
             imageListViewBehavior, desktopFormProvider, desktopSubFormController, commands, sidebar, iconProvider,
-            documentUploadController, documentQueue)
+            documentUploadController, documentQueue, sectionBuilder)
     {
         ((GtkDarkModeProvider) darkModeProvider).StyleContext =
             Eto.Forms.Gtk3Helpers.ToNative(this).StyleContext;

@@ -77,6 +77,39 @@ copy of the pages; if a document needs its own, clone at the point of use and di
   normal way to start the next batch. There is no window at all for the command line scanner, where a
   document keeps the scan's own copies for good.
 
+### Sections in the canvas
+
+The pages in the middle of the window are grouped by the document they belong to, under a heading naming
+it. `DocumentSectionBuilder` works out the sections -- a run of consecutive pages per document, plus one
+for the pages belonging to none -- and `IListView.SetSections` hands them to the platform list view,
+which on Windows means native `ListViewGroup`s. **The sections address the pages by index**, so they have
+to be rebuilt after every change to the list; `DesktopForm.UpdateSections` does that from both the image
+list and the document queue, because a document that finishes uploading changes its heading without a
+single page having moved.
+
+Four things about the WinForms side, each of them measured on a throwaway harness rather than assumed:
+
+- **The native group heading is never used.** comctl32 draws it in the light Explorer blue whatever the
+  window's theme is, and `SetWindowTheme(…, "DarkMode_Explorer")` changes nothing about it. The heading
+  text is set to a blank, and `WinFormsListView.DrawSectionHeaders` paints the real one into the band the
+  group reserves, in `ColorScheme` colours. The band's position comes from `ListViewGroups.HeaderBounds`,
+  which reaches through a non-public property for the group's native id and returns null rather than
+  throwing if a future runtime renames it -- the caller then derives the band from the items instead.
+- **The native insertion mark stops being drawn as soon as items are grouped.** That is why the drop
+  position is drawn by `DrawDropIndicator` instead. Don't put `InsertionMark` back; it works only in the
+  ungrouped case, which is no longer the normal one.
+- **Never collapse a group.** Reading `ListViewItem.Bounds` for an item inside a collapsed group does not
+  return -- the process hangs -- and `GetDragIndex` reads exactly those bounds on every drag. Collapsing
+  finished documents would be a reasonable feature and needs a guard that never asks a collapsed group's
+  items for their bounds.
+- **A section is a range, not a set.** Because a document is a run of consecutive pages, the flat item
+  index still says where a page is on screen, and everything addressing pages by position -- `MoveTo`,
+  the drop index, the selection, `ApplyDiffs` -- keeps working untouched. This was verified for the
+  grouped case: display order and item order stay identical.
+
+Page numbers are per document (`2 / 4`), not per batch, wherever there are sections: which page of this
+document it is answers the question the operator has.
+
 ### Saving, uploading and the trigger are three settings, not one
 
 `DocumentWorkflowSettings` carries `SaveLocally` + `LocalFolder`, the upload targets (on the profile),
@@ -487,6 +520,7 @@ it again.
 The document pipeline's own coverage: `DocumentPipelineTests` (splitting and writing),
 `DocumentPipelineUploadTests` (the hand-off to the archive and everything that must not happen),
 `DocumentPageTrackerTests` (what editing pages in the window does to the document that will be archived),
+`DocumentSectionBuilderTests` (which pages the canvas draws under which heading),
 `DocumentWorkflowMigrationTests` (reading old profiles), `BarcodeDetectionPlanTests` (whether to decode
 at all) and `PhantomBarcodeTests` (what a noisy page yields).
 

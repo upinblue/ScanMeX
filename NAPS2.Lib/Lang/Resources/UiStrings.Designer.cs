@@ -3803,6 +3803,15 @@ namespace NAPS2.Lang.Resources {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Not part of a document.
+        /// </summary>
+        internal static string SectionUnassigned {
+            get {
+                return ResourceManager.GetString("SectionUnassigned", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Identification.
         /// </summary>
         internal static string DocumentIdentifierLabel {

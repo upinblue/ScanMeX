@@ -18,6 +18,12 @@ public interface IListView<T> : Util.ISelectable<T> where T : notnull
 
     void SetItems(IEnumerable<T> items);
 
+    /// <summary>
+    /// Groups the items into sections drawn under headings of their own, or ungroups them when given an
+    /// empty list. Call it after every change to the items, since the sections address them by index.
+    /// </summary>
+    void SetSections(IReadOnlyList<ListViewSection> sections);
+
     void ApplyDiffs(ListViewDiffs<T> diffs);
 
     void RegenerateImages();

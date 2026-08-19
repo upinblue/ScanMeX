@@ -1,4 +1,4 @@
-using Eto.Forms;
+﻿using Eto.Forms;
 using NAPS2.EtoForms.Desktop;
 using NAPS2.EtoForms.Layout;
 using NAPS2.EtoForms.Mac;
@@ -36,7 +36,7 @@ public class MacDesktopForm : DesktopForm
         : base(config, keyboardShortcuts, notificationManager, cultureHelper, colorScheme, profileManager, imageList,
             thumbnailController, thumbnailProvider, desktopController, desktopScanController, imageListActions,
             imageListViewBehavior, desktopFormProvider, desktopSubFormController, commands, sidebar, iconProvider,
-            documentUploadController, documentQueue)
+            documentUploadController, documentQueue, sectionBuilder)
     {
     }
 

@@ -40,6 +40,7 @@ public abstract class DesktopForm : EtoFormBase
     private readonly ContextMenu _contextMenu = new();
 
     private readonly NotificationArea _notificationArea;
+    private readonly DocumentSectionBuilder _sectionBuilder;
     protected IListView<UiImage> _listView;
     private ImageListSyncer? _imageListSyncer;
 
@@ -64,7 +65,8 @@ public abstract class DesktopForm : EtoFormBase
         DocumentPanel documentPanel,
         IIconProvider iconProvider,
         DocumentUploadController documentUploadController,
-        DocumentQueue documentQueue) : base(config)
+        DocumentQueue documentQueue,
+        DocumentSectionBuilder sectionBuilder) : base(config)
     {
         Icon = EtoPlatform.Current.IsGtk ? new Icon(1f, Icons.scanner_128.ToEtoImage()) : Icons.favicon.ToEtoIcon();
 
@@ -86,9 +88,15 @@ public abstract class DesktopForm : EtoFormBase
         _iconProvider = iconProvider;
         _commands = commands;
         _documentUploadController = documentUploadController;
+        _sectionBuilder = sectionBuilder;
         // Documents can be queued while the window is idle, so the button has to react to the queue
-        // rather than only to image list changes.
-        documentQueue.Changed += (_, _) => Invoker.Current.Invoke(UpdateToolbar);
+        // rather than only to image list changes. So do the section headings: a document that has just
+        // been uploaded says so in its heading without a single page having moved.
+        documentQueue.Changed += (_, _) => Invoker.Current.Invoke(() =>
+        {
+            UpdateToolbar();
+            UpdateSections();
+        });
 
         _desktopFormProvider.DesktopForm = this;
         _keyboardShortcuts.Assign(Commands);
@@ -210,6 +218,26 @@ public abstract class DesktopForm : EtoFormBase
         }
     }
 
+    private void ApplyListDiffs(ListViewDiffs<UiImage> diffs)
+    {
+        _listView.ApplyDiffs(diffs);
+        UpdateSections();
+    }
+
+    /// <summary>
+    /// Groups the pages in the canvas by the document they belong to.
+    /// </summary>
+    /// <remarks>
+    /// Sections address the pages by position, so this has to run after every change to the list. It is
+    /// built from the image list rather than from what the canvas currently shows: the two can be a
+    /// moment apart while a scan is coming in, and a section that reaches past the last page is trimmed
+    /// rather than being an error -- the next change puts it right.
+    /// </remarks>
+    private void UpdateSections()
+    {
+        _listView.SetSections(_sectionBuilder.Build(ImageList.Images));
+    }
+
     private void ImageList_SelectionChanged(object? sender, EventArgs e)
     {
         Invoker.Current.InvokeDispatch(() =>
@@ -256,7 +284,7 @@ public abstract class DesktopForm : EtoFormBase
     protected override void OnLoad(EventArgs e)
     {
         base.OnLoad(e);
-        _imageListSyncer = new ImageListSyncer(ImageList, _listView.ApplyDiffs, SynchronizationContext.Current!);
+        _imageListSyncer = new ImageListSyncer(ImageList, ApplyListDiffs, SynchronizationContext.Current!);
         EtoPlatform.Current.AttachDpiDependency(_listView.Control,
             scale => SetThumbnailSpacing(_thumbnailController.VisibleSize, scale));
         _desktopController.PreInitialize();
