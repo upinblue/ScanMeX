@@ -47,9 +47,12 @@ automatic trigger and the upload button, so the two cannot drift.
 
 The panel is a list plus an inspector, not a card per document: the two answer different questions
 ("is everything through?" and "what is wrong with this one?"), and one control trying to answer both is
-unreadable at panel width. In the inspector the detected barcodes are *radio buttons* -- the selected
-one is the identification -- plus "own value" for free text. A "use as identification" button per row
-said what would happen if you pressed it but never which barcode was actually in use.
+unreadable at panel width. It has no "upload everything" button of its own -- that one is in the toolbar,
+where it belongs to the window rather than to the document being inspected. Selection runs both ways:
+picking a document there selects its pages, and selecting pages that all sit in one document points the
+panel at it. In the inspector the detected barcodes are *radio buttons* -- the selected one is the
+identification -- plus "own value" for free text. A "use as identification" button per row said what
+would happen if you pressed it but never which barcode was actually in use.
 
 **A document's pages are the window's page objects, not a copy of them.** `DocumentPageTracker` points
 each document at the `UiImage`s the window holds, and `DocumentWriter` reads them at the moment it
@@ -144,6 +147,30 @@ the drop go through:
 
 The guard asks the same page the rule does -- the one above the drop position -- so the two cannot
 disagree about where a drop at a boundary would land.
+
+**"The same profile" means the same profile object.** Both the drop guard and the merge compare by
+reference, which is what two scans with one profile give you. A profile edited between the two scans can
+therefore refuse a merge that would have been fine; refusing is the conservative direction, since the
+profile is what decides the folder, the name and the archive.
+
+### Splitting and merging documents
+
+`DocumentEditor` is what a missed separator sheet costs to repair -- and a sheet that separated where it
+should not have. "Split document here" makes the topmost selected page the first page of a new document
+which takes everything to the end of the one it was in; "merge with previous document" gives a document
+to the one directly above it. Both are in the canvas context menu and on `Mod+Shift+T` / `Mod+Shift+M`.
+
+- **The identification follows the pages.** Both operations re-run `DocumentPipeline.AttachBarcodes`, the
+  same method the scan uses, over each affected document's pages. Split a stack and the half that keeps
+  the cover sheet keeps the order number, while the half without it stops claiming a barcode that left
+  with the other half. Nothing is decoded again -- the barcodes were read when the pages were scanned, so
+  this only picks among them the way the scan did.
+- **A value typed by hand outlives it**, because it was a correction of exactly this. `Reidentify` puts a
+  `Manual` identification back after refreshing the barcodes.
+- **A document split off is inserted after the one it came from**, not appended: the list reads in page
+  order, and the bottom of the list is where the next scan goes.
+- Splitting at a document's first page is not offered (it would produce nothing), nor is anything on an
+  archived document, nor merging across profiles -- the same rules the drag follows.
 
 ### Saving, uploading and the trigger are three settings, not one
 
@@ -558,6 +585,7 @@ The document pipeline's own coverage: `DocumentPipelineTests` (splitting and wri
 `DocumentSectionBuilderTests` (which pages the canvas draws under which heading),
 `DocumentPageAssignmentTests` (where a page belongs after it has been dragged somewhere else) and
 `FinishedDocumentGuardTests` (what the window refuses to do to an archived document),
+`DocumentEditorTests` (splitting a document and merging one back),
 `DocumentWorkflowMigrationTests` (reading old profiles), `BarcodeDetectionPlanTests` (whether to decode
 at all) and `PhantomBarcodeTests` (what a noisy page yields).
 

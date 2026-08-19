@@ -3812,6 +3812,24 @@ namespace NAPS2.Lang.Resources {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Split document here.
+        /// </summary>
+        internal static string SplitDocumentHere {
+            get {
+                return ResourceManager.GetString("SplitDocumentHere", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Merge with previous document.
+        /// </summary>
+        internal static string MergeWithPreviousDocument {
+            get {
+                return ResourceManager.GetString("MergeWithPreviousDocument", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Page belongs to an archived document.
         /// </summary>
         internal static string ArchivedPagesRefusedTitle {

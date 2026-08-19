@@ -41,6 +41,7 @@ public abstract class DesktopForm : EtoFormBase
 
     private readonly NotificationArea _notificationArea;
     private readonly DocumentSectionBuilder _sectionBuilder;
+    private readonly DocumentEditor _documentEditor;
     protected IListView<UiImage> _listView;
     private ImageListSyncer? _imageListSyncer;
 
@@ -66,7 +67,8 @@ public abstract class DesktopForm : EtoFormBase
         IIconProvider iconProvider,
         DocumentUploadController documentUploadController,
         DocumentQueue documentQueue,
-        DocumentSectionBuilder sectionBuilder) : base(config)
+        DocumentSectionBuilder sectionBuilder,
+        DocumentEditor documentEditor) : base(config)
     {
         Icon = EtoPlatform.Current.IsGtk ? new Icon(1f, Icons.scanner_128.ToEtoImage()) : Icons.favicon.ToEtoIcon();
 
@@ -89,6 +91,7 @@ public abstract class DesktopForm : EtoFormBase
         _commands = commands;
         _documentUploadController = documentUploadController;
         _sectionBuilder = sectionBuilder;
+        _documentEditor = documentEditor;
         // Documents can be queued while the window is idle, so the button has to react to the queue
         // rather than only to image list changes. So do the section headings: a document that has just
         // been uploaded says so in its heading without a single page having moved.
@@ -110,6 +113,7 @@ public abstract class DesktopForm : EtoFormBase
         _listView.Selection = ImageList.Selection;
         _listView.ItemClicked += ListViewItemClicked;
         _listView.Drop += ListViewDrop;
+        _listView.SectionClicked += ListViewSectionClicked;
         _listView.SelectionChanged += ListViewSelectionChanged;
         _listView.ImageSize = new Size(_thumbnailController.VisibleSize, _thumbnailController.VisibleSize);
         _listView.ContextMenu = _contextMenu;
@@ -202,6 +206,9 @@ public abstract class DesktopForm : EtoFormBase
                 C.ButtonMenuItem(this, Commands.Undo),
                 C.ButtonMenuItem(this, Commands.Redo),
                 new SeparatorMenuItem(),
+                C.ButtonMenuItem(this, Commands.SplitDocument),
+                C.ButtonMenuItem(this, Commands.MergeDocument),
+                new SeparatorMenuItem(),
                 C.ButtonMenuItem(this, Commands.Delete)
             ]);
         }
@@ -216,6 +223,22 @@ public abstract class DesktopForm : EtoFormBase
                 C.ButtonMenuItem(this, Commands.Redo)
             ]);
         }
+    }
+
+    /// <summary>
+    /// A click on a document's heading takes hold of all of its pages, which is the quickest way to act
+    /// on a whole document -- and, through the panel, to bring up what is wrong with it.
+    /// </summary>
+    private void ListViewSectionClicked(object? sender, int index)
+    {
+        var sections = _sectionBuilder.Build(ImageList.Images);
+        if (index < 0 || index >= sections.Count)
+        {
+            return;
+        }
+        var section = sections[index];
+        ImageList.UpdateSelection(ListSelection.From(
+            ImageList.Images.Skip(section.StartIndex).Take(section.Count)));
     }
 
     private void ApplyListDiffs(ListViewDiffs<UiImage> diffs)
@@ -595,6 +618,10 @@ public abstract class DesktopForm : EtoFormBase
         // Driven by the upload queue rather than the image list: documents stay uploadable even after
         // their pages were cleared from the window.
         Commands.UploadDocuments.Enabled = _documentUploadController.HasPendingDocuments;
+        // Both are about the document the selection sits in, so they are off for a page that is in
+        // none, for the first page of a document, and for anything already archived.
+        Commands.SplitDocument.Enabled = _documentEditor.CanSplitAt(ImageList.Selection);
+        Commands.MergeDocument.Enabled = _documentEditor.CanMergeWithPrevious(ImageList.Selection);
 
         // "All" dropdown items
         Commands.SaveAllPdf.Text = Commands.SaveAllImages.Text = Commands.EmailAll.Text =

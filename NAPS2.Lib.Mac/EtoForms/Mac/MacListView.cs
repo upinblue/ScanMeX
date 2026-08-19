@@ -107,6 +107,11 @@ public class MacListView<T> : NSCollectionViewDelegateFlowLayout, IListView<T> w
     {
     }
 
+#pragma warning disable CS0067
+    /// <summary>Never raised here: there are no headings to click.</summary>
+    public event EventHandler<int>? SectionClicked;
+#pragma warning restore CS0067
+
     public void SetItems(IEnumerable<T> items)
     {
         _dataSource.Items.Clear();

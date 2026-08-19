@@ -1,4 +1,4 @@
-using Eto.Forms;
+﻿using Eto.Forms;
 
 namespace NAPS2.EtoForms.Widgets;
 
@@ -15,6 +15,13 @@ public interface IListView<T> : Util.ISelectable<T> where T : notnull
     event EventHandler ItemClicked;
 
     event EventHandler<DropEventArgs> Drop;
+
+    /// <summary>
+    /// A section's heading was clicked, by index into the sections last given to
+    /// <see cref="SetSections"/>. The heading stands for the whole document, so clicking it is how you
+    /// take hold of all of its pages at once.
+    /// </summary>
+    event EventHandler<int> SectionClicked;
 
     void SetItems(IEnumerable<T> items);
 

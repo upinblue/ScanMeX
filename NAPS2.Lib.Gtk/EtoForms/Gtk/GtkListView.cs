@@ -104,6 +104,11 @@ public class GtkListView<T> : IListView<T> where T : notnull
     {
     }
 
+#pragma warning disable CS0067
+    /// <summary>Never raised here: there are no headings to click.</summary>
+    public event EventHandler<int>? SectionClicked;
+#pragma warning restore CS0067
+
     public void SetItems(IEnumerable<T> items)
     {
         if (_refreshing)

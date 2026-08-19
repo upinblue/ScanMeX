@@ -46,7 +46,7 @@ public class GtkDesktopForm : DesktopForm
         : base(config, keyboardShortcuts, notificationManager, cultureHelper, colorScheme, profileManager, imageList,
             thumbnailController, thumbnailProvider, desktopController, desktopScanController, imageListActions,
             imageListViewBehavior, desktopFormProvider, desktopSubFormController, commands, sidebar, iconProvider,
-            documentUploadController, documentQueue, sectionBuilder)
+            documentUploadController, documentQueue, sectionBuilder, documentEditor)
     {
         ((GtkDarkModeProvider) darkModeProvider).StyleContext =
             Eto.Forms.Gtk3Helpers.ToNative(this).StyleContext;

@@ -159,7 +159,7 @@ public class DocumentPipeline
     /// apart. Where nothing separated the document -- a profile that doesn't separate at all -- the same
     /// regex picks it out of the page's barcodes, so the two paths still agree.
     /// </remarks>
-    private static void AttachBarcodes(
+    internal static void AttachBarcodes(
         ScannedDocument document, DocumentWorkflowSettings workflow, string? separatorValue)
     {
         var extracted = new BarcodeExtractor

@@ -28,15 +28,14 @@ public class DocumentPanel : IDisposable
     private readonly ColorScheme _colorScheme;
     private readonly Naps2Config _config;
     private readonly UiImageList _imageList;
+    private readonly DocumentPageTracker _pageTracker;
 
     private readonly GridView _list = new() { ShowHeader = false, AllowMultipleSelection = false };
     private readonly ObservableCollection<DocumentRow> _rows = [];
     private readonly DocumentInspector _inspector;
     // Wrapping, unlike C.Secondary: four counts joined with separators do not fit one line at panel width.
     private readonly Label _summary = C.Label("");
-    private readonly Button _uploadAll;
     private readonly LayoutVisibility _panelVis = new(true);
-    private readonly LayoutVisibility _uploadAllVis = new(false);
     private readonly LayoutVisibility _emptyVis = new(true);
     private readonly LayoutVisibility _listVis = new(false);
 
@@ -56,19 +55,21 @@ public class DocumentPanel : IDisposable
     private LayoutController? _layoutController;
     private Guid? _selectedId;
     private bool _suppressSelectionEvent;
+    // Set while the panel is driving the canvas's selection, so the change coming back is ignored.
+    private bool _syncingSelection;
     private float _iconScale = 1f;
 
     public DocumentPanel(DocumentQueue queue, DocumentUploadController uploadController,
-        ColorScheme colorScheme, Naps2Config config, UiImageList imageList)
+        ColorScheme colorScheme, Naps2Config config, UiImageList imageList,
+        DocumentPageTracker pageTracker)
     {
         _queue = queue;
         _uploadController = uploadController;
         _colorScheme = colorScheme;
         _config = config;
         _imageList = imageList;
+        _pageTracker = pageTracker;
         _inspector = new DocumentInspector(colorScheme, OnInspectorChanged, UploadOne, Discard);
-        _uploadAll = C.Button(UiStrings.UploadPendingDocuments,
-            () => _ = _uploadController.UploadPendingDocuments());
 
         _list.DataStore = _rows;
         _list.Columns.Add(new GridColumn
@@ -92,6 +93,9 @@ public class DocumentPanel : IDisposable
         // Pages being deleted, moved or edited in the window is DocumentPageTracker's business; it
         // notifies the queue when a document changed, and the list follows from there.
         _queue.Changed += QueueChanged;
+        // Selecting pages in the canvas selects their document here, which is the other half of picking
+        // a document and having its pages light up.
+        _imageList.SelectionChanged += SelectionChanged;
     }
 
     public bool IsVisible => _panelVis.IsVisible;
@@ -112,7 +116,6 @@ public class DocumentPanel : IDisposable
             // grow with the number of documents pushes the inspector -- the part you actually work in --
             // off the bottom of the panel. It scrolls internally past that height.
             L.Column(_list.MaxHeight(LIST_HEIGHT)).Visible(_listVis),
-            L.Row(_uploadAll, C.Filler()).Visible(_uploadAllVis),
             C.Spacer(),
             L.Column(L.Scrollable(_inspector.Content)).Scale()
         ).Padding(left: 10, right: 10, top: 8, bottom: 8).Spacing(6).Visible(_panelVis);
@@ -144,7 +147,6 @@ public class DocumentPanel : IDisposable
             // counts still move; the rows catch up when the operator leaves the field.
             _inspector.Refresh();
             _summary.Text = Summarize(documents);
-            _uploadAll.Enabled = _uploadController.HasPendingDocuments;
             return;
         }
         _suppressSelectionEvent = true;
@@ -177,8 +179,6 @@ public class DocumentPanel : IDisposable
         _emptyVis.IsVisible = documents.Count == 0;
         _listVis.IsVisible = documents.Count > 0;
         _summary.Text = Summarize(documents);
-        _uploadAll.Enabled = _uploadController.HasPendingDocuments;
-        _uploadAllVis.IsVisible = documents.Count > 0;
         _layoutController?.Invalidate();
     }
 
@@ -225,7 +225,6 @@ public class DocumentPanel : IDisposable
     {
         var documents = _queue.Documents;
         _summary.Text = Summarize(documents);
-        _uploadAll.Enabled = _uploadController.HasPendingDocuments;
         if (_inspector.IsEditingIdentifier)
         {
             // Mid-keystroke. Replacing the row resets the grid's selection and re-running the layout
@@ -261,15 +260,68 @@ public class DocumentPanel : IDisposable
     {
         var present = _imageList.Images.ToHashSet();
         var matching = (document.WindowPages ?? []).Where(present.Contains).ToList();
-        if (matching.Count > 0)
+        if (matching.Count == 0)
+        {
+            return;
+        }
+        // The pages coming back as a selection change must not point the panel at a document again --
+        // it is already there, and the round trip would fight the operator over the inspector.
+        _syncingSelection = true;
+        try
         {
             _imageList.UpdateSelection(ListSelection.From(matching));
         }
+        finally
+        {
+            _syncingSelection = false;
+        }
+    }
+
+    /// <summary>
+    /// The other direction: pages picked in the canvas point the panel at the document they are in, so
+    /// clicking a page shows what will happen to it.
+    /// </summary>
+    /// <remarks>
+    /// Only when the selection is inside a single document. A selection spanning two of them has no one
+    /// answer, and picking either would be a guess the operator then has to notice and undo.
+    /// </remarks>
+    private void SelectionChanged(object? sender, EventArgs e)
+    {
+        if (_syncingSelection)
+        {
+            return;
+        }
+        Invoker.Current.Invoke(() =>
+        {
+            var documents = _imageList.Selection
+                .Select(_pageTracker.DocumentFor)
+                .Distinct()
+                .ToList();
+            if (documents.Count != 1 || documents[0] == null || documents[0]!.Id == _selectedId)
+            {
+                return;
+            }
+            var document = documents[0]!;
+            _selectedId = document.Id;
+            var index = _queue.Documents.ToList().FindIndex(x => x.Id == document.Id);
+            _suppressSelectionEvent = true;
+            try
+            {
+                _list.SelectedRow = index;
+            }
+            finally
+            {
+                _suppressSelectionEvent = false;
+            }
+            _inspector.Show(document);
+            _layoutController?.Invalidate();
+        });
     }
 
     public void Dispose()
     {
         _queue.Changed -= QueueChanged;
+        _imageList.SelectionChanged -= SelectionChanged;
     }
 
     /// <summary>

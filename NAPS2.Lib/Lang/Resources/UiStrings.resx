@@ -1399,6 +1399,12 @@
   <data name="SectionUnassigned" xml:space="preserve">
     <value>Not part of a document</value>
   </data>
+  <data name="SplitDocumentHere" xml:space="preserve">
+    <value>Split document here</value>
+  </data>
+  <data name="MergeWithPreviousDocument" xml:space="preserve">
+    <value>Merge with previous document</value>
+  </data>
   <data name="ArchivedPagesRefusedTitle" xml:space="preserve">
     <value>Page belongs to an archived document</value>
   </data>

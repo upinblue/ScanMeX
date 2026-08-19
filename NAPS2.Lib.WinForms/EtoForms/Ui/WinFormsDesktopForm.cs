@@ -54,11 +54,12 @@ public class WinFormsDesktopForm : DesktopForm
         IIconProvider iconProvider,
         DocumentUploadController documentUploadController,
         DocumentQueue documentQueue,
-        DocumentSectionBuilder sectionBuilder)
+        DocumentSectionBuilder sectionBuilder,
+        DocumentEditor documentEditor)
         : base(config, keyboardShortcuts, notificationManager, cultureHelper, colorScheme, profileManager, imageList,
             thumbnailController, thumbnailProvider, desktopController, desktopScanController, imageListActions,
             imageListViewBehavior, desktopFormProvider, desktopSubFormController, commands, sidebar, documentPanel, iconProvider,
-            documentUploadController, documentQueue, sectionBuilder)
+            documentUploadController, documentQueue, sectionBuilder, documentEditor)
     {
         _form = this.ToNative();
         _form.FormClosing += OnFormClosing;

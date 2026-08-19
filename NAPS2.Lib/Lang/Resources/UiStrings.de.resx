@@ -1290,6 +1290,12 @@
   <data name="SectionUnassigned" xml:space="preserve">
     <value>Zu keinem Dokument</value>
   </data>
+  <data name="SplitDocumentHere" xml:space="preserve">
+    <value>Dokument hier trennen</value>
+  </data>
+  <data name="MergeWithPreviousDocument" xml:space="preserve">
+    <value>Mit vorherigem Dokument verbinden</value>
+  </data>
   <data name="ArchivedPagesRefusedTitle" xml:space="preserve">
     <value>Seite gehört zu einem archivierten Dokument</value>
   </data>

@@ -85,6 +85,7 @@ public class CommonModule : Module
         // Holds the card views, so it has to be the same instance the window built its layout from.
         builder.RegisterType<DocumentPanel>().AsSelf().SingleInstance();
         builder.RegisterType<DocumentSectionBuilder>().AsSelf().SingleInstance();
+        builder.RegisterType<DocumentEditor>().AsSelf().SingleInstance();
         // TODO: Use PdfiumWorkerCoordinator?
         builder.RegisterType<PdfiumPdfRenderer>().As<IPdfRenderer>();
         builder.RegisterType<OcrOperationManager>().AsSelf().SingleInstance();

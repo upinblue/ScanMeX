@@ -1,4 +1,4 @@
-using Eto.Forms;
+﻿using Eto.Forms;
 using NAPS2.EtoForms.Ui;
 
 namespace NAPS2.EtoForms.Desktop;
@@ -25,6 +25,10 @@ public class DesktopKeyboardShortcuts
         _ksm.Assign("Mod+Down", commands.MoveDown);
         _ksm.Assign("Mod+Right", commands.MoveDown);
         _ksm.Assign("Del", commands.Delete);
+        // Repairing a separation is done with a page selected, next to Delete rather than among the
+        // configurable shortcuts: both act on the document the selection sits in.
+        _ksm.Assign("Mod+Shift+T", commands.SplitDocument);
+        _ksm.Assign("Mod+Shift+M", commands.MergeDocument);
         _ksm.Assign("Mod+A", commands.SelectAll);
         _ksm.Assign("Mod+C", commands.Copy);
         _ksm.Assign("Mod+V", commands.Paste);

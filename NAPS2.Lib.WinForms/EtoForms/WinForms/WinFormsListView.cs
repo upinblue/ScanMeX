@@ -90,6 +90,7 @@ public class WinFormsListView<T> : IListView<T> where T : notnull
         _view.DragLeave += OnDragLeave;
         _view.MouseMove += OnMouseMove;
         _view.MouseLeave += OnMouseLeave;
+        _view.MouseDown += OnMouseDown;
 
         _viewEtoControl = Eto.Forms.WinFormsHelpers.ToEto(_view);
         ImageList = UseCustomRendering
@@ -500,6 +501,27 @@ public class WinFormsListView<T> : IListView<T> where T : notnull
         _view.Invalidate();
     }
 
+    /// <summary>
+    /// A click on a heading takes hold of the whole document. Only on the heading itself: the empty
+    /// space beside the last row of a section is where a drop lands, and selecting everything from a
+    /// click there would fight what the drag is about to do.
+    /// </summary>
+    private void OnMouseDown(object? sender, MouseEventArgs e)
+    {
+        if (_sections.Count == 0 || _view.GetItemAt(e.X, e.Y) != null)
+        {
+            return;
+        }
+        for (int i = 0; i < _sections.Count; i++)
+        {
+            if (HeaderBandFor(i) is { } band && band.Contains(e.X, e.Y))
+            {
+                SectionClicked?.Invoke(this, i);
+                return;
+            }
+        }
+    }
+
     /// <summary>The section the given y coordinate falls in, heading band included.</summary>
     private ListViewSection? SectionAt(int y)
     {
@@ -560,6 +582,8 @@ public class WinFormsListView<T> : IListView<T> where T : notnull
     public event EventHandler? ItemClicked;
 
     public event EventHandler<DropEventArgs>? Drop;
+
+    public event EventHandler<int>? SectionClicked;
 
     private ListView.ListViewItemCollection Items => _view.Items;
 
