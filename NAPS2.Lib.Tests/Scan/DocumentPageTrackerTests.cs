@@ -141,6 +141,58 @@ public class DocumentPageTrackerTests : ContextualTests
         Assert.Equal(DocumentStatus.Done, Assert.Single(_queue.Documents).Status);
     }
 
+    [Fact]
+    public async Task DraggingAPageIntoAnotherDocumentMovesItThere()
+    {
+        // Two scans, so the window holds two documents: A with two pages, B with two.
+        var pipeline = CreatePipeline();
+        await ScanIntoWindow(pipeline, ImageResources.dog, ImageResources.dog_gray);
+        await ScanIntoWindow(pipeline, ImageResources.dog, ImageResources.dog_gray);
+        var documents = _queue.Documents;
+        Assert.Equal(2, documents.Count);
+
+        // A's second page is dropped between B's two pages.
+        Move(_imageList.Images[1], 3);
+
+        Assert.Equal(1, documents[0].PageCount);
+        Assert.Equal(3, documents[1].PageCount);
+        // Both files now show something else than their document does.
+        Assert.False(documents[0].FileMatchesPages);
+        Assert.False(documents[1].FileMatchesPages);
+    }
+
+    [Fact]
+    public async Task DraggingADocumentsLastPageAwayTakesTheDocumentWithIt()
+    {
+        var pipeline = CreatePipeline();
+        await ScanIntoWindow(pipeline, ImageResources.dog);
+        await ScanIntoWindow(pipeline, ImageResources.dog_gray, ImageResources.dog);
+        Assert.Equal(2, _queue.Documents.Count);
+
+        Move(_imageList.Images[0], 2);
+
+        var document = Assert.Single(_queue.Documents);
+        Assert.Equal(3, document.PageCount);
+    }
+
+    [Fact]
+    public async Task ReorderingWithinADocumentDoesNotMoveThePageAnywhere()
+    {
+        var pipeline = CreatePipeline();
+        await ScanIntoWindow(pipeline, ImageResources.dog, ImageResources.dog_gray, ImageResources.dog);
+        await ScanIntoWindow(pipeline, ImageResources.dog_gray);
+        var documents = _queue.Documents;
+
+        // The first document's last page is moved to its front.
+        Move(_imageList.Images[2], 0);
+
+        Assert.Equal(3, documents[0].PageCount);
+        Assert.Equal(1, documents[1].PageCount);
+    }
+
+    private void Move(UiImage page, int index) =>
+        _imageList.Mutate(new ImageListMutation.MoveTo(index), ListSelection.From([page]));
+
     /// <summary>
     /// Scans and then puts the pages into the window the way the desktop does, so the documents can take
     /// them over.

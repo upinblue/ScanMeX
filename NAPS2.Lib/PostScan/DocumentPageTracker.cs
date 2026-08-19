@@ -38,6 +38,12 @@ public class DocumentPageTracker : IDisposable
     /// </summary>
     private Dictionary<UiImage, ScannedDocument> _owners = new();
 
+    /// <summary>
+    /// The order the pages were in at the last sync. What moved since is what decides where a page
+    /// belongs now; see <see cref="DocumentPageAssignment"/>.
+    /// </summary>
+    private IReadOnlyList<UiImage> _previousOrder = [];
+
     private readonly object _lock = new();
     private bool _syncing;
 
@@ -114,44 +120,64 @@ public class DocumentPageTracker : IDisposable
         var changed = false;
         foreach (var document in _queue.Documents)
         {
-            if (document.Status == DocumentStatus.Done)
+            if (document.Status == DocumentStatus.Done || document.HasAdoptedWindowPages)
             {
-                // Finished. It is the record that those pages reached the archive, and clearing the
-                // window afterwards is the normal way to start the next batch.
                 continue;
             }
-            if (!document.HasAdoptedWindowPages)
-            {
-                changed |= TryAdopt(document, images, order);
-                continue;
-            }
+            changed |= TryAdopt(document, images, order);
+        }
 
-            var before = document.PageCount;
-            var remaining = document.WindowPages!.Where(present.Contains).OrderBy(x => order[x]).ToList();
-            if (remaining.Count == 0)
+        // Who owns what before the reordering is taken into account.
+        var before = new Dictionary<UiImage, ScannedDocument>();
+        var beforeCounts = new Dictionary<ScannedDocument, int>();
+        foreach (var document in _queue.Documents)
+        {
+            foreach (var page in (document.WindowPages ?? []).Where(present.Contains))
+            {
+                before[page] = document;
+            }
+            beforeCounts[document] = document.PageCount;
+        }
+        // Finished documents neither lose nor gain pages: they are the record that exactly those pages
+        // are in the archive. Clearing the window still leaves them alone, which is why they are skipped
+        // rather than emptied below.
+        var locked = _queue.Documents
+            .Where(x => x.Status == DocumentStatus.Done)
+            .ToHashSet();
+
+        var assignment = DocumentPageAssignment.Normalize(_previousOrder, images, before, locked);
+        var pagesByDocument = new Dictionary<ScannedDocument, List<UiImage>>();
+        for (int i = 0; i < images.Count; i++)
+        {
+            if (assignment[i] is { } document)
+            {
+                pagesByDocument.GetOrSet(document, () => []).Add(images[i]);
+            }
+        }
+
+        foreach (var document in _queue.Documents)
+        {
+            if (locked.Contains(document) || !document.HasAdoptedWindowPages)
+            {
+                continue;
+            }
+            var pages = pagesByDocument.Get(document) ?? [];
+            if (pages.Count == 0)
             {
                 ScanConsole.Document(
-                    $"{document.Describe()}: all of its pages were deleted from the window, so the " +
-                    "document is gone too.");
+                    $"{document.Describe()}: it has no pages left in the window, so the document is gone " +
+                    "too.");
                 dropped.Add(document);
                 changed = true;
                 continue;
             }
-            if (document.SetWindowPages(remaining))
+            if (document.SetWindowPages(pages))
             {
                 changed = true;
-                ScanConsole.Document(remaining.Count == before
-                    ? $"{document.Describe()}: its pages changed in the window."
-                    : $"{document.Describe()}: {before - remaining.Count} of its page(s) were deleted " +
-                      $"from the window, leaving {remaining.Count}.");
-                if (document.SavedPath != null)
-                {
-                    ScanConsole.Document(
-                        $"{document.Describe()}: '{document.FileName}' no longer shows what the document " +
-                        "contains, so it is written again before it is uploaded.");
-                }
+                ReportChange(document, beforeCounts.Get(document), pages.Count);
             }
         }
+        _previousOrder = images;
 
         // Rebuilt rather than patched: it has to agree with what the documents say afterwards, and a
         // stale entry here would draw a page into the wrong section of the canvas.
@@ -170,6 +196,33 @@ public class DocumentPageTracker : IDisposable
                    owners.Any(x => !_owners.TryGetValue(x.Key, out var d) || d != x.Value);
         _owners = owners;
         return changed;
+    }
+
+    /// <summary>
+    /// Says what happened to a document's pages, and whether that leaves its file out of date.
+    /// </summary>
+    /// <remarks>
+    /// A page leaving a document is not distinguishable here from a page being deleted -- both are "it
+    /// is not ours any more" -- so the line names both possibilities rather than picking one and being
+    /// wrong half the time.
+    /// </remarks>
+    private static void ReportChange(ScannedDocument document, int before, int after)
+    {
+        ScanConsole.Document(after switch
+        {
+            _ when after < before =>
+                $"{document.Describe()}: {before - after} page(s) left it -- deleted from the window or " +
+                $"moved to another document -- leaving {after}.",
+            _ when after > before =>
+                $"{document.Describe()}: {after - before} page(s) were moved into it, giving it {after}.",
+            _ => $"{document.Describe()}: its pages changed in the window."
+        });
+        if (document.SavedPath != null)
+        {
+            ScanConsole.Document(
+                $"{document.Describe()}: '{document.FileName}' no longer shows what the document " +
+                "contains, so it is written again before it is uploaded.");
+        }
     }
 
     /// <summary>

@@ -3812,6 +3812,51 @@ namespace NAPS2.Lang.Resources {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Page belongs to an archived document.
+        /// </summary>
+        internal static string ArchivedPagesRefusedTitle {
+            get {
+                return ResourceManager.GetString("ArchivedPagesRefusedTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to These pages are in the archive exactly as they are. Discard the document from the list first if you want to change it..
+        /// </summary>
+        internal static string ArchivedPagesRefused {
+            get {
+                return ResourceManager.GetString("ArchivedPagesRefused", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} page(s) stayed in the window because their document is already archived..
+        /// </summary>
+        internal static string ArchivedPagesKept {
+            get {
+                return ResourceManager.GetString("ArchivedPagesKept", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Pages stay with their profile.
+        /// </summary>
+        internal static string CrossProfileMoveRefusedTitle {
+            get {
+                return ResourceManager.GetString("CrossProfileMoveRefusedTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The two documents were scanned with different profiles, and the profile decides where a document is filed and archived..
+        /// </summary>
+        internal static string CrossProfileMoveRefused {
+            get {
+                return ResourceManager.GetString("CrossProfileMoveRefused", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Identification.
         /// </summary>
         internal static string DocumentIdentifierLabel {

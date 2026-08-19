@@ -1399,6 +1399,21 @@
   <data name="SectionUnassigned" xml:space="preserve">
     <value>Not part of a document</value>
   </data>
+  <data name="ArchivedPagesRefusedTitle" xml:space="preserve">
+    <value>Page belongs to an archived document</value>
+  </data>
+  <data name="ArchivedPagesRefused" xml:space="preserve">
+    <value>These pages are in the archive exactly as they are. Discard the document from the list first if you want to change it.</value>
+  </data>
+  <data name="ArchivedPagesKept" xml:space="preserve">
+    <value>{0} page(s) stayed in the window because their document is already archived.</value>
+  </data>
+  <data name="CrossProfileMoveRefusedTitle" xml:space="preserve">
+    <value>Pages stay with their profile</value>
+  </data>
+  <data name="CrossProfileMoveRefused" xml:space="preserve">
+    <value>The two documents were scanned with different profiles, and the profile decides where a document is filed and archived.</value>
+  </data>
   <data name="DocumentIdentifierLabel" xml:space="preserve">
     <value>Identification</value>
   </data>

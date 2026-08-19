@@ -1290,6 +1290,21 @@
   <data name="SectionUnassigned" xml:space="preserve">
     <value>Zu keinem Dokument</value>
   </data>
+  <data name="ArchivedPagesRefusedTitle" xml:space="preserve">
+    <value>Seite gehört zu einem archivierten Dokument</value>
+  </data>
+  <data name="ArchivedPagesRefused" xml:space="preserve">
+    <value>Diese Seiten liegen genau so bereits im Archiv. Verwerfen Sie das Dokument zuerst aus der Liste, wenn Sie es ändern wollen.</value>
+  </data>
+  <data name="ArchivedPagesKept" xml:space="preserve">
+    <value>{0} Seite(n) blieben im Fenster, weil ihr Dokument bereits archiviert ist.</value>
+  </data>
+  <data name="CrossProfileMoveRefusedTitle" xml:space="preserve">
+    <value>Seiten bleiben bei ihrem Profil</value>
+  </data>
+  <data name="CrossProfileMoveRefused" xml:space="preserve">
+    <value>Die beiden Dokumente wurden mit verschiedenen Profilen gescannt, und das Profil entscheidet, wohin ein Dokument abgelegt und archiviert wird.</value>
+  </data>
   <data name="DocumentIdentifierLabel" xml:space="preserve">
     <value>Kennzeichnung</value>
   </data>

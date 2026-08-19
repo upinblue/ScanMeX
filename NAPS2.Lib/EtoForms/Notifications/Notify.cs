@@ -1,4 +1,4 @@
-using NAPS2.Update;
+﻿using NAPS2.Update;
 
 namespace NAPS2.EtoForms.Notifications;
 
@@ -26,14 +26,21 @@ public class Notify : INotify
 
     public void DocumentUploaded(string fileName, string targets)
     {
-        _notificationManager.Show(new UploadNotification(
-            string.Format(UiStrings.UploadNotificationSucceeded, targets), fileName, false));
+        _notificationManager.Show(new MessageNotification(
+            string.Format(UiStrings.UploadNotificationSucceeded, targets), fileName,
+            NotificationSeverity.Success));
     }
 
     public void DocumentUploadFailed(string fileName, string message)
     {
-        _notificationManager.Show(new UploadNotification(
-            string.Format(UiStrings.UploadNotificationFailed, fileName), message, true));
+        _notificationManager.Show(new MessageNotification(
+            string.Format(UiStrings.UploadNotificationFailed, fileName), message,
+            NotificationSeverity.Error));
+    }
+
+    public void Refused(string title, string detail)
+    {
+        _notificationManager.Show(new MessageNotification(title, detail, NotificationSeverity.Warning));
     }
 
     public void DonatePrompt()

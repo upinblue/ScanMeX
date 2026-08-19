@@ -110,6 +110,41 @@ Four things about the WinForms side, each of them measured on a throwaway harnes
 Page numbers are per document (`2 / 4`), not per batch, wherever there are sections: which page of this
 document it is answers the question the operator has.
 
+### Moving a page from one document to another
+
+You drag it there. `DocumentPageAssignment.Normalize` works out what that means, and it is deliberately
+the one place that decides:
+
+- **Position decides, and the pages that moved are the ones that adapt.** Which pages moved is not
+  guessed from the geometry: it is everything outside the longest subsequence still in its old relative
+  order, so dragging one page past ten others moves one page rather than eleven. A page dropped between
+  two documents joins **the one above it** -- it was dropped at the end of that section.
+- **New pages never adopt a neighbour.** A page that was not in the window before is a page that has just
+  been scanned (it belongs to the document the scan was split into) or imported (it belongs to none until
+  someone drags it somewhere). Only pages that were already there and moved are reassigned.
+- **Every document comes out as one run.** `MakeRunsContiguous` guarantees the invariant the canvas
+  draws: a document left with pages in several places keeps its longest run and the others join what they
+  now sit behind. Without it a wholesale reorder (interleave, reverse) would draw one document as several
+  sections under the same heading.
+- **A document whose pages all went elsewhere is dropped**, the same as one whose pages were deleted.
+
+`ImageListActions` is where the two refusals live, because it is the one chokepoint both the keyboard and
+the drop go through:
+
+- **A finished document's pages cannot be deleted or moved.** They are the record that exactly those
+  pages are in the archive, so an edit that appears to work while the archive stays as it was would be
+  worse than one that is refused. A mixed selection deletes the rest and says how many stayed. **Clearing
+  the window is not an edit** and is deliberately not caught: it is how the next batch starts, and a
+  finished document keeps its own record either way.
+- **Pages do not move between documents of different profiles.** The profile decides the folder, the
+  name and the archive, so that one drag would change all three with nothing on screen saying so.
+- Both refusals go to the console *and* to `INotify.Refused`, which is what the notification channel was
+  generalized for (`MessageNotification`, formerly `UploadNotification`): a refused edit that says
+  nothing is exactly the silent nothing this app exists to make visible.
+
+The guard asks the same page the rule does -- the one above the drop position -- so the two cannot
+disagree about where a drop at a boundary would land.
+
 ### Saving, uploading and the trigger are three settings, not one
 
 `DocumentWorkflowSettings` carries `SaveLocally` + `LocalFolder`, the upload targets (on the profile),
@@ -521,6 +556,8 @@ The document pipeline's own coverage: `DocumentPipelineTests` (splitting and wri
 `DocumentPipelineUploadTests` (the hand-off to the archive and everything that must not happen),
 `DocumentPageTrackerTests` (what editing pages in the window does to the document that will be archived),
 `DocumentSectionBuilderTests` (which pages the canvas draws under which heading),
+`DocumentPageAssignmentTests` (where a page belongs after it has been dragged somewhere else) and
+`FinishedDocumentGuardTests` (what the window refuses to do to an archived document),
 `DocumentWorkflowMigrationTests` (reading old profiles), `BarcodeDetectionPlanTests` (whether to decode
 at all) and `PhantomBarcodeTests` (what a noisy page yields).
 

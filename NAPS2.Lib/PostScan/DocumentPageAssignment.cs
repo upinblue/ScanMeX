@@ -1,0 +1,216 @@
+using NAPS2.Images;
+
+namespace NAPS2.PostScan;
+
+/// <summary>
+/// Works out which document each page belongs to after the pages in the window have been reordered --
+/// which is how a page is moved from one document to another: you drag it there.
+/// </summary>
+/// <remarks>
+/// Position decides, because that is what the operator can see. A document is a run of consecutive pages,
+/// so a page dropped inside another document's run is a page of that document now, and the rule that
+/// makes this readable rather than clever is that <b>the pages that moved adapt, and the pages that
+/// stayed put do not</b>. Which pages moved is not guessed from the geometry: it is the complement of the
+/// longest run of pages still in their old order relative to each other, so dragging one page past ten
+/// others moves one page rather than eleven.
+///
+/// Pure on purpose -- no window, no queue -- because the rule is the part worth pinning down.
+/// </remarks>
+public static class DocumentPageAssignment
+{
+    /// <summary>
+    /// The document each page belongs to after the reordering, in the order the pages are now in.
+    /// </summary>
+    /// <param name="previousOrder">The pages as they were before. Pages not in it are new, and new pages
+    /// never adopt a neighbour's document -- a page just scanned belongs to the document the scan was
+    /// split into, and an imported one belongs to none until it is dragged somewhere.</param>
+    /// <param name="pages">The pages as they are now.</param>
+    /// <param name="owners">Who owns what right now.</param>
+    /// <param name="locked">Documents that must neither lose nor gain pages -- the finished ones, whose
+    /// pages are already in the archive exactly as they are.</param>
+    public static IReadOnlyList<ScannedDocument?> Normalize(
+        IReadOnlyList<UiImage> previousOrder,
+        IReadOnlyList<UiImage> pages,
+        IReadOnlyDictionary<UiImage, ScannedDocument> owners,
+        ISet<ScannedDocument> locked)
+    {
+        var result = pages
+            .Select(x => owners.TryGetValue(x, out var document) ? document : null)
+            .ToArray();
+
+        var moved = MovedPages(previousOrder, pages);
+        foreach (var index in moved.OrderBy(x => x))
+        {
+            var current = result[index];
+            if (current != null && locked.Contains(current))
+            {
+                continue;
+            }
+            var neighbour = NearestSettledOwner(result, moved, index);
+            if (neighbour != null && locked.Contains(neighbour))
+            {
+                // Joining a document that is already archived would say the archive contains this page.
+                continue;
+            }
+            result[index] = neighbour;
+        }
+
+        MakeRunsContiguous(result, locked);
+        return result;
+    }
+
+    /// <summary>
+    /// The pages that changed position relative to the others: everything that is not part of the
+    /// longest subsequence still in its old relative order.
+    /// </summary>
+    private static HashSet<int> MovedPages(IReadOnlyList<UiImage> previousOrder, IReadOnlyList<UiImage> pages)
+    {
+        var previousIndex = new Dictionary<UiImage, int>();
+        for (int i = 0; i < previousOrder.Count; i++)
+        {
+            previousIndex[previousOrder[i]] = i;
+        }
+
+        var atIndex = new List<int>();
+        var wasAtIndex = new List<int>();
+        for (int i = 0; i < pages.Count; i++)
+        {
+            if (previousIndex.TryGetValue(pages[i], out var previous))
+            {
+                atIndex.Add(i);
+                wasAtIndex.Add(previous);
+            }
+        }
+
+        var stayed = LongestIncreasingSubsequence(wasAtIndex);
+        var moved = new HashSet<int>();
+        for (int i = 0; i < atIndex.Count; i++)
+        {
+            if (!stayed.Contains(i))
+            {
+                moved.Add(atIndex[i]);
+            }
+        }
+        return moved;
+    }
+
+    /// <summary>
+    /// The positions making up one longest increasing subsequence. Quadratic on purpose: a window holds
+    /// pages, not records, and the straightforward version is the one that can be read.
+    /// </summary>
+    private static HashSet<int> LongestIncreasingSubsequence(List<int> values)
+    {
+        if (values.Count == 0)
+        {
+            return [];
+        }
+        var length = new int[values.Count];
+        var previous = new int[values.Count];
+        var best = 0;
+        for (int i = 0; i < values.Count; i++)
+        {
+            length[i] = 1;
+            previous[i] = -1;
+            for (int j = 0; j < i; j++)
+            {
+                if (values[j] < values[i] && length[j] + 1 > length[i])
+                {
+                    length[i] = length[j] + 1;
+                    previous[i] = j;
+                }
+            }
+            if (length[i] > length[best])
+            {
+                best = i;
+            }
+        }
+        var result = new HashSet<int>();
+        for (int i = best; i >= 0; i = previous[i])
+        {
+            result.Add(i);
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// The document of the nearest page that did not move -- the one before, or failing that the one
+    /// after. A page dropped between two documents joins the one above it, because that is the document
+    /// whose section it was dropped at the end of.
+    /// </summary>
+    private static ScannedDocument? NearestSettledOwner(
+        ScannedDocument?[] owners, HashSet<int> moved, int index)
+    {
+        for (int i = index - 1; i >= 0; i--)
+        {
+            if (!moved.Contains(i))
+            {
+                return owners[i];
+            }
+        }
+        for (int i = index + 1; i < owners.Length; i++)
+        {
+            if (!moved.Contains(i))
+            {
+                return owners[i];
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Guarantees what the canvas draws: one run of consecutive pages per document. A document left with
+    /// pages in several places keeps its longest run, and the others join whatever they now sit behind.
+    /// </summary>
+    /// <remarks>
+    /// Left to right in one pass, always taking the owner already settled to the left, so it cannot
+    /// cascade into a loop and cannot create a new gap: the run it merges into is the one directly
+    /// before it.
+    /// </remarks>
+    private static void MakeRunsContiguous(ScannedDocument?[] owners, ISet<ScannedDocument> locked)
+    {
+        var runs = new List<(ScannedDocument? Owner, int Start, int End)>();
+        for (int i = 0; i < owners.Length;)
+        {
+            int j = i;
+            while (j + 1 < owners.Length && ReferenceEquals(owners[j + 1], owners[i]))
+            {
+                j++;
+            }
+            runs.Add((owners[i], i, j));
+            i = j + 1;
+        }
+
+        var keep = new HashSet<int>();
+        foreach (var group in runs
+                     .Select((run, index) => (run, index))
+                     .Where(x => x.run.Owner != null)
+                     .GroupBy(x => x.run.Owner))
+        {
+            // The longest one is the document; the first on a tie, so the outcome does not depend on
+            // which of two equal halves the enumeration happened to see first.
+            var home = group
+                .OrderByDescending(x => x.run.End - x.run.Start)
+                .ThenBy(x => x.index)
+                .First();
+            keep.Add(home.index);
+        }
+
+        for (int r = 0; r < runs.Count; r++)
+        {
+            var (owner, start, end) = runs[r];
+            if (owner == null || keep.Contains(r) || locked.Contains(owner))
+            {
+                continue;
+            }
+            var target = start > 0 ? owners[start - 1] : end + 1 < owners.Length ? owners[end + 1] : null;
+            if (target != null && locked.Contains(target))
+            {
+                continue;
+            }
+            for (int i = start; i <= end; i++)
+            {
+                owners[i] = target;
+            }
+        }
+    }
+}

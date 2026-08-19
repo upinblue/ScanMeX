@@ -1,4 +1,4 @@
-using NAPS2.Update;
+﻿using NAPS2.Update;
 
 namespace NAPS2.EtoForms.Notifications;
 
@@ -17,6 +17,10 @@ public class StubNotify : INotify
     }
 
     public void DocumentUploadFailed(string fileName, string message)
+    {
+    }
+
+    public void Refused(string title, string detail)
     {
     }
 
