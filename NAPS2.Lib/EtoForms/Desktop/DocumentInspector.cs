@@ -233,6 +233,12 @@ public class DocumentInspector
             : document.IsSavedLocally
                 ? UiStrings.DocumentStatusSaved
                 : UiStrings.DocumentStatusDone,
+        // Pending, which is where a document filed by a profile with nowhere else to send it stays. It is
+        // not waiting for an upload -- there is no upload coming -- and saying so under every document of
+        // a save-only profile describes a queue that does not exist.
+        _ when !DocumentUploadService.HasAnyTarget(document.Profile) => document.IsSavedLocally
+            ? UiStrings.DocumentStatusSaved
+            : UiStrings.DocumentStatusDone,
         _ => document.IsSavedLocally
             ? UiStrings.DocumentStatusSavedWaiting
             : UiStrings.DocumentStatusWaiting

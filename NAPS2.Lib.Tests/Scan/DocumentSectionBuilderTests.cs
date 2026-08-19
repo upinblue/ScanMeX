@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 using NAPS2.EtoForms;
 using NAPS2.EtoForms.Desktop;
 using NAPS2.EtoForms.Notifications;
@@ -107,6 +107,19 @@ public class DocumentSectionBuilderTests : ContextualTests
 
         Assert.Equal("test1.pdf", section.Title);
         Assert.Contains(string.Format(UiStrings.DocumentPageCount, 2), section.Meta);
+    }
+
+    [Fact]
+    public async Task AProfileWithNowhereToUploadDoesNotClaimToBeWaitingForOne()
+    {
+        // A save-only profile leaves its documents pending, since nothing takes them further. The heading
+        // has to say what that means -- filed -- rather than announce a queue that does not exist.
+        await ScanIntoWindow(DocumentSeparationMode.None, ImageResources.dog);
+
+        var section = Assert.Single(_builder.Build(_imageList.Images));
+
+        Assert.Contains(UiStrings.DocumentStatusSaved, section.Meta);
+        Assert.DoesNotContain(UiStrings.DocumentStatusSavedWaiting, section.Meta);
     }
 
     [Fact]
