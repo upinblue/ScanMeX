@@ -170,6 +170,51 @@ public class DocumentPageTrackerTests : ContextualTests
     }
 
     [Fact]
+    public async Task RemovingFinishedDocumentsTakesTheirPagesWithThem()
+    {
+        // Leaving the pages behind would put pages that are already filed into the canvas as belonging
+        // to no document -- editable again, and draggable into a document they have nothing to do with.
+        var pipeline = CreatePipeline();
+        await ScanIntoWindow(pipeline, ImageResources.dog, ImageResources.dog_gray);
+        Assert.Equal(DocumentStatus.Done, Assert.Single(_queue.Documents).Status);
+
+        var removed = pipeline.RemoveFinished();
+
+        Assert.Equal(1, removed);
+        Assert.Empty(_queue.Documents);
+        Assert.Empty(_imageList.Images);
+    }
+
+    [Fact]
+    public async Task RemovingFinishedDocumentsLeavesTheUnfinishedOnesAlone()
+    {
+        var pipeline = CreatePipeline();
+        await ScanIntoWindow(pipeline, ImageResources.dog);
+        await ScanIntoWindow(pipeline, WaitingProfile(), ImageResources.dog_gray, ImageResources.dog);
+        Assert.Equal(2, _queue.Documents.Count);
+
+        var removed = pipeline.RemoveFinished();
+
+        Assert.Equal(1, removed);
+        var document = Assert.Single(_queue.Documents);
+        Assert.Equal(DocumentStatus.Pending, document.Status);
+        Assert.Equal(2, document.PageCount);
+        Assert.Equal(2, _imageList.Images.Count);
+    }
+
+    [Fact]
+    public async Task RemovingFinishedDocumentsDeletesNothingFromDisk()
+    {
+        var pipeline = CreatePipeline();
+        await ScanIntoWindow(pipeline, ImageResources.dog);
+        var written = Assert.Single(Folder.GetFiles());
+
+        pipeline.RemoveFinished();
+
+        Assert.True(File.Exists(written.FullName));
+    }
+
+    [Fact]
     public async Task DraggingAPageIntoAnotherDocumentMovesItThere()
     {
         // Two scans, so the window holds two documents: A with two pages, B with two.

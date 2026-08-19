@@ -50,7 +50,11 @@ The panel is a list plus an inspector, not a card per document: the two answer d
 unreadable at panel width. It has no "upload everything" button of its own -- that one is in the toolbar,
 where it belongs to the window rather than to the document being inspected. Selection runs both ways:
 picking a document there selects its pages, and selecting pages that all sit in one document points the
-panel at it. In the inspector the detected barcodes are *radio buttons* -- the selected one is the
+panel at it. Finished documents stay in the list as the record that they went through, so a day's
+scanning leaves a long one: **"Remove finished" clears them and takes their pages out of the window with
+them** (`DocumentPipeline.RemoveFinished`). The pages go too, because pages that are already filed left
+behind in the canvas would show as belonging to no document -- editable again, and draggable into a
+document they have nothing to do with. Nothing is deleted from disk. In the inspector the detected barcodes are *radio buttons* -- the selected one is the
 identification -- plus "own value" for free text. A "use as identification" button per row said what
 would happen if you pressed it but never which barcode was actually in use.
 

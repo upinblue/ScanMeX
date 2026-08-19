@@ -416,23 +416,57 @@ public class DocumentPipeline
         // corrected, and every profile written before this has the setting on by default.
         if (document.Workflow.CleanupAfterCompletion && DocumentUploadService.HasAnyTarget(document.Profile))
         {
-            // The document's own page objects, so a page that was edited in the meantime is still
-            // recognised as one of them.
-            var present = _imageList.Images.ToHashSet();
-            var toRemove = (document.WindowPages ?? [])
-                .Where(present.Contains)
-                .ToList();
-            if (toRemove.Count > 0)
-            {
-                ScanConsole.Document(
-                    $"{document.Describe()}: finished, removing its {toRemove.Count} page(s) from the window.");
-                Invoker.Current.Invoke(() =>
-                    _imageList.Mutate(new ListMutation<UiImage>.DeleteSelected(),
-                        ListSelection.From(toRemove)));
-            }
+            TakePagesOutOfTheWindow(document);
             _queue.Remove(document);
         }
         _queue.NotifyChanged();
+    }
+
+    /// <summary>
+    /// Clears the finished documents out of the list and takes their pages out of the window with them.
+    /// Returns how many went. The unfinished ones and their pages are left exactly where they are.
+    /// </summary>
+    /// <remarks>
+    /// The pages go too, because leaving them behind would put pages that are already in the archive
+    /// into the canvas as belonging to no document -- editable again, and draggable into a document they
+    /// have nothing to do with. Their file is written and their document said so; the window is where
+    /// the next batch goes.
+    /// </remarks>
+    public int RemoveFinished()
+    {
+        var finished = _queue.Documents.Where(x => x.Status == DocumentStatus.Done).ToList();
+        if (finished.Count == 0)
+        {
+            return 0;
+        }
+        foreach (var document in finished)
+        {
+            TakePagesOutOfTheWindow(document);
+        }
+        _queue.RemoveCompleted();
+        ScanConsole.Document(
+            $"{finished.Count} finished document(s) were cleared from the document list, and their " +
+            "pages left the window with them.");
+        return finished.Count;
+    }
+
+    /// <summary>
+    /// Removes a document's pages from the window -- its own page objects, so a page edited in the
+    /// meantime is still recognised as one of them, and only those: a batch can leave several documents
+    /// in different states, and clearing the window would throw away one that still has to be retried.
+    /// </summary>
+    private void TakePagesOutOfTheWindow(ScannedDocument document)
+    {
+        var present = _imageList.Images.ToHashSet();
+        var toRemove = (document.WindowPages ?? []).Where(present.Contains).ToList();
+        if (toRemove.Count == 0)
+        {
+            return;
+        }
+        ScanConsole.Document(
+            $"{document.Describe()}: removing its {toRemove.Count} page(s) from the window.");
+        Invoker.Current.Invoke(() =>
+            _imageList.Mutate(new ListMutation<UiImage>.DeleteSelected(), ListSelection.From(toRemove)));
     }
 
     private static bool IsPdf(string path) =>

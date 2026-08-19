@@ -35,8 +35,10 @@ public class DocumentPanel : IDisposable
     private readonly DocumentInspector _inspector;
     // Wrapping, unlike C.Secondary: four counts joined with separators do not fit one line at panel width.
     private readonly Label _summary = C.Label("");
+    private readonly Button _removeFinished;
     private readonly LayoutVisibility _panelVis = new(true);
     private readonly LayoutVisibility _emptyVis = new(true);
+    private readonly LayoutVisibility _removeFinishedVis = new(false);
     private readonly LayoutVisibility _listVis = new(false);
 
     /// <summary>
@@ -70,6 +72,9 @@ public class DocumentPanel : IDisposable
         _imageList = imageList;
         _pageTracker = pageTracker;
         _inspector = new DocumentInspector(colorScheme, OnInspectorChanged, UploadOne, Discard);
+        // Finished documents stay in the list on purpose -- they are the record that those pages went
+        // through -- but a day's scanning leaves a long one, and this is how it gets shorter.
+        _removeFinished = C.Button("", () => _uploadController.RemoveFinishedDocuments());
 
         _list.DataStore = _rows;
         _list.Columns.Add(new GridColumn
@@ -116,6 +121,7 @@ public class DocumentPanel : IDisposable
             // grow with the number of documents pushes the inspector -- the part you actually work in --
             // off the bottom of the panel. It scrolls internally past that height.
             L.Column(_list.MaxHeight(LIST_HEIGHT)).Visible(_listVis),
+            L.Row(_removeFinished, C.Filler()).Visible(_removeFinishedVis),
             C.Spacer(),
             L.Column(L.Scrollable(_inspector.Content)).Scale()
         ).Padding(left: 10, right: 10, top: 8, bottom: 8).Spacing(6).Visible(_panelVis);
@@ -178,6 +184,9 @@ public class DocumentPanel : IDisposable
         _inspector.Show(_selectedId == null ? null : documents.FirstOrDefault(x => x.Id == _selectedId));
         _emptyVis.IsVisible = documents.Count == 0;
         _listVis.IsVisible = documents.Count > 0;
+        var finished = documents.Count(x => x.Status == DocumentStatus.Done);
+        _removeFinished.Text = string.Format(UiStrings.RemoveFinishedDocuments, finished);
+        _removeFinishedVis.IsVisible = finished > 0;
         _summary.Text = Summarize(documents);
         _layoutController?.Invalidate();
     }

@@ -1399,6 +1399,9 @@
   <data name="SectionUnassigned" xml:space="preserve">
     <value>Not part of a document</value>
   </data>
+  <data name="RemoveFinishedDocuments" xml:space="preserve">
+    <value>Remove finished ({0})</value>
+  </data>
   <data name="DocumentStatusSavedOutdated" xml:space="preserve">
     <value>Filed locally. The file on disk is out of date.</value>
   </data>

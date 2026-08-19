@@ -3812,6 +3812,15 @@ namespace NAPS2.Lang.Resources {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Remove finished ({0}).
+        /// </summary>
+        internal static string RemoveFinishedDocuments {
+            get {
+                return ResourceManager.GetString("RemoveFinishedDocuments", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Filed locally. The file on disk is out of date..
         /// </summary>
         internal static string DocumentStatusSavedOutdated {

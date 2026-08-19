@@ -1290,6 +1290,9 @@
   <data name="SectionUnassigned" xml:space="preserve">
     <value>Zu keinem Dokument</value>
   </data>
+  <data name="RemoveFinishedDocuments" xml:space="preserve">
+    <value>Erledigte entfernen ({0})</value>
+  </data>
   <data name="DocumentStatusSavedOutdated" xml:space="preserve">
     <value>Lokal abgelegt. Die Datei auf der Platte ist nicht mehr aktuell.</value>
   </data>

@@ -1,4 +1,4 @@
-using NAPS2.PostScan;
+﻿using NAPS2.PostScan;
 using NAPS2.Scan;
 
 namespace NAPS2.EtoForms.Desktop;
@@ -36,6 +36,12 @@ public class DocumentUploadController
     /// Whether anything at all is unfinished, including documents held back for want of an identifier.
     /// </summary>
     public bool HasOutstandingDocuments => _queue.HasOutstanding;
+
+    /// <summary>
+    /// Clears the finished documents out of the list, pages and all. Nothing is deleted from disk: they
+    /// have been written and, where the profile asked for it, archived.
+    /// </summary>
+    public void RemoveFinishedDocuments() => _pipeline.RemoveFinished();
 
     public async Task UploadPendingDocuments()
     {
