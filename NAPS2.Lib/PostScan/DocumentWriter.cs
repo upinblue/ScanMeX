@@ -134,7 +134,10 @@ public class DocumentWriter
     {
         var placeholders = Placeholders.All.WithDate(document.Timestamp);
         var extension = Path.GetExtension(path);
-        var images = document.Pages.ToList();
+        // Read at this moment rather than when the document was split: for a profile that uploads on the
+        // button, minutes of correcting can sit in between, and a page straightened in the window has to
+        // be straightened in the archived file too. Disposed once the operation is finished with them.
+        using var images = document.GetPagesForWriting();
 
         if (extension.Equals(".pdf", StringComparison.InvariantCultureIgnoreCase))
         {

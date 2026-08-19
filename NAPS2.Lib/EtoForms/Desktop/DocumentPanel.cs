@@ -56,8 +56,6 @@ public class DocumentPanel : IDisposable
     private LayoutController? _layoutController;
     private Guid? _selectedId;
     private bool _suppressSelectionEvent;
-    // What the window held at the last change, so a deletion can be told from a page still arriving.
-    private HashSet<ProcessedImage> _pagesInWindow = [];
     private float _iconScale = 1f;
 
     public DocumentPanel(DocumentQueue queue, DocumentUploadController uploadController,
@@ -91,10 +89,9 @@ public class DocumentPanel : IDisposable
             UpdateRows();
         });
 
+        // Pages being deleted, moved or edited in the window is DocumentPageTracker's business; it
+        // notifies the queue when a document changed, and the list follows from there.
         _queue.Changed += QueueChanged;
-        // A document's pages can be deleted from the window, which leaves it describing paper that is no
-        // longer there.
-        _imageList.ImagesUpdated += ImagesUpdated;
     }
 
     public bool IsVisible => _panelVis.IsVisible;
@@ -132,63 +129,6 @@ public class DocumentPanel : IDisposable
     {
         // Documents finish on scanner and upload threads, which must never touch the UI directly.
         Invoker.Current.Invoke(UpdateRows);
-    }
-
-    /// <summary>
-    /// Drops documents whose pages have all been deleted from the window.
-    /// </summary>
-    /// <remarks>
-    /// Driven by what disappeared since the last change, not by what is present now. A document is
-    /// created the moment the scan finishes, while its pages are still on their way into the window, so
-    /// "this document has no page in the list" is true for a fraction of a second after every scan and
-    /// would delete the documents that had just been produced. Only pages that were in the list and then
-    /// left can mean a deletion.
-    ///
-    /// A finished document is left alone regardless: it is the record that those pages reached the
-    /// archive, and clearing the window afterwards is the normal way to start the next batch.
-    /// </remarks>
-    private void ImagesUpdated(object? sender, ImageListEventArgs e)
-    {
-        Invoker.Current.Invoke(() =>
-        {
-            var present = _imageList.Images
-                .Select(x => x.GetImageWeakReference().ProcessedImage)
-                .ToHashSet();
-            var removed = _pagesInWindow.Where(x => !present.Contains(x)).ToHashSet();
-            _pagesInWindow = present;
-            if (removed.Count == 0)
-            {
-                UpdateRows();
-                return;
-            }
-
-            var dropped = 0;
-            foreach (var document in _queue.Documents)
-            {
-                if (document.Status == DocumentStatus.Done || !document.Pages.Any(removed.Contains))
-                {
-                    continue;
-                }
-                if (document.Pages.Any(present.Contains))
-                {
-                    // Some pages survived. The document shrinks with them rather than disappearing, and
-                    // its name is re-resolved from what is left.
-                    ScanConsole.Document(
-                        $"{document.Describe()}: some of its pages were deleted from the window.");
-                    continue;
-                }
-                ScanConsole.Document(
-                    $"{document.Describe()}: all of its pages were deleted from the window, so the " +
-                    "document is gone too.");
-                _queue.Remove(document);
-                dropped++;
-            }
-            if (dropped > 0)
-            {
-                ScanConsole.Document(string.Format(UiStrings.DocumentsRemovedWithPages, dropped));
-            }
-            UpdateRows();
-        });
     }
 
     /// <summary>
@@ -319,10 +259,8 @@ public class DocumentPanel : IDisposable
     /// </summary>
     private void SelectPages(ScannedDocument document)
     {
-        var pages = document.Pages.ToHashSet();
-        var matching = _imageList.Images
-            .Where(x => pages.Contains(x.GetImageWeakReference().ProcessedImage))
-            .ToList();
+        var present = _imageList.Images.ToHashSet();
+        var matching = (document.WindowPages ?? []).Where(present.Contains).ToList();
         if (matching.Count > 0)
         {
             _imageList.UpdateSelection(ListSelection.From(matching));
@@ -332,7 +270,6 @@ public class DocumentPanel : IDisposable
     public void Dispose()
     {
         _queue.Changed -= QueueChanged;
-        _imageList.ImagesUpdated -= ImagesUpdated;
     }
 
     /// <summary>

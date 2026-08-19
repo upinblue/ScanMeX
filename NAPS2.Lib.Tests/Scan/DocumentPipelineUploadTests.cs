@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 using NAPS2.EtoForms;
 using NAPS2.EtoForms.Notifications;
 using NAPS2.Pdf;
@@ -39,7 +39,8 @@ public class DocumentPipelineUploadTests : ContextualTests
             Naps2Config.Stub(),
             ImageContext,
             Substitute.For<DialogHelper>()),
-        _uploadService);
+        _uploadService,
+        new DocumentPageTracker(_imageList, _queue));
 
     [Fact]
     public async Task AnUnresolvedPlaceholderFailsVisiblyAndUploadsNothing()

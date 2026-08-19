@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 using NAPS2.EtoForms;
 using NAPS2.EtoForms.Notifications;
 using NAPS2.Images;
@@ -38,7 +38,8 @@ public class DocumentPipelineTests : ContextualTests
             ImageContext,
             _dialogHelper),
         Substitute.For<DocumentUploadService>(Naps2Config.Stub(), Substitute.For<OperationProgress>(),
-            Substitute.For<ISaveNotify>()));
+            Substitute.For<ISaveNotify>()),
+        new DocumentPageTracker(_imageList, _queue));
 
     [Fact]
     public async Task NoPagesWritesNothing()

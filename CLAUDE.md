@@ -51,11 +51,31 @@ unreadable at panel width. In the inspector the detected barcodes are *radio but
 one is the identification -- plus "own value" for free text. A "use as identification" button per row
 said what would happen if you pressed it but never which barcode was actually in use.
 
-**A document is dropped when its pages are deleted from the window, driven by what disappeared, not by
-what is present.** A document exists the moment the scan finishes, while its pages are still on their
-way into the window, so "has no page in the list" is briefly true for every document that was just
-produced and would delete them all. Finished documents are never dropped -- they are the record that
-those pages reached the archive.
+**A document's pages are the window's page objects, not a copy of them.** `DocumentPageTracker` points
+each document at the `UiImage`s the window holds, and `DocumentWriter` reads them at the moment it
+writes — so a page straightened, cropped or deleted in the window is straightened, cropped or deleted in
+the archived file. It used to be a frozen list of `ProcessedImage`s tied to the window only by value
+equality (storage plus transforms), which is exactly what stops holding the moment anyone edits a page:
+the archived PDF kept showing the raw scan, and rotating every page of a document made it look as though
+all of its pages had been deleted, which took the document out of the list. Don't reintroduce a second
+copy of the pages; if a document needs its own, clone at the point of use and dispose it there.
+
+- **A document only takes the window's pages over once all of them have arrived.** A document exists the
+  moment the scan is split, while its pages are still on their way in, so a document pointed at half of
+  itself would write half a document. `WindowPageCandidates` is what the two ends are matched by, and it
+  is matched **by instance**: the window gets a clone of every page, and a clone is equal by value to the
+  original, so value equality would tie a document to any page that shares storage with one of its own.
+- **Taking them over is not a change to the document.** At that moment the window holds exactly the pages
+  the scan produced, so `PageRevision` stays where it is; counting it as a change would write a second
+  copy of every document that files locally and uploads on the button.
+- **Changing a document's pages invalidates the file it was written from.** `WrittenUnderPageRevision` is
+  the counterpart to `WrittenUnderIdentifier` for the contents rather than the name, and `EnsureFile`
+  compares both. Without it a page deleted after the document had been written left a file that looks
+  filed and is not what the operator is looking at.
+- **A document is dropped when every one of its pages has left the window.** Finished documents are never
+  dropped -- they are the record that those pages reached the archive, and clearing the window is the
+  normal way to start the next batch. There is no window at all for the command line scanner, where a
+  document keeps the scan's own copies for good.
 
 ### Saving, uploading and the trigger are three settings, not one
 
@@ -466,6 +486,7 @@ it again.
 
 The document pipeline's own coverage: `DocumentPipelineTests` (splitting and writing),
 `DocumentPipelineUploadTests` (the hand-off to the archive and everything that must not happen),
+`DocumentPageTrackerTests` (what editing pages in the window does to the document that will be archived),
 `DocumentWorkflowMigrationTests` (reading old profiles), `BarcodeDetectionPlanTests` (whether to decode
 at all) and `PhantomBarcodeTests` (what a noisy page yields).
 
