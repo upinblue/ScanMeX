@@ -121,7 +121,11 @@ public class DocumentEditorTests : ContextualTests
     {
         var pipeline = CreatePipeline();
         await ScanIntoWindow(pipeline, _sharedProfile, ImageResources.dog, ImageResources.dog_gray);
-        pipeline.Finish(Assert.Single(_queue.Documents));
+        var document = Assert.Single(_queue.Documents);
+        // Reaching an archive is what locks it, not being finished: a document a save-only profile filed
+        // into a folder is finished at once and must stay editable.
+        document.CompletedTargets.Add("SharePoint");
+        pipeline.Finish(document);
 
         Assert.False(_editor.CanSplitAt([_imageList.Images[1]]));
     }

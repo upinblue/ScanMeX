@@ -134,11 +134,16 @@ the one place that decides:
 `ImageListActions` is where the two refusals live, because it is the one chokepoint both the keyboard and
 the drop go through:
 
-- **A finished document's pages cannot be deleted or moved.** They are the record that exactly those
-  pages are in the archive, so an edit that appears to work while the archive stays as it was would be
-  worse than one that is refused. A mixed selection deletes the rest and says how many stayed. **Clearing
-  the window is not an edit** and is deliberately not caught: it is how the next batch starts, and a
-  finished document keeps its own record either way.
+- **The pages of a document that reached an archive cannot be deleted or moved.** They are the record
+  that exactly those pages are in there, so an edit that appears to work while the archive stays as it
+  was would be worse than one that is refused. **Reaching an archive, not being finished**
+  (`ScannedDocument.IsFiledRemotely`): a profile that only files into a folder finishes a document the
+  moment it is written, and locking those would leave anyone who uploads nowhere unable to edit a page at
+  all. A mixed selection deletes the rest and says how many stayed. **Clearing the window is not an
+  edit** and is deliberately not caught: it is how the next batch starts, and a finished document keeps
+  its own record either way.
+- **A document being written or uploaded at this moment is left alone too.** With automatic upload that
+  happens while the operator carries on working, so its pages are in use.
 - **Pages do not move between documents of different profiles.** The profile decides the folder, the
   name and the archive, so that one drag would change all three with nothing on screen saying so.
 - Both refusals go to the console *and* to `INotify.Refused`, which is what the notification channel was
@@ -171,6 +176,28 @@ to the one directly above it. Both are in the canvas context menu and on `Mod+Sh
   order, and the bottom of the list is where the next scan goes.
 - Splitting at a document's first page is not offered (it would produce nothing), nor is anything on an
   archived document, nor merging across profiles -- the same rules the drag follows.
+
+### A document with nowhere to upload to is finished when it is written
+
+A profile that files locally and has no archive target used to leave its documents `Pending` for ever.
+Nothing could take them further, but they still counted as ready to upload -- so the upload button stayed
+lit, and pressing it ran them through `Advance`, which wrote nothing new and left them pending, whereupon
+the controller counted them as not `Done` and reported that the upload had **failed**. For a document
+that had been filed exactly as asked.
+
+`Advance` now finishes them as soon as the file is written, and everything downstream follows: the button
+is disabled because there is nothing to upload, the counts are right, and the status line reads "Filed
+locally" instead of naming a queue that does not exist.
+
+- **Cleanup only applies to a document that actually went somewhere.** `CleanupAfterCompletion` defaults
+  to **on**, so finishing these documents would otherwise have started clearing the window after every
+  scan for every profile that just files into a folder -- and the window is the one place a scan can
+  still be looked at and corrected.
+- **Correcting a filed document puts it back in the queue.** Change its pages and `DocumentPageTracker`
+  sets it back to `Pending`; change its identification and `DocumentInspector` does. Either way the
+  status says the file on disk is out of date and the upload button has something to do again -- it
+  writes the corrected version **next to** the old one, because a file in the operator's own folder is
+  theirs.
 
 ### Saving, uploading and the trigger are three settings, not one
 

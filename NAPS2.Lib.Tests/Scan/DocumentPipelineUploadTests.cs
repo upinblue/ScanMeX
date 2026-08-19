@@ -1,5 +1,6 @@
 ﻿#nullable enable
 using NAPS2.EtoForms;
+using NAPS2.EtoForms.Desktop;
 using NAPS2.EtoForms.Notifications;
 using NAPS2.Pdf;
 using NAPS2.PostScan;
@@ -41,6 +42,47 @@ public class DocumentPipelineUploadTests : ContextualTests
             Substitute.For<DialogHelper>()),
         _uploadService,
         new DocumentPageTracker(_imageList, _queue));
+
+    [Fact]
+    public async Task PressingUploadForAProfileWithNoTargetDoesNotReportAFailure()
+    {
+        // A profile that only files locally has nowhere to upload to. Its documents used to sit in the
+        // queue as pending for ever, which kept the upload button lit and made pressing it report that
+        // the document had failed to upload -- a document that was filed exactly as asked.
+        await Run(Profile("scan.pdf", sap: false));
+
+        await new DocumentUploadController(_queue, CreatePipeline(), _errorOutput)
+            .UploadPendingDocuments();
+
+        _errorOutput.DidNotReceive().DisplayError(Arg.Any<string>());
+        Assert.False(_queue.HasReadyToUpload);
+    }
+
+    [Fact]
+    public async Task AProfileWithNoTargetFinishesItsDocumentsWhenTheyAreWritten()
+    {
+        // There is nothing left to do with it, so leaving it pending would keep it in a queue for an
+        // upload that is never coming.
+        await Run(Profile("scan.pdf", sap: false));
+
+        var document = Assert.Single(_queue.Documents);
+        Assert.Equal(DocumentStatus.Done, document.Status);
+        Assert.False(_queue.HasOutstanding);
+    }
+
+    [Fact]
+    public async Task AProfileWithNoTargetKeepsItsPagesInTheWindow()
+    {
+        // CleanupAfterCompletion is on by default, and finishing these documents at once would otherwise
+        // start clearing the window after every scan for profiles that only ever filed into a folder.
+        var profile = Profile("scan.pdf", sap: false);
+        profile.DocumentWorkflow = profile.DocumentWorkflow! with { CleanupAfterCompletion = true };
+        var pages = CreateScannedImages(ImageResources.dog);
+        var produced = await CreatePipeline().Process(profile, pages.ToAsyncEnumerable()).ToListAsync();
+
+        Assert.Single(produced);
+        Assert.False(IsDisposed(produced[0]));
+    }
 
     [Fact]
     public async Task AnUnresolvedPlaceholderFailsVisiblyAndUploadsNothing()

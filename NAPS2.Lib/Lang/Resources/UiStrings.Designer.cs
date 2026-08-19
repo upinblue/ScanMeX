@@ -3812,6 +3812,33 @@ namespace NAPS2.Lang.Resources {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Filed locally. The file on disk is out of date..
+        /// </summary>
+        internal static string DocumentStatusSavedOutdated {
+            get {
+                return ResourceManager.GetString("DocumentStatusSavedOutdated", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Document is being filed.
+        /// </summary>
+        internal static string BusyDocumentRefusedTitle {
+            get {
+                return ResourceManager.GetString("BusyDocumentRefusedTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Its pages are being written right now. Wait until it is through..
+        /// </summary>
+        internal static string BusyDocumentRefused {
+            get {
+                return ResourceManager.GetString("BusyDocumentRefused", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Split document here.
         /// </summary>
         internal static string SplitDocumentHere {

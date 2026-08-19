@@ -1290,6 +1290,15 @@
   <data name="SectionUnassigned" xml:space="preserve">
     <value>Zu keinem Dokument</value>
   </data>
+  <data name="DocumentStatusSavedOutdated" xml:space="preserve">
+    <value>Lokal abgelegt. Die Datei auf der Platte ist nicht mehr aktuell.</value>
+  </data>
+  <data name="BusyDocumentRefusedTitle" xml:space="preserve">
+    <value>Dokument wird gerade abgelegt</value>
+  </data>
+  <data name="BusyDocumentRefused" xml:space="preserve">
+    <value>Seine Seiten werden gerade geschrieben. Warten Sie, bis es fertig ist.</value>
+  </data>
   <data name="SplitDocumentHere" xml:space="preserve">
     <value>Dokument hier trennen</value>
   </data>

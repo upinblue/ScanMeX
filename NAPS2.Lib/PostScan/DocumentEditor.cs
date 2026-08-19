@@ -53,7 +53,7 @@ public class DocumentEditor
         var document = _pageTracker.DocumentFor(page);
         // Splitting at the first page would produce a document with nothing in it and leave the other
         // one exactly as it was.
-        return document is { Status: not DocumentStatus.Done } &&
+        return document is { IsFiledRemotely: false, Status: not DocumentStatus.Working } &&
                document.WindowPages is { } pages && pages.Count > 1 && !ReferenceEquals(pages[0], page);
     }
 
@@ -155,7 +155,8 @@ public class DocumentEditor
             return null;
         }
         var document = _pageTracker.DocumentFor(page);
-        if (document is not { Status: not DocumentStatus.Done } || document.WindowPages is not { Count: > 0 })
+        if (document is not { IsFiledRemotely: false, Status: not DocumentStatus.Working } ||
+            document.WindowPages is not { Count: > 0 })
         {
             return null;
         }
@@ -166,8 +167,8 @@ public class DocumentEditor
             return null;
         }
         var previous = _pageTracker.DocumentFor(order[first - 1]);
-        if (previous == null || ReferenceEquals(previous, document) ||
-            previous.Status == DocumentStatus.Done ||
+        if (previous == null || ReferenceEquals(previous, document) || previous.IsFiledRemotely ||
+            previous.Status == DocumentStatus.Working ||
             !ReferenceEquals(previous.Profile, document.Profile))
         {
             // Not a document, already archived, or filed by a different profile -- which decides the

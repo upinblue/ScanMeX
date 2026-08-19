@@ -1,4 +1,4 @@
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using NAPS2.Images;
 
 namespace NAPS2.PostScan;
@@ -120,7 +120,10 @@ public class DocumentPageTracker : IDisposable
         var changed = false;
         foreach (var document in _queue.Documents)
         {
-            if (document.Status == DocumentStatus.Done || document.HasAdoptedWindowPages)
+            // Finished ones too: a profile that only files locally finishes a document the moment it is
+            // written, which can be before its pages have reached the window, and a document that never
+            // took them over would leave its own pages drawn as belonging to nothing.
+            if (document.HasAdoptedWindowPages)
             {
                 continue;
             }
@@ -138,11 +141,13 @@ public class DocumentPageTracker : IDisposable
             }
             beforeCounts[document] = document.PageCount;
         }
-        // Finished documents neither lose nor gain pages: they are the record that exactly those pages
-        // are in the archive. Clearing the window still leaves them alone, which is why they are skipped
-        // rather than emptied below.
+        // Documents that reached an archive neither lose nor gain pages: they are the record that exactly
+        // those pages are in there. Being finished is not enough -- a save-only profile finishes a
+        // document as soon as it is written, and locking those would mean nobody who uploads nowhere
+        // could ever edit a page again.
+        // Being written or uploaded right now counts too: its pages are in use at this moment.
         var locked = _queue.Documents
-            .Where(x => x.Status == DocumentStatus.Done)
+            .Where(x => x.IsFiledRemotely || x.Status == DocumentStatus.Working)
             .ToHashSet();
 
         var assignment = DocumentPageAssignment.Normalize(_previousOrder, images, before, locked);
@@ -164,6 +169,12 @@ public class DocumentPageTracker : IDisposable
             var pages = pagesByDocument.Get(document) ?? [];
             if (pages.Count == 0)
             {
+                if (document.Status == DocumentStatus.Done)
+                {
+                    // Already filed. The queue entry is the record that it was, and clearing the window
+                    // is the normal way to start the next batch.
+                    continue;
+                }
                 ScanConsole.Document(
                     $"{document.Describe()}: it has no pages left in the window, so the document is gone " +
                     "too.");
@@ -175,6 +186,15 @@ public class DocumentPageTracker : IDisposable
             {
                 changed = true;
                 ReportChange(document, beforeCounts.Get(document), pages.Count);
+                if (document.Status == DocumentStatus.Done)
+                {
+                    // It was filed, and the file no longer shows what the document contains. Pending
+                    // again, so the upload button has something to do and files it as it now stands.
+                    document.Status = DocumentStatus.Pending;
+                    ScanConsole.Document(
+                        $"{document.Describe()}: it had been filed already; press upload to file it " +
+                        "again as it now stands.");
+                }
             }
         }
         _previousOrder = images;
@@ -221,7 +241,7 @@ public class DocumentPageTracker : IDisposable
         {
             ScanConsole.Document(
                 $"{document.Describe()}: '{document.FileName}' no longer shows what the document " +
-                "contains, so it is written again before it is uploaded.");
+                "contains, so it is written again the next time the document is filed.");
         }
     }
 

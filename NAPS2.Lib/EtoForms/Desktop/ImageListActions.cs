@@ -79,6 +79,11 @@ public class ImageListActions
     public void DeleteSelected()
     {
         var selection = Selection ?? _imageList.Selection;
+        if (selection.Any(IsBusy))
+        {
+            RefuseBusyEdit();
+            return;
+        }
         var keep = selection.Where(IsArchived).ToList();
         if (keep.Count == selection.Count && keep.Count > 0)
         {
@@ -102,8 +107,21 @@ public class ImageListActions
     }
 
     /// <summary>Whether a page belongs to a document that has already reached the archive.</summary>
+    /// <remarks>
+    /// Reaching an archive, not merely being finished: a document a save-only profile filed into a
+    /// folder is finished the moment it is written, and refusing to touch those would mean no page could
+    /// ever be edited again by anyone not uploading anywhere.
+    /// </remarks>
     private bool IsArchived(UiImage page) =>
-        _pageTracker.DocumentFor(page)?.Status == DocumentStatus.Done;
+        _pageTracker.DocumentFor(page)?.IsFiledRemotely == true;
+
+    /// <summary>
+    /// Whether a page belongs to a document that is being written or uploaded at this moment. With
+    /// automatic upload that happens while the operator carries on working, so the pages of a document
+    /// halfway into the archive have to be left alone until it is through.
+    /// </summary>
+    private bool IsBusy(UiImage page) =>
+        _pageTracker.DocumentFor(page)?.Status == DocumentStatus.Working;
 
     /// <summary>
     /// Whether the selected pages may be moved at all. The pages of a finished document are the record
@@ -113,6 +131,11 @@ public class ImageListActions
     private bool MayRearrange()
     {
         var selection = Selection ?? _imageList.Selection;
+        if (selection.Any(IsBusy))
+        {
+            RefuseBusyEdit();
+            return false;
+        }
         if (!selection.Any(IsArchived))
         {
             return true;
@@ -142,7 +165,7 @@ public class ImageListActions
         {
             return true;
         }
-        if (target.Status == DocumentStatus.Done)
+        if (target.IsFiledRemotely)
         {
             RefuseArchivedEdit();
             return false;
@@ -162,6 +185,14 @@ public class ImageListActions
             "the move was refused.");
         _notify.Refused(UiStrings.CrossProfileMoveRefusedTitle, UiStrings.CrossProfileMoveRefused);
         return false;
+    }
+
+    private void RefuseBusyEdit()
+    {
+        ScanConsole.Document(
+            "The selected page(s) belong to a document that is being filed right now; the edit was " +
+            "refused until it is through.");
+        _notify.Refused(UiStrings.BusyDocumentRefusedTitle, UiStrings.BusyDocumentRefused);
     }
 
     private void RefuseArchivedEdit()

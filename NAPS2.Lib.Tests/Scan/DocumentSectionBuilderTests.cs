@@ -123,6 +123,17 @@ public class DocumentSectionBuilderTests : ContextualTests
     }
 
     [Fact]
+    public async Task AHeadingSaysWhenTheFiledVersionIsOutOfDate()
+    {
+        await ScanIntoWindow(DocumentSeparationMode.None, ImageResources.dog);
+
+        _imageList.Mutate(new ImageListMutation.RotateFlip(90), ListSelection.From(_imageList.Images));
+
+        var section = Assert.Single(_builder.Build(_imageList.Images));
+        Assert.Contains(UiStrings.DocumentStatusSavedOutdated, section.Meta);
+    }
+
+    [Fact]
     public async Task DeletingADocumentsLastPageTakesItsSectionWithIt()
     {
         await ScanIntoWindow(DocumentSeparationMode.OnePerPage,

@@ -1,9 +1,10 @@
-#nullable enable
+﻿#nullable enable
 using NAPS2.EtoForms;
 using NAPS2.EtoForms.Notifications;
 using NAPS2.Images;
 using NAPS2.Pdf;
 using NAPS2.PostScan;
+using NAPS2.Sap;
 using NAPS2.Scan;
 using NAPS2.Sdk.Tests;
 using NAPS2.Sdk.Tests.Asserts;
@@ -54,10 +55,12 @@ public class DocumentPageTrackerTests : ContextualTests
     }
 
     [Fact]
-    public async Task DeletingEveryPageDropsTheDocument()
+    public async Task DeletingEveryPageDropsADocumentThatHasNotGoneAnywhere()
     {
+        // A document waiting for the upload button is nothing without its pages. One that has already
+        // been filed is a different matter -- see AFinishedDocumentSurvivesItsPagesBeingCleared.
         var pipeline = CreatePipeline();
-        await ScanIntoWindow(pipeline, ImageResources.dog, ImageResources.dog_gray);
+        await ScanIntoWindow(pipeline, WaitingProfile(), ImageResources.dog, ImageResources.dog_gray);
 
         DeletePages(_imageList.Images.ToList());
 
@@ -142,6 +145,31 @@ public class DocumentPageTrackerTests : ContextualTests
     }
 
     [Fact]
+    public async Task EditingAFiledDocumentPutsItBackInTheQueue()
+    {
+        // A profile that only files locally finishes its documents at once. Correcting a page afterwards
+        // has to give the operator a way to put the corrected version on disk, or the edit is one the
+        // window shows and the folder never hears about.
+        var pipeline = CreatePipeline();
+        await ScanIntoWindow(pipeline, ImageResources.dog);
+        var document = Assert.Single(_queue.Documents);
+        Assert.Equal(DocumentStatus.Done, document.Status);
+
+        RotateEverything();
+
+        Assert.Equal(DocumentStatus.Pending, document.Status);
+        Assert.False(document.FileMatchesPages);
+
+        await pipeline.Advance(document, triggeredByOperator: true);
+
+        Assert.Equal(DocumentStatus.Done, document.Status);
+        Assert.True(document.FileMatchesPages);
+        // The corrected version is written next to the first one rather than over it: a file in the
+        // operator's own folder is theirs.
+        Assert.Equal(2, Folder.GetFiles().Length);
+    }
+
+    [Fact]
     public async Task DraggingAPageIntoAnotherDocumentMovesItThere()
     {
         // Two scans, so the window holds two documents: A with two pages, B with two.
@@ -165,8 +193,9 @@ public class DocumentPageTrackerTests : ContextualTests
     public async Task DraggingADocumentsLastPageAwayTakesTheDocumentWithIt()
     {
         var pipeline = CreatePipeline();
-        await ScanIntoWindow(pipeline, ImageResources.dog);
-        await ScanIntoWindow(pipeline, ImageResources.dog_gray, ImageResources.dog);
+        var profile = WaitingProfile();
+        await ScanIntoWindow(pipeline, profile, ImageResources.dog);
+        await ScanIntoWindow(pipeline, profile, ImageResources.dog_gray, ImageResources.dog);
         Assert.Equal(2, _queue.Documents.Count);
 
         Move(_imageList.Images[0], 2);
@@ -197,10 +226,13 @@ public class DocumentPageTrackerTests : ContextualTests
     /// Scans and then puts the pages into the window the way the desktop does, so the documents can take
     /// them over.
     /// </summary>
-    private async Task ScanIntoWindow(DocumentPipeline pipeline, params byte[][] images)
+    private Task ScanIntoWindow(DocumentPipeline pipeline, params byte[][] images) =>
+        ScanIntoWindow(pipeline, Profile("test$(n).pdf"), images);
+
+    private async Task ScanIntoWindow(DocumentPipeline pipeline, ScanProfile profile, params byte[][] images)
     {
         var produced = await pipeline
-            .Process(Profile("test$(n).pdf"), CreateScannedImages(images).ToAsyncEnumerable())
+            .Process(profile, CreateScannedImages(images).ToAsyncEnumerable())
             .ToListAsync();
         _imageList.Mutate(new ImageListMutation.Append(produced.Select(x => new UiImage(x))),
             isPassiveInteraction: true);
@@ -212,6 +244,18 @@ public class DocumentPageTrackerTests : ContextualTests
 
     private void DeletePages(List<UiImage> pages) =>
         _imageList.Mutate(new ListMutation<UiImage>.DeleteSelected(), ListSelection.From(pages));
+
+    /// <summary>
+    /// A profile whose documents wait for the upload button, so they are pending rather than finished.
+    /// A profile with nothing to upload to finishes a document the moment it has been written.
+    /// </summary>
+    private ScanProfile WaitingProfile()
+    {
+        var profile = Profile("test$(n).pdf");
+        profile.SapArchiveSettings = new SapArchiveProfileSettings { EnableUpload = true, ArchiveId = "PS" };
+        profile.DocumentWorkflow = profile.DocumentWorkflow! with { UploadTrigger = UploadTrigger.Manual };
+        return profile;
+    }
 
     private ScanProfile Profile(string name) => new()
     {

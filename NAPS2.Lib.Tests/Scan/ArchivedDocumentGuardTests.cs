@@ -13,11 +13,16 @@ using Xunit;
 namespace NAPS2.Lib.Tests.Scan;
 
 /// <summary>
-/// What the window refuses to do to a document that has already reached the archive, and what it refuses
-/// across profiles. A finished document is the record that exactly those pages were archived, so an edit
-/// that appears to work while the archive stays as it was would be worse than one that is refused.
+/// What the window refuses to do to a document that has already reached an archive, and what it refuses
+/// across profiles. Such a document is the record that exactly those pages are in there, so an edit that
+/// appears to work while the archive stays as it was would be worse than one that is refused.
 /// </summary>
-public class FinishedDocumentGuardTests : ContextualTests
+/// <remarks>
+/// Having reached an archive, not merely being finished: a profile that only files into a folder
+/// finishes a document as soon as it is written, and locking those would leave anyone who uploads
+/// nowhere unable to edit a page at all.
+/// </remarks>
+public class ArchivedDocumentGuardTests : ContextualTests
 {
     private readonly DocumentQueue _queue = new();
     private readonly UiImageList _imageList = new();
@@ -25,7 +30,7 @@ public class FinishedDocumentGuardTests : ContextualTests
     private readonly INotify _notify = Substitute.For<INotify>();
     private readonly ImageListActions _actions;
 
-    public FinishedDocumentGuardTests()
+    public ArchivedDocumentGuardTests()
     {
         _pageTracker = new DocumentPageTracker(_imageList, _queue);
         _actions = new ImageListActions(_imageList, null!, null!, Naps2Config.Stub(), null!, null!,
@@ -53,8 +58,7 @@ public class FinishedDocumentGuardTests : ContextualTests
     {
         var pipeline = CreatePipeline();
         await ScanIntoWindow(pipeline, Profile(), ImageResources.dog, ImageResources.dog_gray);
-        var document = Assert.Single(_queue.Documents);
-        pipeline.Finish(document);
+        Archive(pipeline, Assert.Single(_queue.Documents));
 
         Select(_imageList.Images[0]);
         _actions.DeleteSelected();
@@ -69,7 +73,7 @@ public class FinishedDocumentGuardTests : ContextualTests
         // Refusing the whole thing would leave the operator to pick the selection apart by hand.
         var pipeline = CreatePipeline();
         await ScanIntoWindow(pipeline, Profile(), ImageResources.dog);
-        pipeline.Finish(Assert.Single(_queue.Documents));
+        Archive(pipeline, Assert.Single(_queue.Documents));
         Import(ImageResources.dog_gray);
 
         Select(_imageList.Images[0], _imageList.Images[1]);
@@ -85,7 +89,7 @@ public class FinishedDocumentGuardTests : ContextualTests
     {
         var pipeline = CreatePipeline();
         await ScanIntoWindow(pipeline, Profile(), ImageResources.dog, ImageResources.dog_gray);
-        pipeline.Finish(Assert.Single(_queue.Documents));
+        Archive(pipeline, Assert.Single(_queue.Documents));
         var first = _imageList.Images[0];
 
         Select(first);
@@ -115,20 +119,42 @@ public class FinishedDocumentGuardTests : ContextualTests
     }
 
     [Fact]
+    public async Task PagesOfADocumentBeingFiledRightNowAreLeftAlone()
+    {
+        // With automatic upload this happens while the operator carries on working, so a document
+        // halfway into the archive must not have its pages pulled out from under it.
+        var pipeline = CreatePipeline();
+        await ScanIntoWindow(pipeline, Profile(), ImageResources.dog, ImageResources.dog_gray);
+        Assert.Single(_queue.Documents).Status = DocumentStatus.Working;
+
+        Select(_imageList.Images[0]);
+        _actions.DeleteSelected();
+
+        Assert.Equal(2, _imageList.Images.Count);
+        _notify.Received().Refused(Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    [Fact]
     public async Task ClearingTheWindowIsNotAnEditAndIsAllowed()
     {
         // A finished document keeps its own record of what reached the archive, so clearing the window
         // -- the normal way to start the next batch -- must not be caught by the guard.
         var pipeline = CreatePipeline();
         await ScanIntoWindow(pipeline, Profile(), ImageResources.dog);
-        var document = Assert.Single(_queue.Documents);
-        pipeline.Finish(document);
+        Archive(pipeline, Assert.Single(_queue.Documents));
 
         Select(_imageList.Images.ToArray());
         _actions.DeleteAll();
 
         Assert.Empty(_imageList.Images);
         Assert.Equal(DocumentStatus.Done, Assert.Single(_queue.Documents).Status);
+    }
+
+    /// <summary>Takes a document all the way into an archive, which is what makes it untouchable.</summary>
+    private static void Archive(DocumentPipeline pipeline, ScannedDocument document)
+    {
+        document.CompletedTargets.Add("SharePoint");
+        pipeline.Finish(document);
     }
 
     private void Select(params UiImage[] pages) =>

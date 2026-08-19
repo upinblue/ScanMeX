@@ -1399,6 +1399,15 @@
   <data name="SectionUnassigned" xml:space="preserve">
     <value>Not part of a document</value>
   </data>
+  <data name="DocumentStatusSavedOutdated" xml:space="preserve">
+    <value>Filed locally. The file on disk is out of date.</value>
+  </data>
+  <data name="BusyDocumentRefusedTitle" xml:space="preserve">
+    <value>Document is being filed</value>
+  </data>
+  <data name="BusyDocumentRefused" xml:space="preserve">
+    <value>Its pages are being written right now. Wait until it is through.</value>
+  </data>
   <data name="SplitDocumentHere" xml:space="preserve">
     <value>Split document here</value>
   </data>

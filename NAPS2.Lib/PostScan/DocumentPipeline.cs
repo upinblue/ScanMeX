@@ -268,6 +268,17 @@ public class DocumentPipeline
             {
                 return;
             }
+            if (!hasTargets)
+            {
+                // Filed, and there is nowhere else for it to go. Leaving it pending instead used to keep
+                // the upload button lit for a document nothing could take further, and pressing it
+                // reported that the document had failed to upload.
+                ScanConsole.Document(
+                    $"{document.Describe()}: filed locally, and the profile has no archive target, so it " +
+                    "is finished.");
+                Finish(document);
+                return;
+            }
             if (!uploadNow)
             {
                 document.Status = DocumentStatus.Pending;
@@ -399,7 +410,11 @@ public class DocumentPipeline
         document.Message = null;
         _imageList.MarkSaved(_imageList.CurrentState, document.CurrentPageStates());
 
-        if (document.Workflow.CleanupAfterCompletion)
+        // Only for a document that actually went somewhere. A profile that files into a folder finishes
+        // its documents the moment they are written, and clearing the window on that would take the pages
+        // away right after every scan -- the window is the one place they can still be looked at and
+        // corrected, and every profile written before this has the setting on by default.
+        if (document.Workflow.CleanupAfterCompletion && DocumentUploadService.HasAnyTarget(document.Profile))
         {
             // The document's own page objects, so a page that was edited in the meantime is still
             // recognised as one of them.

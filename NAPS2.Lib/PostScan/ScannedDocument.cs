@@ -1,4 +1,4 @@
-using NAPS2.Images;
+﻿using NAPS2.Images;
 using NAPS2.Scan;
 
 namespace NAPS2.PostScan;
@@ -243,6 +243,14 @@ public sealed class ScannedDocument : IDisposable
     /// staging copy that is deleted again.
     /// </summary>
     public bool IsSavedLocally => SavedPath != null && !SavedPathIsTemporary;
+
+    /// <summary>
+    /// Whether the document has reached somewhere it cannot be taken back from -- SharePoint, the SAP
+    /// archive. This, and not <see cref="DocumentStatus.Done"/>, is what makes its pages untouchable:
+    /// a file in the operator's own folder can be written again, while a document in an archive is a
+    /// record that says these exact pages are in there.
+    /// </summary>
+    public bool IsFiledRemotely => CompletedTargets.Count > 0;
 
     /// <summary>
     /// The file to upload. Only valid once the document has been written.
