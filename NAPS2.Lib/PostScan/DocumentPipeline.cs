@@ -1,4 +1,4 @@
-using NAPS2.EtoForms.Notifications;
+﻿using NAPS2.EtoForms.Notifications;
 using NAPS2.Images;
 using NAPS2.Scan;
 
@@ -22,9 +22,11 @@ public class DocumentPipeline
     private readonly DocumentQueue _queue;
     private readonly DocumentWriter _writer;
     private readonly DocumentUploadService _uploadService;
+    private readonly DocumentPageTracker _pageTracker;
 
     public DocumentPipeline(ErrorOutput errorOutput, ISaveNotify notify, UiImageList imageList,
-        DocumentQueue queue, DocumentWriter writer, DocumentUploadService uploadService)
+        DocumentQueue queue, DocumentWriter writer, DocumentUploadService uploadService,
+        DocumentPageTracker pageTracker)
     {
         _errorOutput = errorOutput;
         _notify = notify;
@@ -32,6 +34,7 @@ public class DocumentPipeline
         _queue = queue;
         _writer = writer;
         _uploadService = uploadService;
+        _pageTracker = pageTracker;
     }
 
     /// <summary>
@@ -48,25 +51,32 @@ public class DocumentPipeline
         return AsyncProducers.RunProducer<ProcessedImage>(async produceImage =>
         {
             var pages = new List<ProcessedImage>();
+            // Keyed by instance: two clones of one page are equal by value, which is the very thing
+            // this has to keep apart.
+            var handedToWindow =
+                new Dictionary<ProcessedImage, ProcessedImage>(DocumentPageTracker.SameInstance.Comparer);
             try
             {
                 await foreach (var image in images)
                 {
                     pages.Add(image);
-                    // The document keeps the original; the window gets a reference of its own. Both have
-                    // to survive independently -- the document may still have to render a PDF long after
-                    // the operator has deleted the page from the window.
-                    produceImage(image.Clone());
+                    // The document keeps the original; the window gets a reference of its own. Which
+                    // clone went with which page is remembered, because that is how the document finds
+                    // its pages again once the window has wrapped them.
+                    var forWindow = image.Clone();
+                    handedToWindow[image] = forWindow;
+                    produceImage(forWindow);
                 }
             }
             finally
             {
-                await BuildAndRunDocuments(profile, pages);
+                await BuildAndRunDocuments(profile, pages, handedToWindow);
             }
         });
     }
 
-    private async Task BuildAndRunDocuments(ScanProfile profile, List<ProcessedImage> pages)
+    private async Task BuildAndRunDocuments(ScanProfile profile, List<ProcessedImage> pages,
+        Dictionary<ProcessedImage, ProcessedImage> handedToWindow)
     {
         if (pages.Count == 0)
         {
@@ -76,7 +86,7 @@ public class DocumentPipeline
         List<ScannedDocument> documents;
         try
         {
-            documents = Split(profile, DocumentWorkflowSettings.ForProfile(profile), pages);
+            documents = Split(profile, DocumentWorkflowSettings.ForProfile(profile), pages, handedToWindow);
         }
         catch (Exception ex)
         {
@@ -92,6 +102,9 @@ public class DocumentPipeline
         {
             _queue.Add(document);
         }
+        // The pages are usually already in the window by now, and nothing else would tell the documents
+        // about them: the image list only reports changes, and their arrival was one.
+        _pageTracker.Sync();
         foreach (var document in documents)
         {
             await Advance(document);
@@ -102,7 +115,8 @@ public class DocumentPipeline
     /// Splits a scan into documents and attaches the barcodes and the identifying value to each.
     /// </summary>
     private static List<ScannedDocument> Split(
-        ScanProfile profile, DocumentWorkflowSettings workflow, List<ProcessedImage> pages)
+        ScanProfile profile, DocumentWorkflowSettings workflow, List<ProcessedImage> pages,
+        Dictionary<ProcessedImage, ProcessedImage> handedToWindow)
     {
         var segments = DocumentSeparator.Separate(pages, workflow)
             .Select(x => (Pages: x.Images.ToList(), Separator: x.SeparatorBarcodeValue))
@@ -120,7 +134,13 @@ public class DocumentPipeline
             var document = new ScannedDocument
             {
                 Profile = profile,
-                Pages = segmentPages,
+                ScannedPages = segmentPages,
+                // Only the pages that actually went to a window: a separator sheet the profile drops is
+                // in neither list, and the command line scanner hands nothing to anything.
+                WindowPageCandidates = segmentPages
+                    .Where(handedToWindow.ContainsKey)
+                    .Select(x => handedToWindow[x])
+                    .ToList(),
                 SequenceIndex = i,
                 Timestamp = timestamp
             };
@@ -139,13 +159,13 @@ public class DocumentPipeline
     /// apart. Where nothing separated the document -- a profile that doesn't separate at all -- the same
     /// regex picks it out of the page's barcodes, so the two paths still agree.
     /// </remarks>
-    private static void AttachBarcodes(
+    internal static void AttachBarcodes(
         ScannedDocument document, DocumentWorkflowSettings workflow, string? separatorValue)
     {
         var extracted = new BarcodeExtractor
         {
             SelectionPattern = document.Profile.GetBarcodeSelectionPattern()
-        }.Extract(document.Pages);
+        }.Extract(document.CurrentPageStates());
 
         document.SetBarcodes(extracted.Select(x =>
             new DocumentBarcode(x.Value, string.IsNullOrWhiteSpace(x.BarcodeType) ? null : x.BarcodeType,
@@ -248,6 +268,17 @@ public class DocumentPipeline
             {
                 return;
             }
+            if (!hasTargets)
+            {
+                // Filed, and there is nowhere else for it to go. Leaving it pending instead used to keep
+                // the upload button lit for a document nothing could take further, and pressing it
+                // reported that the document had failed to upload.
+                ScanConsole.Document(
+                    $"{document.Describe()}: filed locally, and the profile has no archive target, so it " +
+                    "is finished.");
+                Finish(document);
+                return;
+            }
             if (!uploadNow)
             {
                 document.Status = DocumentStatus.Pending;
@@ -270,19 +301,26 @@ public class DocumentPipeline
     {
         if (document.SavedPath != null && File.Exists(document.SavedPath))
         {
-            if (document.FileMatchesIdentifier)
+            if (document.FileMatchesIdentifier && document.FileMatchesPages)
             {
                 return true;
             }
-            // The identification changed after the file was written -- corrected in the document list
-            // before pressing upload, or before retrying a failed one. The SharePoint folder and the SAP
-            // object key are expanded from the identification at upload time, so reusing the file would
-            // archive the document under the new key with the old name still on it.
+            // Either the identification or the pages changed after the file was written -- corrected in
+            // the document list before pressing upload, a page deleted or straightened in the window, or
+            // both before retrying a failed one. The SharePoint folder and the SAP object key are
+            // expanded from the identification at upload time, so reusing the file would archive the
+            // document under the new key with the old name on it; and a file written before the pages
+            // were edited shows something the operator has already corrected.
+            var reason = document.FileMatchesIdentifier
+                ? "its pages changed"
+                : document.FileMatchesPages
+                    ? "the identification changed"
+                    : "the identification and its pages changed";
             if (document.SavedPathIsTemporary)
             {
                 ScanConsole.Document(
-                    $"{document.Describe()}: the identification changed since '{document.FileName}' was " +
-                    "staged, so the staged copy is replaced.");
+                    $"{document.Describe()}: {reason} since '{document.FileName}' was staged, so the " +
+                    "staged copy is replaced.");
                 document.DiscardStagingFile();
             }
             else
@@ -290,10 +328,11 @@ public class DocumentPipeline
                 // The operator's own folder: the earlier file is theirs and is left where it is. Deleting
                 // it here would remove a document they may already have filed by hand.
                 ScanConsole.Document(
-                    $"{document.Describe()}: the identification changed since it was written, so it is " +
-                    $"written again under the new name. '{document.SavedPath}' stays where it is.");
+                    $"{document.Describe()}: {reason} since it was written, so it is written again. " +
+                    $"'{document.SavedPath}' stays where it is.");
                 document.SavedPath = null;
                 document.WrittenUnderIdentifier = null;
+                document.WrittenUnderPageRevision = null;
             }
         }
 
@@ -315,11 +354,12 @@ public class DocumentPipeline
         document.SavedPath = result.Path;
         document.SavedPathIsTemporary = !workflow.SaveLocally;
         document.WrittenUnderIdentifier = document.Identifier;
+        document.WrittenUnderPageRevision = document.PageRevision;
         if (workflow.SaveLocally)
         {
             // Keeps closing the window from warning about pages that are on disk. Only for a file the
             // operator keeps: a staging copy that is about to be deleted is not a saved document.
-            _imageList.MarkSaved(_imageList.CurrentState, document.Pages);
+            _imageList.MarkSaved(_imageList.CurrentState, document.CurrentPageStates());
             if (!DocumentUploadService.HasAnyTarget(document.Profile))
             {
                 // With an upload still to come, the upload notification reports the outcome instead --
@@ -368,13 +408,19 @@ public class DocumentPipeline
     {
         document.Status = DocumentStatus.Done;
         document.Message = null;
-        _imageList.MarkSaved(_imageList.CurrentState, document.Pages);
+        _imageList.MarkSaved(_imageList.CurrentState, document.CurrentPageStates());
 
-        if (document.Workflow.CleanupAfterCompletion)
+        // Only for a document that actually went somewhere. A profile that files into a folder finishes
+        // its documents the moment they are written, and clearing the window on that would take the pages
+        // away right after every scan -- the window is the one place they can still be looked at and
+        // corrected, and every profile written before this has the setting on by default.
+        if (document.Workflow.CleanupAfterCompletion && DocumentUploadService.HasAnyTarget(document.Profile))
         {
-            var pages = document.Pages.ToHashSet();
-            var toRemove = _imageList.Images
-                .Where(x => pages.Contains(x.GetImageWeakReference().ProcessedImage))
+            // The document's own page objects, so a page that was edited in the meantime is still
+            // recognised as one of them.
+            var present = _imageList.Images.ToHashSet();
+            var toRemove = (document.WindowPages ?? [])
+                .Where(present.Contains)
                 .ToList();
             if (toRemove.Count > 0)
             {

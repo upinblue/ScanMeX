@@ -3803,6 +3803,105 @@ namespace NAPS2.Lang.Resources {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Not part of a document.
+        /// </summary>
+        internal static string SectionUnassigned {
+            get {
+                return ResourceManager.GetString("SectionUnassigned", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Filed locally. The file on disk is out of date..
+        /// </summary>
+        internal static string DocumentStatusSavedOutdated {
+            get {
+                return ResourceManager.GetString("DocumentStatusSavedOutdated", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Document is being filed.
+        /// </summary>
+        internal static string BusyDocumentRefusedTitle {
+            get {
+                return ResourceManager.GetString("BusyDocumentRefusedTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Its pages are being written right now. Wait until it is through..
+        /// </summary>
+        internal static string BusyDocumentRefused {
+            get {
+                return ResourceManager.GetString("BusyDocumentRefused", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Split document here.
+        /// </summary>
+        internal static string SplitDocumentHere {
+            get {
+                return ResourceManager.GetString("SplitDocumentHere", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Merge with previous document.
+        /// </summary>
+        internal static string MergeWithPreviousDocument {
+            get {
+                return ResourceManager.GetString("MergeWithPreviousDocument", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Page belongs to an archived document.
+        /// </summary>
+        internal static string ArchivedPagesRefusedTitle {
+            get {
+                return ResourceManager.GetString("ArchivedPagesRefusedTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to These pages are in the archive exactly as they are. Discard the document from the list first if you want to change it..
+        /// </summary>
+        internal static string ArchivedPagesRefused {
+            get {
+                return ResourceManager.GetString("ArchivedPagesRefused", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} page(s) stayed in the window because their document is already archived..
+        /// </summary>
+        internal static string ArchivedPagesKept {
+            get {
+                return ResourceManager.GetString("ArchivedPagesKept", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Pages stay with their profile.
+        /// </summary>
+        internal static string CrossProfileMoveRefusedTitle {
+            get {
+                return ResourceManager.GetString("CrossProfileMoveRefusedTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The two documents were scanned with different profiles, and the profile decides where a document is filed and archived..
+        /// </summary>
+        internal static string CrossProfileMoveRefused {
+            get {
+                return ResourceManager.GetString("CrossProfileMoveRefused", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Identification.
         /// </summary>
         internal static string DocumentIdentifierLabel {

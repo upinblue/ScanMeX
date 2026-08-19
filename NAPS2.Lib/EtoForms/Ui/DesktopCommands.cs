@@ -1,4 +1,5 @@
-using NAPS2.EtoForms.Desktop;
+﻿using NAPS2.EtoForms.Desktop;
+using NAPS2.PostScan;
 
 namespace NAPS2.EtoForms.Ui;
 
@@ -14,11 +15,13 @@ public class DesktopCommands
     private readonly Naps2Config _config;
     private readonly DesktopFormProvider _desktopFormProvider;
     private readonly DocumentUploadController _documentUploadController;
+    private readonly DocumentEditor _documentEditor;
 
     public DesktopCommands(DesktopController desktopController, DesktopScanController desktopScanController,
         IDesktopSubFormController desktopSubFormController, UiImageList imageList, ImageListActions imageListActions,
         ThumbnailController thumbnailController, IIconProvider iconProvider, Naps2Config config,
-        DesktopFormProvider desktopFormProvider, DocumentUploadController documentUploadController)
+        DesktopFormProvider desktopFormProvider, DocumentUploadController documentUploadController,
+        DocumentEditor documentEditor)
     {
         _desktopController = desktopController;
         _desktopScanController = desktopScanController;
@@ -30,6 +33,7 @@ public class DesktopCommands
         _config = config;
         _desktopFormProvider = desktopFormProvider;
         _documentUploadController = documentUploadController;
+        _documentEditor = documentEditor;
 
         var hiddenButtons = config.Get(c => c.HiddenButtons);
 
@@ -93,6 +97,16 @@ public class DesktopCommands
         {
             Text = UiStrings.UploadPendingDocuments,
             IconName = "arrow_up"
+        };
+        // The repair for a separator sheet that was not read, and for one that was read and should not
+        // have been. Both act on the topmost selected page, which is what "here" means.
+        SplitDocument = new ActionCommand(() => documentEditor.SplitAt(imageList.Selection))
+        {
+            Text = UiStrings.SplitDocumentHere
+        };
+        MergeDocument = new ActionCommand(() => documentEditor.MergeWithPrevious(imageList.Selection))
+        {
+            Text = UiStrings.MergeWithPreviousDocument
         };
         SaveSelectedPdf = new ActionCommand(imageListActions.SaveSelectedAsPdf)
         {
@@ -371,7 +385,8 @@ public class DesktopCommands
             _iconProvider,
             _config,
             _desktopFormProvider,
-            _documentUploadController);
+            _documentUploadController,
+            _documentEditor);
     }
 
     public ImageListActions ImageListActions => _imageListActions;
@@ -388,6 +403,8 @@ public class DesktopCommands
     public ActionCommand SavePdf { get; set; }
     public ActionCommand SaveAllPdf { get; set; }
     public ActionCommand UploadDocuments { get; set; }
+    public ActionCommand SplitDocument { get; set; }
+    public ActionCommand MergeDocument { get; set; }
     public ActionCommand SaveSelectedPdf { get; set; }
     public ActionCommand PdfSettings { get; set; }
     public ActionCommand SaveImages { get; set; }

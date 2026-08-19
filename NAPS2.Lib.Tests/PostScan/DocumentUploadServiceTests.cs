@@ -123,7 +123,7 @@ public class DocumentUploadServiceTests : ContextualTests
         return new ScannedDocument
         {
             Profile = profile,
-            Pages = CreateScannedImages(ImageResources.dog),
+            ScannedPages = CreateScannedImages(ImageResources.dog),
             SequenceIndex = 0,
             SavedPath = path
         };

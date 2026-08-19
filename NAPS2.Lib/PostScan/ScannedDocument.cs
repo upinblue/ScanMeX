@@ -1,4 +1,4 @@
-using NAPS2.Images;
+﻿using NAPS2.Images;
 using NAPS2.Scan;
 
 namespace NAPS2.PostScan;
@@ -50,6 +50,9 @@ public enum DocumentStatus
 public sealed class ScannedDocument : IDisposable
 {
     private readonly List<DocumentBarcode> _barcodes = [];
+    private List<ProcessedImage> _scannedPages = [];
+    private List<UiImage>? _windowPages;
+    private List<TransformState> _windowPageStates = [];
     private bool _disposed;
 
     public Guid Id { get; } = Guid.NewGuid();
@@ -57,9 +60,43 @@ public sealed class ScannedDocument : IDisposable
     public required ScanProfile Profile { get; init; }
 
     /// <summary>
-    /// The pages, in order.
+    /// The copies the scan produced, in order. Owned by the document, and what it is written from until
+    /// the window's own page objects have taken over -- which never happens for the command line
+    /// scanner, where there is no window at all.
     /// </summary>
-    public required IReadOnlyList<ProcessedImage> Pages { get; init; }
+    public required IReadOnlyList<ProcessedImage> ScannedPages
+    {
+        get => _scannedPages;
+        init => _scannedPages = value.ToList();
+    }
+
+    /// <summary>
+    /// The instances handed to the window for these pages. Not owned -- they belong to the window -- and
+    /// only used to recognise which <see cref="UiImage"/> carries which of this document's pages.
+    /// </summary>
+    /// <remarks>
+    /// The pipeline gives the window a clone of every page and keeps the original, so the two ends hold
+    /// different objects for the same sheet of paper. This is the list that says which is which; matching
+    /// them by value instead would tie a document to any page that happens to share storage with one of
+    /// its own, which is what a duplicated page in the window is.
+    /// </remarks>
+    public IReadOnlyList<ProcessedImage> WindowPageCandidates { get; init; } = [];
+
+    /// <summary>
+    /// The pages as they are in the window right now, once the window has them. Null while the document
+    /// still holds only the scan's own copies: the pages of a scan reach the window a moment after the
+    /// document exists, and a document is only pointed at them once every one of its pages has arrived.
+    /// </summary>
+    public IReadOnlyList<UiImage>? WindowPages => _windowPages;
+
+    public bool HasAdoptedWindowPages => _windowPages != null;
+
+    /// <summary>
+    /// Counts up whenever the document's pages change after the window has taken them over -- a page
+    /// deleted, moved, or edited. <see cref="WrittenUnderPageRevision"/> compares against it, which is
+    /// what makes a file that no longer shows what the document contains be written again.
+    /// </summary>
+    public int PageRevision { get; private set; }
 
     /// <summary>
     /// The zero-based position of this document within its scan, used by <c>$(n)</c>.
@@ -73,7 +110,63 @@ public sealed class ScannedDocument : IDisposable
     /// </summary>
     public DateTime Timestamp { get; init; } = DateTime.Now;
 
-    public int PageCount => Pages.Count;
+    public int PageCount => _windowPages?.Count ?? _scannedPages.Count;
+
+    /// <summary>
+    /// Points the document at the window's page objects, or brings it up to date with them. Returns
+    /// whether anything actually changed.
+    /// </summary>
+    /// <remarks>
+    /// Taking them over is not itself a change to the document: at that moment the window holds exactly
+    /// the pages the scan produced, so the revision stays where it is and a file written in between is
+    /// still current. Everything after that -- a page deleted, reordered or edited -- is a change, and
+    /// the scan's own copies are released so that a page removed from the window cannot still reach the
+    /// archive through them.
+    /// </remarks>
+    public bool SetWindowPages(IReadOnlyList<UiImage> pages)
+    {
+        var states = pages.Select(x => x.GetImageWeakReference().ProcessedImage.TransformState).ToList();
+        if (_windowPages != null && _windowPages.SequenceEqual(pages) &&
+            _windowPageStates.SequenceEqual(states))
+        {
+            return false;
+        }
+        var adopting = _windowPages == null;
+        _windowPages = pages.ToList();
+        _windowPageStates = states;
+        if (adopting)
+        {
+            foreach (var page in _scannedPages)
+            {
+                page.Dispose();
+            }
+            _scannedPages = [];
+        }
+        else
+        {
+            PageRevision++;
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// The pages to write, as clones the caller has to dispose. Read at the moment of writing, so a page
+    /// straightened or cropped in the window is straightened and cropped in the archived file too.
+    /// </summary>
+    public DisposableList<ProcessedImage> GetPagesForWriting() =>
+        (_windowPages != null
+            ? _windowPages.Select(x => x.GetClonedImage())
+            : _scannedPages.Select(x => x.Clone()))
+        .ToDisposableList();
+
+    /// <summary>
+    /// The pages as they stand, without taking a reference. For reading only -- anything that keeps one
+    /// of these past the call has to clone it.
+    /// </summary>
+    public IReadOnlyList<ProcessedImage> CurrentPageStates() =>
+        _windowPages != null
+            ? _windowPages.Select(x => x.GetImageWeakReference().ProcessedImage).ToList()
+            : _scannedPages;
 
     /// <summary>
     /// Every barcode on the document, the one the profile's regex accepts first. Editable: a value can be
@@ -127,6 +220,19 @@ public sealed class ScannedDocument : IDisposable
         string.Equals(WrittenUnderIdentifier, Identifier, StringComparison.Ordinal);
 
     /// <summary>
+    /// The page revision the existing file was written from. The counterpart to
+    /// <see cref="WrittenUnderIdentifier"/> for the document's contents rather than its name.
+    /// </summary>
+    public int? WrittenUnderPageRevision { get; set; }
+
+    /// <summary>
+    /// Whether the file on disk still shows the pages the document consists of now. A page deleted or
+    /// straightened after the document was written leaves a file that looks filed and is not what the
+    /// operator is looking at, which is not something anyone notices afterwards.
+    /// </summary>
+    public bool FileMatchesPages => WrittenUnderPageRevision == PageRevision;
+
+    /// <summary>
     /// The targets the document has already reached, so the list can say what happened rather than only
     /// that something did.
     /// </summary>
@@ -137,6 +243,14 @@ public sealed class ScannedDocument : IDisposable
     /// staging copy that is deleted again.
     /// </summary>
     public bool IsSavedLocally => SavedPath != null && !SavedPathIsTemporary;
+
+    /// <summary>
+    /// Whether the document has reached somewhere it cannot be taken back from -- SharePoint, the SAP
+    /// archive. This, and not <see cref="DocumentStatus.Done"/>, is what makes its pages untouchable:
+    /// a file in the operator's own folder can be written again, while a document in an archive is a
+    /// record that says these exact pages are in there.
+    /// </summary>
+    public bool IsFiledRemotely => CompletedTargets.Count > 0;
 
     /// <summary>
     /// The file to upload. Only valid once the document has been written.
@@ -229,7 +343,7 @@ public sealed class ScannedDocument : IDisposable
             Timestamp = Timestamp,
             SequenceIndex = SequenceIndex,
             Profile = Profile,
-            Images = Pages,
+            Images = CurrentPageStates(),
             Barcodes = _barcodes
                 .Select(x => new DetectedBarcode(
                     x.Value,
@@ -283,6 +397,7 @@ public sealed class ScannedDocument : IDisposable
         SavedPath = null;
         SavedPathIsTemporary = false;
         WrittenUnderIdentifier = null;
+        WrittenUnderPageRevision = null;
     }
 
     public void Dispose()
@@ -293,9 +408,12 @@ public sealed class ScannedDocument : IDisposable
         }
         _disposed = true;
         DiscardStagingFile();
-        foreach (var page in Pages)
+        // Only the scan's own copies. Once the window has taken the pages over they are the window's,
+        // and disposing them here would take pages out from under the list they are still shown in.
+        foreach (var page in _scannedPages)
         {
             page.Dispose();
         }
+        _scannedPages = [];
     }
 }

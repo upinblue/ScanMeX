@@ -47,15 +47,157 @@ automatic trigger and the upload button, so the two cannot drift.
 
 The panel is a list plus an inspector, not a card per document: the two answer different questions
 ("is everything through?" and "what is wrong with this one?"), and one control trying to answer both is
-unreadable at panel width. In the inspector the detected barcodes are *radio buttons* -- the selected
-one is the identification -- plus "own value" for free text. A "use as identification" button per row
-said what would happen if you pressed it but never which barcode was actually in use.
+unreadable at panel width. It has no "upload everything" button of its own -- that one is in the toolbar,
+where it belongs to the window rather than to the document being inspected. Selection runs both ways:
+picking a document there selects its pages, and selecting pages that all sit in one document points the
+panel at it. In the inspector the detected barcodes are *radio buttons* -- the selected one is the
+identification -- plus "own value" for free text. A "use as identification" button per row said what
+would happen if you pressed it but never which barcode was actually in use.
 
-**A document is dropped when its pages are deleted from the window, driven by what disappeared, not by
-what is present.** A document exists the moment the scan finishes, while its pages are still on their
-way into the window, so "has no page in the list" is briefly true for every document that was just
-produced and would delete them all. Finished documents are never dropped -- they are the record that
-those pages reached the archive.
+**A document's pages are the window's page objects, not a copy of them.** `DocumentPageTracker` points
+each document at the `UiImage`s the window holds, and `DocumentWriter` reads them at the moment it
+writes — so a page straightened, cropped or deleted in the window is straightened, cropped or deleted in
+the archived file. It used to be a frozen list of `ProcessedImage`s tied to the window only by value
+equality (storage plus transforms), which is exactly what stops holding the moment anyone edits a page:
+the archived PDF kept showing the raw scan, and rotating every page of a document made it look as though
+all of its pages had been deleted, which took the document out of the list. Don't reintroduce a second
+copy of the pages; if a document needs its own, clone at the point of use and dispose it there.
+
+- **A document only takes the window's pages over once all of them have arrived.** A document exists the
+  moment the scan is split, while its pages are still on their way in, so a document pointed at half of
+  itself would write half a document. `WindowPageCandidates` is what the two ends are matched by, and it
+  is matched **by instance**: the window gets a clone of every page, and a clone is equal by value to the
+  original, so value equality would tie a document to any page that shares storage with one of its own.
+- **Taking them over is not a change to the document.** At that moment the window holds exactly the pages
+  the scan produced, so `PageRevision` stays where it is; counting it as a change would write a second
+  copy of every document that files locally and uploads on the button.
+- **Changing a document's pages invalidates the file it was written from.** `WrittenUnderPageRevision` is
+  the counterpart to `WrittenUnderIdentifier` for the contents rather than the name, and `EnsureFile`
+  compares both. Without it a page deleted after the document had been written left a file that looks
+  filed and is not what the operator is looking at.
+- **A document is dropped when every one of its pages has left the window.** Finished documents are never
+  dropped -- they are the record that those pages reached the archive, and clearing the window is the
+  normal way to start the next batch. There is no window at all for the command line scanner, where a
+  document keeps the scan's own copies for good.
+
+### Sections in the canvas
+
+The pages in the middle of the window are grouped by the document they belong to, under a heading naming
+it. `DocumentSectionBuilder` works out the sections -- a run of consecutive pages per document, plus one
+for the pages belonging to none -- and `IListView.SetSections` hands them to the platform list view,
+which on Windows means native `ListViewGroup`s. **The sections address the pages by index**, so they have
+to be rebuilt after every change to the list; `DesktopForm.UpdateSections` does that from both the image
+list and the document queue, because a document that finishes uploading changes its heading without a
+single page having moved.
+
+Four things about the WinForms side, each of them measured on a throwaway harness rather than assumed:
+
+- **The native group heading is never used.** comctl32 draws it in the light Explorer blue whatever the
+  window's theme is, and `SetWindowTheme(…, "DarkMode_Explorer")` changes nothing about it. The heading
+  text is set to a blank, and `WinFormsListView.DrawSectionHeaders` paints the real one into the band the
+  group reserves, in `ColorScheme` colours. The band's position comes from `ListViewGroups.HeaderBounds`,
+  which reaches through a non-public property for the group's native id and returns null rather than
+  throwing if a future runtime renames it -- the caller then derives the band from the items instead.
+- **The native insertion mark stops being drawn as soon as items are grouped.** That is why the drop
+  position is drawn by `DrawDropIndicator` instead. Don't put `InsertionMark` back; it works only in the
+  ungrouped case, which is no longer the normal one.
+- **Never collapse a group.** Reading `ListViewItem.Bounds` for an item inside a collapsed group does not
+  return -- the process hangs -- and `GetDragIndex` reads exactly those bounds on every drag. Collapsing
+  finished documents would be a reasonable feature and needs a guard that never asks a collapsed group's
+  items for their bounds.
+- **A section is a range, not a set.** Because a document is a run of consecutive pages, the flat item
+  index still says where a page is on screen, and everything addressing pages by position -- `MoveTo`,
+  the drop index, the selection, `ApplyDiffs` -- keeps working untouched. This was verified for the
+  grouped case: display order and item order stay identical.
+
+Page numbers are per document (`2 / 4`), not per batch, wherever there are sections: which page of this
+document it is answers the question the operator has.
+
+### Moving a page from one document to another
+
+You drag it there. `DocumentPageAssignment.Normalize` works out what that means, and it is deliberately
+the one place that decides:
+
+- **Position decides, and the pages that moved are the ones that adapt.** Which pages moved is not
+  guessed from the geometry: it is everything outside the longest subsequence still in its old relative
+  order, so dragging one page past ten others moves one page rather than eleven. A page dropped between
+  two documents joins **the one above it** -- it was dropped at the end of that section.
+- **New pages never adopt a neighbour.** A page that was not in the window before is a page that has just
+  been scanned (it belongs to the document the scan was split into) or imported (it belongs to none until
+  someone drags it somewhere). Only pages that were already there and moved are reassigned.
+- **Every document comes out as one run.** `MakeRunsContiguous` guarantees the invariant the canvas
+  draws: a document left with pages in several places keeps its longest run and the others join what they
+  now sit behind. Without it a wholesale reorder (interleave, reverse) would draw one document as several
+  sections under the same heading.
+- **A document whose pages all went elsewhere is dropped**, the same as one whose pages were deleted.
+
+`ImageListActions` is where the two refusals live, because it is the one chokepoint both the keyboard and
+the drop go through:
+
+- **The pages of a document that reached an archive cannot be deleted or moved.** They are the record
+  that exactly those pages are in there, so an edit that appears to work while the archive stays as it
+  was would be worse than one that is refused. **Reaching an archive, not being finished**
+  (`ScannedDocument.IsFiledRemotely`): a profile that only files into a folder finishes a document the
+  moment it is written, and locking those would leave anyone who uploads nowhere unable to edit a page at
+  all. A mixed selection deletes the rest and says how many stayed. **Clearing the window is not an
+  edit** and is deliberately not caught: it is how the next batch starts, and a finished document keeps
+  its own record either way.
+- **A document being written or uploaded at this moment is left alone too.** With automatic upload that
+  happens while the operator carries on working, so its pages are in use.
+- **Pages do not move between documents of different profiles.** The profile decides the folder, the
+  name and the archive, so that one drag would change all three with nothing on screen saying so.
+- Both refusals go to the console *and* to `INotify.Refused`, which is what the notification channel was
+  generalized for (`MessageNotification`, formerly `UploadNotification`): a refused edit that says
+  nothing is exactly the silent nothing this app exists to make visible.
+
+The guard asks the same page the rule does -- the one above the drop position -- so the two cannot
+disagree about where a drop at a boundary would land.
+
+**"The same profile" means the same profile object.** Both the drop guard and the merge compare by
+reference, which is what two scans with one profile give you. A profile edited between the two scans can
+therefore refuse a merge that would have been fine; refusing is the conservative direction, since the
+profile is what decides the folder, the name and the archive.
+
+### Splitting and merging documents
+
+`DocumentEditor` is what a missed separator sheet costs to repair -- and a sheet that separated where it
+should not have. "Split document here" makes the topmost selected page the first page of a new document
+which takes everything to the end of the one it was in; "merge with previous document" gives a document
+to the one directly above it. Both are in the canvas context menu and on `Mod+Shift+T` / `Mod+Shift+M`.
+
+- **The identification follows the pages.** Both operations re-run `DocumentPipeline.AttachBarcodes`, the
+  same method the scan uses, over each affected document's pages. Split a stack and the half that keeps
+  the cover sheet keeps the order number, while the half without it stops claiming a barcode that left
+  with the other half. Nothing is decoded again -- the barcodes were read when the pages were scanned, so
+  this only picks among them the way the scan did.
+- **A value typed by hand outlives it**, because it was a correction of exactly this. `Reidentify` puts a
+  `Manual` identification back after refreshing the barcodes.
+- **A document split off is inserted after the one it came from**, not appended: the list reads in page
+  order, and the bottom of the list is where the next scan goes.
+- Splitting at a document's first page is not offered (it would produce nothing), nor is anything on an
+  archived document, nor merging across profiles -- the same rules the drag follows.
+
+### A document with nowhere to upload to is finished when it is written
+
+A profile that files locally and has no archive target used to leave its documents `Pending` for ever.
+Nothing could take them further, but they still counted as ready to upload -- so the upload button stayed
+lit, and pressing it ran them through `Advance`, which wrote nothing new and left them pending, whereupon
+the controller counted them as not `Done` and reported that the upload had **failed**. For a document
+that had been filed exactly as asked.
+
+`Advance` now finishes them as soon as the file is written, and everything downstream follows: the button
+is disabled because there is nothing to upload, the counts are right, and the status line reads "Filed
+locally" instead of naming a queue that does not exist.
+
+- **Cleanup only applies to a document that actually went somewhere.** `CleanupAfterCompletion` defaults
+  to **on**, so finishing these documents would otherwise have started clearing the window after every
+  scan for every profile that just files into a folder -- and the window is the one place a scan can
+  still be looked at and corrected.
+- **Correcting a filed document puts it back in the queue.** Change its pages and `DocumentPageTracker`
+  sets it back to `Pending`; change its identification and `DocumentInspector` does. Either way the
+  status says the file on disk is out of date and the upload button has something to do again -- it
+  writes the corrected version **next to** the old one, because a file in the operator's own folder is
+  theirs.
 
 ### Saving, uploading and the trigger are three settings, not one
 
@@ -466,6 +608,11 @@ it again.
 
 The document pipeline's own coverage: `DocumentPipelineTests` (splitting and writing),
 `DocumentPipelineUploadTests` (the hand-off to the archive and everything that must not happen),
+`DocumentPageTrackerTests` (what editing pages in the window does to the document that will be archived),
+`DocumentSectionBuilderTests` (which pages the canvas draws under which heading),
+`DocumentPageAssignmentTests` (where a page belongs after it has been dragged somewhere else) and
+`FinishedDocumentGuardTests` (what the window refuses to do to an archived document),
+`DocumentEditorTests` (splitting a document and merging one back),
 `DocumentWorkflowMigrationTests` (reading old profiles), `BarcodeDetectionPlanTests` (whether to decode
 at all) and `PhantomBarcodeTests` (what a noisy page yields).
 

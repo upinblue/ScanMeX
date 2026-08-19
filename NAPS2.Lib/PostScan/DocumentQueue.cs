@@ -1,4 +1,4 @@
-namespace NAPS2.PostScan;
+﻿namespace NAPS2.PostScan;
 
 /// <summary>
 /// Every document the current session has produced, in scan order: the ones waiting for the upload
@@ -53,6 +53,21 @@ public class DocumentQueue
         lock (_documents)
         {
             _documents.Add(document);
+        }
+        OnChanged();
+    }
+
+    /// <summary>
+    /// Puts a document straight after another one, which is where a document split off one belongs: the
+    /// list reads in the order the pages are in, and appending would put the second half of a document
+    /// at the bottom, past everything scanned after it.
+    /// </summary>
+    public void InsertAfter(ScannedDocument existing, ScannedDocument document)
+    {
+        lock (_documents)
+        {
+            var index = _documents.IndexOf(existing);
+            _documents.Insert(index < 0 ? _documents.Count : index + 1, document);
         }
         OnChanged();
     }

@@ -233,6 +233,12 @@ public class DocumentInspector
             : document.IsSavedLocally
                 ? UiStrings.DocumentStatusSaved
                 : UiStrings.DocumentStatusDone,
+        // Pending with nowhere to upload to means one thing only: it was filed, and the pages have
+        // changed since. Saying "waiting to be uploaded" would name a queue that does not exist.
+        _ when !DocumentUploadService.HasAnyTarget(document.Profile) && document.IsSavedLocally =>
+            document.FileMatchesPages && document.FileMatchesIdentifier
+                ? UiStrings.DocumentStatusSaved
+                : UiStrings.DocumentStatusSavedOutdated,
         _ => document.IsSavedLocally
             ? UiStrings.DocumentStatusSavedWaiting
             : UiStrings.DocumentStatusWaiting
@@ -288,7 +294,10 @@ public class DocumentInspector
         _document.SetIdentifier(_identifier.Text, DocumentBarcodeSource.Manual);
         // A document held back for want of a number is released as soon as one is typed, and taken back
         // if the box is emptied again -- otherwise the upload button's state lags a keystroke behind.
-        if (_document.Status is DocumentStatus.NeedsIdentifier or DocumentStatus.Pending)
+        // A document that was only filed into a folder comes back into the queue as well: its file
+        // carries the old name now, and nothing else would offer to write it again.
+        if (_document.Status is DocumentStatus.NeedsIdentifier or DocumentStatus.Pending ||
+            (_document.Status == DocumentStatus.Done && !_document.IsFiledRemotely))
         {
             _document.Status = _document.HasEverythingItNeeds()
                 ? DocumentStatus.Pending

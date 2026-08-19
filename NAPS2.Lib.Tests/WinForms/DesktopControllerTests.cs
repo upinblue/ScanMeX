@@ -1,8 +1,9 @@
-using NAPS2.EtoForms;
+﻿using NAPS2.EtoForms;
 using NAPS2.EtoForms.Desktop;
 using NAPS2.EtoForms.Notifications;
 using NAPS2.ImportExport;
 using NAPS2.Platform.Windows;
+using NAPS2.PostScan;
 using NAPS2.Recovery;
 using NAPS2.Remoting;
 using NAPS2.Remoting.Server;
@@ -78,7 +79,8 @@ public class DesktopControllerTests : ContextualTests
             _notify,
             _imageClipboard,
             new ImageListActions(_imageList, _operationFactory, _operationProgress,
-                _config, _thumbnailController, _exportHelper, _notify, null!),
+                _config, _thumbnailController, _exportHelper, _notify, null!,
+                new DocumentPageTracker(_imageList, new DocumentQueue())),
             _dialogHelper,
             _desktopImagesController,
             _desktopScanController,

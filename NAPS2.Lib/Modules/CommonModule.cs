@@ -77,10 +77,15 @@ public class CommonModule : Module
         builder.RegisterType<DocumentQueue>().AsSelf().SingleInstance();
         builder.RegisterType<DocumentWriter>().AsSelf().SingleInstance();
         builder.RegisterType<DocumentUploadService>().AsSelf().SingleInstance();
+        // Subscribes to the image list, so there must only ever be one of it; the pipeline is what pulls
+        // it into existence, which is early enough because a document cannot exist before a scan.
+        builder.RegisterType<DocumentPageTracker>().AsSelf().SingleInstance();
         builder.RegisterType<DocumentPipeline>().AsSelf().SingleInstance();
         builder.RegisterType<DocumentUploadController>().AsSelf().SingleInstance();
         // Holds the card views, so it has to be the same instance the window built its layout from.
         builder.RegisterType<DocumentPanel>().AsSelf().SingleInstance();
+        builder.RegisterType<DocumentSectionBuilder>().AsSelf().SingleInstance();
+        builder.RegisterType<DocumentEditor>().AsSelf().SingleInstance();
         // TODO: Use PdfiumWorkerCoordinator?
         builder.RegisterType<PdfiumPdfRenderer>().As<IPdfRenderer>();
         builder.RegisterType<OcrOperationManager>().AsSelf().SingleInstance();

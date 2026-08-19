@@ -1,4 +1,4 @@
-using Eto.Drawing;
+﻿using Eto.Drawing;
 using Eto.Forms;
 using Eto.Mac;
 using Eto.Mac.Forms.Menu;
@@ -98,6 +98,19 @@ public class MacListView<T> : NSCollectionViewDelegateFlowLayout, IListView<T> w
     public event EventHandler? ItemClicked;
 
     public event EventHandler<DropEventArgs>? Drop;
+
+    /// <summary>
+    /// Sections are drawn on Windows only, which is the platform ScanMe ships. Doing nothing here leaves
+    /// the pages in one ungrouped run, which is what this list has always shown.
+    /// </summary>
+    public void SetSections(IReadOnlyList<ListViewSection> sections)
+    {
+    }
+
+#pragma warning disable CS0067
+    /// <summary>Never raised here: there are no headings to click.</summary>
+    public event EventHandler<int>? SectionClicked;
+#pragma warning restore CS0067
 
     public void SetItems(IEnumerable<T> items)
     {
