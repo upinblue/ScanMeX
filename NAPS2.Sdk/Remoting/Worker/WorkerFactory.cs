@@ -50,15 +50,14 @@ internal class WorkerFactory : IWorkerFactory
 
         // Candidate paths for native worker executable
         var exePath = Path.Combine(entryFolder, entryExeName);
-        var candidateWorkerPaths = new List<string>
-        {
+        var candidateWorkerPaths = new List<string>();
 #if DEBUG
-            Path.Combine(entryFolder,
-                @"..\..\..\..\..\NAPS2.App.Worker\bin\Debug\net9.0-windows\win-x86\NAPS2.Worker.exe"),
-            Path.Combine(entryFolder,
-                @"..\..\..\..\..\NAPS2.App.Worker\bin\Debug\net9.0-windows\win-x86\ScanMe.Worker.exe"),
+        // A dev build has no "lib" folder, so the worker is only where its own project left it: under a folder
+        // named after that project's target framework. That name is looked up rather than spelled out, because
+        // it was spelled out once and a target framework change then left TWAIN with no worker to run in and
+        // no scanner in the list.
+        candidateWorkerPaths.AddRange(FindWorkerPathsInProjectOutput(entryFolder, workerNames));
 #endif
-        };
         // Add worker names in common locations
         foreach (var name in workerNames)
         {
@@ -66,14 +65,34 @@ internal class WorkerFactory : IWorkerFactory
             candidateWorkerPaths.Add(Path.Combine(entryFolder, "lib", name));
         }
 
-        string workerExePath = "";
-        foreach (var candidateWorkerPath in candidateWorkerPaths)
-        {
-            workerExePath = candidateWorkerPath;
-            if (File.Exists(workerExePath)) break;
-        }
+        // With nothing found at all, name the place the worker is installed to, so the error that follows says
+        // which file is missing rather than the last name that was guessed at.
+        var workerExePath = candidateWorkerPaths.FirstOrDefault(File.Exists) ??
+                            Path.Combine(entryFolder, "lib", "NAPS2.Worker.exe");
         return new WorkerFactory(exePath, workerExePath, env);
     }
+
+#if DEBUG
+    /// <summary>
+    /// Finds worker executables in the NAPS2.App.Worker project's own build output, which is where a build run
+    /// from the IDE leaves them. Newest first, so output left behind by an older target framework can't shadow
+    /// the worker that was just built.
+    /// </summary>
+    private static IEnumerable<string> FindWorkerPathsInProjectOutput(string entryFolder, string[] workerNames)
+    {
+        // entryFolder is <solution>\<app project>\bin\<configuration>\<target framework>\<runtime identifier>
+        var workerBinFolder = Path.Combine(entryFolder, @"..\..\..\..\..\NAPS2.App.Worker\bin\Debug");
+        if (!Directory.Exists(workerBinFolder))
+        {
+            return Array.Empty<string>();
+        }
+        return Directory.GetDirectories(workerBinFolder)
+            .SelectMany(tfmFolder => workerNames.Select(name => Path.Combine(tfmFolder, "win-x86", name)))
+            .Where(File.Exists)
+            .OrderByDescending(File.GetLastWriteTimeUtc)
+            .ToList();
+    }
+#endif
 
     public WorkerFactory(string nativeWorkerExePath, string? winX86WorkerExePath = null,
         Dictionary<string, string>? environmentVariables = null)
