@@ -8,6 +8,32 @@ available at https://github.com/cyanfish/naps2/blob/master/CHANGELOG.md
 
 ---
 
+## 1.1.0.0 — 20 August 2026
+
+Full notes: [`docs/releases/1.1.0.0.md`](docs/releases/1.1.0.0.md)
+
+- The pages in the scan window are grouped by the document they belong to, each section headed with the
+  file it will be filed as, its page count and its status.
+- A page can be moved into another document by dragging it there; documents can be split and merged from
+  the context menu or with Ctrl+Shift+T and Ctrl+Shift+M. The identification follows the pages, and a
+  value typed in by hand survives it.
+- "Erledigte entfernen" clears the finished documents out of the list and their pages out of the window.
+- Barcode detection can be restricted to one part of the page, drawn on a page in the profile settings.
+  Off for every profile that already exists.
+- Edits that are refused — pages of an archived document, moving pages between profiles — now say so
+  instead of silently doing nothing.
+- Only documents that reached an archive are locked; a save-only profile can still correct its pages, and
+  a correction puts the document back into the queue and writes the corrected version next to the old one.
+- A correction reaches the document list and the section heading as it is typed.
+- Page edits made in the window reach the archived file.
+- Fixed: changing the interface language killed the application.
+- Fixed: a profile that only files locally reported a failed upload for a document that had been filed
+  exactly as asked.
+- Fixed: picking a detected barcode blanked the inspector and cleared the selection.
+- Fixed: several ways a drag between documents landed the pages in the wrong one.
+
+---
+
 ## 1.0.16.0 — 18 August 2026
 
 First public release. Full notes: [`docs/releases/1.0.16.0.md`](docs/releases/1.0.16.0.md)

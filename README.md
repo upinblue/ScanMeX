@@ -1,9 +1,9 @@
 # ScanMe
 
 <p align="center">
-  <img src="docs/releases/assets/1.0.16.0/hauptfenster.png" width="800" alt="The ScanMe main window" />
+  <img src="docs/releases/assets/1.1.0.0/hauptfenster.png" width="800" alt="The ScanMe main window" />
   <br/>
-  <i>Scan settings on the left, the pages in the middle, the document list and its inspector on the right</i>
+  <i>Scan settings on the left, the pages in the middle grouped by the document they belong to, the document list and its inspector on the right</i>
 </p>
 
 ScanMe is a Windows scanning application for archiving paper. It splits a scanned stack into documents
