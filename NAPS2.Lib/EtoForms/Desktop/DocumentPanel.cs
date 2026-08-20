@@ -236,32 +236,35 @@ public class DocumentPanel : IDisposable
     }
 
     /// <summary>
-    /// The inspector edited its document. Only the parts that depend on all documents at once are
-    /// recomputed: telling the queue would rebuild the list and take the caret out of the box being
-    /// typed into.
+    /// The inspector edited its document: the row above it and the heading in the canvas both name the
+    /// document by the file it would be filed as, so both follow the edit as it is made.
     /// </summary>
+    /// <remarks>
+    /// Every step here has to leave the focus where it is, because this runs on each keystroke in the
+    /// identifier box. That is what <see cref="DocumentRow.Describe"/> is for -- the row is brought up to
+    /// date in place and the grid repainted, rather than the row object being replaced, which raises a
+    /// collection change that empties and refills the grid. Re-running the layout is the other one, and
+    /// it is only needed when the inspector's own controls changed, which typing does not do.
+    /// </remarks>
     private void OnInspectorChanged()
     {
         var documents = _queue.Documents;
         _summary.Text = Summarize(documents);
-        if (_inspector.IsEditingIdentifier)
+        var document = documents.FirstOrDefault(x => x.Id == _selectedId);
+        var row = _rows.FirstOrDefault(x => x.Id == _selectedId);
+        if (document != null && row != null)
         {
-            // Mid-keystroke. Replacing the row resets the grid's selection and re-running the layout
-            // moves the caret out of the box, so the list waits until the box is done -- the inspector
-            // calls back on LostFocus. Only the two labels above, which nothing can focus, update live.
-            return;
+            row.Describe(document, _colorScheme, _iconScale);
+            _list.Invalidate();
         }
-        var index = documents.ToList().FindIndex(x => x.Id == _selectedId);
-        if (index >= 0 && index < _rows.Count)
+        if (!_inspector.IsEditingIdentifier)
         {
-            _rows[index] = new DocumentRow(documents[index], _colorScheme, _iconScale);
-            _suppressSelectionEvent = true;
-            _list.SelectedRow = index;
-            _suppressSelectionEvent = false;
+            // Removing a barcode changes how many rows the inspector has, and controls only leave the
+            // screen during a layout pass -- without this the row stays visible under the ones that
+            // moved up. Never while the box is being typed in: a layout pass moves the caret out of it,
+            // and nothing about the inspector's controls changes from a keystroke anyway.
+            _layoutController?.Invalidate();
         }
-        // Removing a barcode changes how many rows the inspector has, and controls only leave the screen
-        // during a layout pass -- without this the row stays visible under the ones that moved up.
-        _layoutController?.Invalidate();
         // The canvas headings and the upload button in the toolbar follow the queue, not this panel, so
         // an identification corrected here has to be announced: the heading names the document by the
         // file it would be filed as, and without this it went on showing the old name until a page
@@ -360,10 +363,36 @@ public class DocumentPanel : IDisposable
     /// One row of the list: a status icon and a single line of text. Deliberately thin -- the detail
     /// belongs to the inspector, and a list that repeats it cannot stay readable at panel width.
     /// </summary>
+    /// <remarks>
+    /// The two values are settable, and <see cref="Describe"/> is how a row already in the list is
+    /// brought up to date. The grid reads them through property bindings every time it paints a cell, so
+    /// changing them and invalidating the control shows the new text -- whereas replacing the row object
+    /// raises a collection change, and Eto answers that by rebuilding the grid: the selection is cleared,
+    /// the selection event comes back round to the panel saying nothing is selected, and the inspector
+    /// the operator is working in empties itself. That is why picking a barcode used to require selecting
+    /// the document again afterwards.
+    /// </remarks>
     private class DocumentRow
     {
         public DocumentRow(ScannedDocument document, ColorScheme colorScheme, float iconScale)
         {
+            Describe(document, colorScheme, iconScale);
+        }
+
+        public Image? Icon { get; private set; }
+
+        public string Text { get; private set; } = "";
+
+        /// <summary>
+        /// Which document the row stands for, so it can be found again without going by position: the
+        /// list is only rebuilt when the operator is not typing, so while they are, the row at a
+        /// document's index in the queue may still be a different document's.
+        /// </summary>
+        public Guid Id { get; private set; }
+
+        public void Describe(ScannedDocument document, ColorScheme colorScheme, float iconScale)
+        {
+            Id = document.Id;
             var severity = DocumentInspector.SeverityOf(document.Status);
             var color = severity == Notifications.NotificationSeverity.Neutral
                 ? colorScheme.SecondaryTextColor
@@ -373,9 +402,5 @@ public class DocumentPanel : IDisposable
             Text = $"{DocumentInspector.ResolveName(document) ?? UiStrings.DocumentNameMissingShort}  ·  " +
                    string.Format(UiStrings.DocumentPageCount, document.PageCount);
         }
-
-        public Image? Icon { get; }
-
-        public string Text { get; }
     }
 }

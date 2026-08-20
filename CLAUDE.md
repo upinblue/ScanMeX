@@ -58,6 +58,22 @@ document they have nothing to do with. Nothing is deleted from disk. In the insp
 identification -- plus "own value" for free text. A "use as identification" button per row said what
 would happen if you pressed it but never which barcode was actually in use.
 
+**An edit in the inspector reaches the row and the canvas heading as it is made, and a row is refreshed
+in place to do it.** All three name the document by the file it would be filed as, so the row above the
+inspector and the heading over its pages have to follow the identification on every keystroke -- they
+used to wait for the box to lose focus, which in practice meant selecting another document, the one
+moment the answer no longer matters. What made that unavoidable was replacing the row object in the
+`ObservableCollection`: Eto has no per-item replace, so it empties and refills the grid, the selection is
+cleared, the selection event comes back round to the panel saying nothing is selected, and
+`DocumentInspector.Show(null)` hides the panel the operator is working in -- which is why picking a
+barcode used to require selecting the document again afterwards. `DocumentRow.Describe` mutates the row
+the grid already holds and `GridView.Invalidate()` repaints it; the grid reads its cells through property
+bindings on every paint (WinForms `VirtualMode`), so the new text appears with nothing else disturbed.
+The row is found by document id rather than by position, because while the box has focus the list is
+deliberately not rebuilt and a row's index need not match the queue's. Re-running the layout is the other
+thing that moves the caret, so `LayoutController.Invalidate` is skipped while the box has focus -- typing
+does not change which controls the inspector has.
+
 **The panel belongs to the window, not to the app.** Changing the language does not restart ScanMe: it
 builds a second `DesktopForm`, shows it and closes the first one (`DesktopForm.SetCulture`, upstream's
 design). A control belongs to the window it was added to and is disposed with it, so anything holding
