@@ -582,6 +582,32 @@ English. It looked intermittent because German only ships in Release builds. Any
 to the operator must not go through the resources, or the next translation refresh from upstream rebrands
 it again.
 
+## Building the solution
+
+`ScanMe.sln` builds clean in `Debug|Any CPU` and `Release|Any CPU`, which is what Visual Studio picks on
+its own. Keep it that way: a solution whose default configuration does not build is one where a real
+compile error is indistinguishable from the usual noise, and the one that hid here for a while was a
+`DesktopForm` constructor the Gtk subclass had never been updated for.
+
+- **The three Mac projects are excluded from `Debug|*` and `Release|*`** — their `Build.0` lines are
+  gone, their `ActiveCfg` lines are not, exactly as upstream already did it for `Debug-Windows|Any CPU`.
+  They need the `macos` workload, which no Windows machine here has, so building them fails with
+  NETSDK1147 before anything else gets a chance to report. `Debug-Mac` and `Release-Mac` still build
+  them, so nothing is lost for anyone actually on a Mac, and **`Release-Msi` still builds them too** —
+  which is why `build msi` is still the wrong thing to run on Windows.
+- **`NAPS2.Sdk.Worker.Win32` is excluded from `Release|Any CPU`** for the same reason it was already
+  excluded from `Debug|Any CPU`: it packs a NuGet package out of `NAPS2.Sdk.Worker.Build`'s *publish*
+  output, which a plain build never produces. It belongs to the `Sdk` configuration, where that publish
+  happens.
+- **`NAPS2.Sdk` still targets `net462`, so `Math.Clamp` is not available in it.** Nor is anything else
+  added to `System.Math` after .NET Framework. Use `NumberExtensions.Clamp` (`value.Clamp(min, max)`) —
+  it is a global using in the Sdk and is what the rest of the codebase uses anyway. The trap is that
+  `dotnet run --project NAPS2.Tools -- pkg msi` builds only the net9 apps and so **passes**: a `net462`
+  break shows up in Visual Studio and nowhere near the release path. `NAPS2.Internals` and
+  `NAPS2.Images` target it too; `NAPS2.Lib` is net9 only, so the same call is fine there.
+
+---
+
 ## Versioning and release
 
 - The single source of truth for the version is `NAPS2.Setup/targets/VersionTargets.targets`.
@@ -592,7 +618,7 @@ it again.
 - `pkg msi` publishes NAPS2.App.WinForms, NAPS2.App.Console and NAPS2.App.Worker itself, so it is all you
   need. Do **not** run `build msi` first on Windows: it runs `dotnet build -c Release-Msi` over the whole
   solution, which pulls in NAPS2.App.Mac and fails with NETSDK1147 unless the `macos` workload is
-  installed. The same applies to building `ScanMe.sln` as a whole — build the individual projects.
+  installed. `Debug` and `Release` no longer do — see **Building the solution** above.
 - **Every component GUID in `setup.template.wxs` is ScanMe's own, and must stay that way.** They were
   inherited unchanged from upstream NAPS2, and Windows Installer reference-counts components by GUID
   *across products*: on a machine that had NAPS2 installed, the shortcut component was already registered
