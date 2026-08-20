@@ -9,8 +9,17 @@ public class WinFormsDarkModeProvider : IDarkModeProvider
     private EtoColor? _accent;
     private bool _accentRead;
 
+    /// <remarks>
+    /// Both values are read up front rather than on first use, because the change event compares the
+    /// system's values against them. With the accent still unread, the first preference change of any
+    /// kind -- an accessibility client attaching is one -- looked like the accent having changed, and
+    /// the window rebuilt itself for nothing.
+    /// </remarks>
     public WinFormsDarkModeProvider()
     {
+        _value = ReadDarkMode();
+        _accent = ReadAccentColor();
+        _accentRead = true;
         SystemEvents.UserPreferenceChanged += OnUserPreferenceChanged;
     }
 

@@ -58,6 +58,15 @@ document they have nothing to do with. Nothing is deleted from disk. In the insp
 identification -- plus "own value" for free text. A "use as identification" button per row said what
 would happen if you pressed it but never which barcode was actually in use.
 
+**The panel belongs to the window, not to the app.** Changing the language does not restart ScanMe: it
+builds a second `DesktopForm`, shows it and closes the first one (`DesktopForm.SetCulture`, upstream's
+design). A control belongs to the window it was added to and is disposed with it, so anything holding
+Eto controls has to be resolved per window -- the panel was a singleton, and the new window's first
+layout pass added the labels the old window had just disposed, which killed the process on every
+language change. For the same reason the window takes its subscription to `DocumentQueue.Changed` back
+off in `OnClosed` and disposes the panel there: the queue outlives every window, and a closed window
+still listening to it touches its own dead controls the next time a document finishes.
+
 **A document's pages are the window's page objects, not a copy of them.** `DocumentPageTracker` points
 each document at the `UiImage`s the window holds, and `DocumentWriter` reads them at the moment it
 writes — so a page straightened, cropped or deleted in the window is straightened, cropped or deleted in

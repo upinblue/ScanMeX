@@ -82,8 +82,10 @@ public class CommonModule : Module
         builder.RegisterType<DocumentPageTracker>().AsSelf().SingleInstance();
         builder.RegisterType<DocumentPipeline>().AsSelf().SingleInstance();
         builder.RegisterType<DocumentUploadController>().AsSelf().SingleInstance();
-        // Holds the card views, so it has to be the same instance the window built its layout from.
-        builder.RegisterType<DocumentPanel>().AsSelf().SingleInstance();
+        // One per window, not one per app: the panel owns Eto controls, and a control belongs to the
+        // window it was added to. A language change builds a second window, and a shared panel would
+        // hand it the controls the first window disposed on its way out.
+        builder.RegisterType<DocumentPanel>().AsSelf();
         builder.RegisterType<DocumentSectionBuilder>().AsSelf().SingleInstance();
         builder.RegisterType<DocumentEditor>().AsSelf().SingleInstance();
         // TODO: Use PdfiumWorkerCoordinator?

@@ -32,6 +32,7 @@ public abstract class DesktopForm : EtoFormBase
     private readonly Sidebar _sidebar;
     private readonly DocumentPanel _documentPanel;
     private readonly DocumentUploadController _documentUploadController;
+    private readonly DocumentQueue _documentQueue;
     protected readonly IIconProvider _iconProvider;
 
     protected readonly ListProvider<Command> _scanMenuCommands = new();
@@ -92,14 +93,11 @@ public abstract class DesktopForm : EtoFormBase
         _documentUploadController = documentUploadController;
         _sectionBuilder = sectionBuilder;
         _documentEditor = documentEditor;
+        _documentQueue = documentQueue;
         // Documents can be queued while the window is idle, so the button has to react to the queue
         // rather than only to image list changes. So do the section headings: a document that has just
         // been uploaded says so in its heading without a single page having moved.
-        documentQueue.Changed += (_, _) => Invoker.Current.Invoke(() =>
-        {
-            UpdateToolbar();
-            UpdateSections();
-        });
+        _documentQueue.Changed += DocumentQueue_Changed;
 
         _desktopFormProvider.DesktopForm = this;
         _keyboardShortcuts.Assign(Commands);
@@ -261,6 +259,15 @@ public abstract class DesktopForm : EtoFormBase
         _listView.SetSections(_sectionBuilder.Build(ImageList.Images));
     }
 
+    private void DocumentQueue_Changed(object? sender, EventArgs e)
+    {
+        Invoker.Current.Invoke(() =>
+        {
+            UpdateToolbar();
+            UpdateSections();
+        });
+    }
+
     private void ImageList_SelectionChanged(object? sender, EventArgs e)
     {
         Invoker.Current.InvokeDispatch(() =>
@@ -339,7 +346,12 @@ public abstract class DesktopForm : EtoFormBase
         ImageList.ImagesUpdated -= ImageList_ImagesUpdated;
         ImageList.ImagesThumbnailInvalidated -= ImageList_ImagesThumbnailInvalidated;
         _profileManager.ProfilesUpdated -= ProfileManager_ProfilesUpdated;
+        _documentQueue.Changed -= DocumentQueue_Changed;
         _notificationArea.Dispose();
+        // The panel belongs to this window: its controls die with the window, and a language change
+        // builds a second one that must not inherit them. Disposing it here also takes its
+        // subscriptions off the queue and the image list, which outlive every window.
+        _documentPanel.Dispose();
         _imageListSyncer?.Dispose();
     }
 
@@ -588,6 +600,9 @@ public abstract class DesktopForm : EtoFormBase
 
     protected virtual void SetCulture(string cultureId)
     {
+        // The window is thrown away and built again here, which is the one thing on screen that looks
+        // like a crash when it goes wrong; say so, so the console shows which side of it failed.
+        ScanConsole.App($"Language set to '{cultureId}'. The window is being rebuilt.");
         _desktopController.Suspend();
         try
         {
