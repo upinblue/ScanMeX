@@ -41,6 +41,54 @@ public class DocumentPageAssignmentTests : ContextualTests
         indexes.Select(i => pages[i]).ToList();
 
     [Fact]
+    public void TheDraggedPageIsTheOneThatAdapts()
+    {
+        // a0 a1 | b0, and b0 is dropped between a0 and a1. Nothing in the resulting order says whether
+        // b0 went up or a1 went down, and reading it back out settles it in favour of the document with
+        // more pages -- so a1 joined b0's document while b0 kept its own. The drop knows better.
+        var owners = Owners((0, _a), (1, _a), (2, _b));
+        var before = Order(_pages, 0, 1, 2);
+        var after = Order(_pages, 0, 2, 1);
+
+        var result = DocumentPageAssignment.Normalize(before, after, owners,
+            new HashSet<ScannedDocument>(), [_pages[2]]);
+
+        Assert.Equal([_a, _a, _a], result);
+    }
+
+    [Fact]
+    public void NamingEveryPageLeavesEveryDocumentAsItWas()
+    {
+        // With nothing left standing still there is no settled neighbour to adapt to, and every page
+        // would come out belonging to nothing at all. No page has moved past any other here, so there is
+        // nothing to reassign.
+        var before = Order(_pages, 0, 1, 2, 3, 4);
+        var after = Order(_pages, 4, 3, 2, 1, 0);
+
+        var result = DocumentPageAssignment.Normalize(before, after, StartingOwners(),
+            new HashSet<ScannedDocument>(), _pages);
+
+        Assert.Equal([_b, _b, _a, _a, _a], result);
+    }
+
+    [Fact]
+    public void APageNamedByACommandThatMovedItNowhereStaysWhereItWas()
+    {
+        // Move down on the last page, Move up on the first, a drop back onto the position it came from:
+        // all of them name a page that has not gone anywhere. Taking the name at face value would hand
+        // this document's only page to the one above it for a gesture that did nothing -- and dropping a
+        // document back where it already sits is the first thing someone trying to merge two of them
+        // does.
+        var owners = Owners((0, _a), (1, _a), (2, _b));
+        var order = Order(_pages, 0, 1, 2);
+
+        var result = DocumentPageAssignment.Normalize(order, order, owners,
+            new HashSet<ScannedDocument>(), [_pages[2]]);
+
+        Assert.Equal([_a, _a, _b], result);
+    }
+
+    [Fact]
     public void NothingMovedChangesNothing()
     {
         var order = Order(_pages, 0, 1, 2, 3, 4);

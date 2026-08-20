@@ -25,6 +25,12 @@ public class DocumentPageTrackerTests : ContextualTests
     private readonly ISaveNotify _notify = Substitute.For<ISaveNotify>();
     private readonly DocumentQueue _queue = new();
     private readonly UiImageList _imageList = new();
+    private readonly DocumentPageTracker _pageTracker;
+
+    public DocumentPageTrackerTests()
+    {
+        _pageTracker = new DocumentPageTracker(_imageList, _queue);
+    }
 
     private DocumentPipeline CreatePipeline() => new(
         _errorOutput,
@@ -40,7 +46,7 @@ public class DocumentPageTrackerTests : ContextualTests
             Substitute.For<DialogHelper>()),
         Substitute.For<DocumentUploadService>(Naps2Config.Stub(), Substitute.For<OperationProgress>(),
             Substitute.For<ISaveNotify>()),
-        new DocumentPageTracker(_imageList, _queue));
+        _pageTracker);
 
     [Fact]
     public async Task RotatingEveryPageKeepsTheDocument()
@@ -264,8 +270,150 @@ public class DocumentPageTrackerTests : ContextualTests
         Assert.Equal(1, documents[1].PageCount);
     }
 
-    private void Move(UiImage page, int index) =>
-        _imageList.Mutate(new ImageListMutation.MoveTo(index), ListSelection.From([page]));
+    [Fact]
+    public async Task APageDraggedIntoAnotherDocumentIsOwnedOnlyByThatOne()
+    {
+        // A profile with nowhere to upload to finishes its documents as soon as they are written, and a
+        // finished document is kept even once it has no pages left in the window -- it is the record
+        // that a file was filed. That is right when the pages have gone from the window altogether, and
+        // wrong when they are still there under another document: the document they were dropped into
+        // holds them now, and a second claim on them left the owner map taking whichever document the
+        // queue happened to reach last. The page was then drawn under the document it had just left,
+        // in the middle of the one it was dropped into -- which reads as that document having been
+        // split at the drop position, and is what an operator merging two documents by hand sees.
+        var pipeline = CreatePipeline();
+        var profile = Profile("test$(n).pdf");
+        await ScanIntoWindow(pipeline, profile, ImageResources.dog, ImageResources.dog_gray,
+            ImageResources.dog);
+        await ScanIntoWindow(pipeline, profile, ImageResources.dog_gray);
+        var first = _queue.Documents[0];
+        var second = _queue.Documents[1];
+        Assert.Equal(DocumentStatus.Done, second.Status);
+        var dragged = _imageList.Images[3];
+
+        // Dropped between the first document's first and second page.
+        Move(dragged, 1);
+
+        Assert.Same(first, _pageTracker.DocumentFor(dragged));
+        Assert.Contains(dragged, first.WindowPages!);
+        Assert.DoesNotContain(dragged, second.WindowPages!);
+    }
+
+    [Fact]
+    public async Task ADocumentDroppedForHavingNoPagesLeftStopsOwningThem()
+    {
+        // The document is taken out of the queue once the sync is over, so at the moment the owner map
+        // is rebuilt it is still in it and still holding the page that was dragged away. Leaving it
+        // there heads a section of the canvas with a document that no longer exists, and nothing puts
+        // it right afterwards: a change to the queue does not start another sync.
+        var pipeline = CreatePipeline();
+        var profile = WaitingProfile();
+        await ScanIntoWindow(pipeline, profile, ImageResources.dog, ImageResources.dog_gray,
+            ImageResources.dog);
+        await ScanIntoWindow(pipeline, profile, ImageResources.dog_gray);
+        var dragged = _imageList.Images[3];
+
+        Move(dragged, 1);
+
+        var document = Assert.Single(_queue.Documents);
+        Assert.Same(document, _pageTracker.DocumentFor(dragged));
+    }
+
+    [Fact]
+    public async Task ADroppedPageJoinsTheDocumentEvenWhenTheOneItLeftIsTheBiggerOne()
+    {
+        // The shape that used to come out backwards. Which page moved cannot be read off this order --
+        // "the last page went up" and "the page above it went down" describe it equally well -- and the
+        // longest-unmoved-run reading picked whichever document had more pages. The operator dragged one
+        // page into another document and watched a different page change document instead.
+        var pipeline = CreatePipeline();
+        var profile = Profile("test$(n).pdf");
+        await ScanIntoWindow(pipeline, profile, ImageResources.dog, ImageResources.dog_gray);
+        await ScanIntoWindow(pipeline, profile, ImageResources.dog);
+        var first = _queue.Documents[0];
+        var stayedPut = _imageList.Images[1];
+        var dragged = _imageList.Images[2];
+
+        Move(dragged, 1);
+
+        Assert.Same(first, _pageTracker.DocumentFor(dragged));
+        Assert.Same(first, _pageTracker.DocumentFor(stayedPut));
+        Assert.Equal(3, first.PageCount);
+    }
+
+    [Fact]
+    public async Task MovingAPageUpAcrossADocumentBoundaryTakesItThere()
+    {
+        var pipeline = CreatePipeline();
+        var profile = WaitingProfile();
+        await ScanIntoWindow(pipeline, profile, ImageResources.dog, ImageResources.dog_gray);
+        await ScanIntoWindow(pipeline, profile, ImageResources.dog);
+        var first = _queue.Documents[0];
+        var nudged = _imageList.Images[2];
+
+        Nudge(nudged, down: false);
+
+        Assert.Same(first, _pageTracker.DocumentFor(nudged));
+    }
+
+    [Fact]
+    public async Task MovingTheLastPageDownLeavesItWhereItIs()
+    {
+        // Move down on the last page does nothing: the mutation refuses to push it past the end. Naming
+        // it as moved anyway would hand its document's only page to the document above, for a keypress
+        // that changed nothing on screen.
+        var pipeline = CreatePipeline();
+        var profile = WaitingProfile();
+        await ScanIntoWindow(pipeline, profile, ImageResources.dog, ImageResources.dog_gray);
+        await ScanIntoWindow(pipeline, profile, ImageResources.dog);
+        var second = _queue.Documents[1];
+        var nudged = _imageList.Images[2];
+
+        Nudge(nudged, down: true);
+
+        Assert.Same(second, _pageTracker.DocumentFor(nudged));
+        Assert.Equal(2, _queue.Documents.Count);
+    }
+
+    [Fact]
+    public async Task ADropBackOntoItsOwnPositionMergesNothing()
+    {
+        // What someone trying to merge two documents by dragging tries first. It has to do nothing
+        // rather than quietly give one document's pages to the other: merging is a deliberate action,
+        // not a side effect of a drag that went nowhere.
+        var pipeline = CreatePipeline();
+        var profile = WaitingProfile();
+        await ScanIntoWindow(pipeline, profile, ImageResources.dog, ImageResources.dog_gray);
+        await ScanIntoWindow(pipeline, profile, ImageResources.dog, ImageResources.dog_gray);
+        var second = _queue.Documents[1];
+        var pages = new[] { _imageList.Images[2], _imageList.Images[3] };
+
+        Move(pages, 2);
+
+        Assert.Equal(2, _queue.Documents.Count);
+        Assert.All(pages, page => Assert.Same(second, _pageTracker.DocumentFor(page)));
+    }
+
+    /// <summary>
+    /// A drop, the way ImageListActions performs one: the pages that were picked up are named, and then
+    /// the window is rearranged.
+    /// </summary>
+    private void Move(UiImage page, int index) => Move([page], index);
+
+    private void Move(IReadOnlyList<UiImage> pages, int index)
+    {
+        _pageTracker.ReportMove(pages);
+        _imageList.Mutate(new ImageListMutation.MoveTo(index), ListSelection.From(pages));
+    }
+
+    /// <summary>Move up / Move down, which name their selection the same way a drop does.</summary>
+    private void Nudge(UiImage page, bool down)
+    {
+        _pageTracker.ReportMove([page]);
+        _imageList.Mutate(
+            down ? new ListMutation<UiImage>.MoveDown() : new ListMutation<UiImage>.MoveUp(),
+            ListSelection.From([page]));
+    }
 
     /// <summary>
     /// Scans and then puts the pages into the window the way the desktop does, so the documents can take

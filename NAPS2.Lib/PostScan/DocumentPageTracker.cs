@@ -44,6 +44,13 @@ public class DocumentPageTracker : IDisposable
     /// </summary>
     private IReadOnlyList<UiImage> _previousOrder = [];
 
+    /// <summary>
+    /// The pages the operator moved, for the sync that rearranging the window is about to cause. Null
+    /// the rest of the time, and taken by the very next sync either way: a hint left lying around would
+    /// be read as the answer to a change it has nothing to do with.
+    /// </summary>
+    private IReadOnlyCollection<UiImage>? _movedPages;
+
     private readonly object _lock = new();
     private bool _syncing;
 
@@ -55,6 +62,24 @@ public class DocumentPageTracker : IDisposable
     }
 
     private void OnImagesUpdated(object? sender, ImageListEventArgs e) => Sync();
+
+    /// <summary>
+    /// Says which pages the operator is moving, immediately before the command rearranges the window.
+    /// </summary>
+    /// <remarks>
+    /// The alternative is reading it back out of the new order, and for a short move across a document
+    /// boundary that is genuinely ambiguous -- "this page went up" and "the one above it went down"
+    /// describe the same result. The command that moved them is the one place that knows which it was.
+    /// Naming a page is not the same as claiming it went anywhere: see
+    /// <see cref="DocumentPageAssignment"/> for what happens to one that did not.
+    /// </remarks>
+    public void ReportMove(IEnumerable<UiImage> pages)
+    {
+        lock (_lock)
+        {
+            _movedPages = pages.ToList();
+        }
+    }
 
     /// <summary>
     /// The document a page in the window belongs to, or null for one that belongs to none -- an imported
@@ -76,7 +101,10 @@ public class DocumentPageTracker : IDisposable
         {
             if (_syncing)
             {
-                // Removing a document notifies the queue, which can come back round to here.
+                // Removing a document notifies the queue, which can come back round to here. The move's
+                // own sync is the one the hint belongs to, so it is dropped rather than left for
+                // whatever change comes next.
+                _movedPages = null;
                 return;
             }
             _syncing = true;
@@ -150,7 +178,10 @@ public class DocumentPageTracker : IDisposable
             .Where(x => x.IsFiledRemotely || x.Status == DocumentStatus.Working)
             .ToHashSet();
 
-        var assignment = DocumentPageAssignment.Normalize(_previousOrder, images, before, locked);
+        var movedPages = _movedPages;
+        _movedPages = null;
+        var assignment =
+            DocumentPageAssignment.Normalize(_previousOrder, images, before, locked, movedPages);
         var pagesByDocument = new Dictionary<ScannedDocument, List<UiImage>>();
         for (int i = 0; i < images.Count; i++)
         {
@@ -172,7 +203,25 @@ public class DocumentPageTracker : IDisposable
                 if (document.Status == DocumentStatus.Done)
                 {
                     // Already filed. The queue entry is the record that it was, and clearing the window
-                    // is the normal way to start the next batch.
+                    // is the normal way to start the next batch, so a document whose pages have simply
+                    // left the window keeps them and stays.
+                    //
+                    // Pages that are still in the window are a different matter: they were dragged into
+                    // another document, which holds them now. Going on claiming them leaves two
+                    // documents owning one page, and everything downstream picks a side by accident --
+                    // the owner map takes whichever document the queue reaches last, so the page is
+                    // drawn under the one it just left, in the middle of the one it was dropped into,
+                    // which reads as that document having been split at the drop position.
+                    var left = (document.WindowPages ?? []).Where(x => !present.Contains(x)).ToList();
+                    if (left.Count != document.WindowPages?.Count)
+                    {
+                        document.SetWindowPages(left);
+                        changed = true;
+                        ScanConsole.Document(
+                            $"{document.Describe()}: its page(s) were moved into another document, and " +
+                            "it has none of its own left in the window. The file it was already filed " +
+                            "as stays where it is.");
+                    }
                     continue;
                 }
                 ScanConsole.Document(
@@ -204,6 +253,14 @@ public class DocumentPageTracker : IDisposable
         var owners = new Dictionary<UiImage, ScannedDocument>();
         foreach (var document in _queue.Documents)
         {
+            if (dropped.Contains(document))
+            {
+                // Still in the queue at this moment, gone from it by the time the canvas is redrawn:
+                // the removal happens once the sync is over. An entry here would head a section with a
+                // document that no longer exists, and nothing would take it back -- the queue changing
+                // does not start another sync.
+                continue;
+            }
             foreach (var page in document.WindowPages ?? [])
             {
                 if (present.Contains(page))

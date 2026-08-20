@@ -83,6 +83,14 @@ copy of the pages; if a document needs its own, clone at the point of use and di
   dropped -- they are the record that those pages reached the archive, and clearing the window is the
   normal way to start the next batch. There is no window at all for the command line scanner, where a
   document keeps the scan's own copies for good.
+- **Leaving the window and being dragged into another document are not the same thing.** A finished
+  document keeps pages that are gone from the window; it has to let go of ones that are still there,
+  because the document they were dropped into holds them now. Two documents claiming one page made
+  `_owners` take whichever the queue reached last -- the page was drawn under the document it had just
+  left, in the middle of the one it was dropped into, which reads as *that* document having been split
+  at the drop position. For the same reason a document on its way out of the queue is left out of
+  `_owners`: it is still in `DocumentQueue.Documents` while the map is being rebuilt and gone by the time
+  the canvas redraws, and a queue change starts no new sync to put it right.
 
 ### Sections in the canvas
 
@@ -122,10 +130,26 @@ document it is answers the question the operator has.
 You drag it there. `DocumentPageAssignment.Normalize` works out what that means, and it is deliberately
 the one place that decides:
 
-- **Position decides, and the pages that moved are the ones that adapt.** Which pages moved is not
-  guessed from the geometry: it is everything outside the longest subsequence still in its old relative
-  order, so dragging one page past ten others moves one page rather than eleven. A page dropped between
-  two documents joins **the one above it** -- it was dropped at the end of that section.
+- **Position decides, and the pages that moved are the ones that adapt.** The commands that know which
+  pages they acted on say so -- the drop and Move up/Move down, all through
+  `ImageListActions.ReportMove` -> `DocumentPageTracker.ReportMove`, only after the guards have let the
+  change through, and the hint is taken by the very next sync and never left lying around. Everything
+  else (interleave, reverse, undo) is read back out of the new order instead: everything outside the
+  longest subsequence still in its old relative order, so moving one page past ten others moves one page
+  rather than eleven. **Reading it back is ambiguous for exactly the move that matters** -- for a short
+  move across a document boundary, "this page went up" and "the one above it went down" describe the same
+  result, and the longest-run reading settles it in favour of whichever document has more pages. The page
+  that stayed put then changed document while the moved one kept its own, which is what "the pages swap
+  instead of merging" was.
+- **Being named by a command is not the same as having gone anywhere.** A drop back onto the position it
+  came from, Move up on the top page and Move down on the last one all name a page the mutation then
+  leaves exactly where it was. What counts is a page's place among the pages that were *not* named --
+  those are the ones it can be said to have moved past, and the ones it takes its new document from.
+  Without that, dropping a document back where it already sits would silently give its pages to the
+  document above, and dropping one there is the first thing anyone trying to merge two of them does.
+  It also settles the case where every page is named: nothing is left to have moved past, so nothing is
+  reassigned. A page dropped between two documents joins **the one above it** -- it was dropped at the
+  end of that section.
 - **New pages never adopt a neighbour.** A page that was not in the window before is a page that has just
   been scanned (it belongs to the document the scan was split into) or imported (it belongs to none until
   someone drags it somewhere). Only pages that were already there and moved are reassigned.

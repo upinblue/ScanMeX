@@ -57,6 +57,8 @@ public class DocumentPanel : IDisposable
     private LayoutController? _layoutController;
     private Guid? _selectedId;
     private bool _suppressSelectionEvent;
+    // Set while the panel tells the queue about an edit it made itself; see QueueChanged.
+    private bool _notifyingQueue;
     // Set while the panel is driving the canvas's selection, so the change coming back is ignored.
     private bool _syncingSelection;
     private float _iconScale = 1f;
@@ -136,6 +138,14 @@ public class DocumentPanel : IDisposable
 
     private void QueueChanged(object? sender, EventArgs e)
     {
+        if (_notifyingQueue)
+        {
+            // This is the panel's own notification, sent so the canvas headings and the toolbar follow
+            // an edit made in the inspector. The panel has already brought its own row up to date, and
+            // rebuilding the list here would put the inspector back to what the document says just as
+            // the operator is clicking its upload button.
+            return;
+        }
         // Documents finish on scanner and upload threads, which must never touch the UI directly.
         Invoker.Current.Invoke(UpdateRows);
     }
@@ -252,6 +262,19 @@ public class DocumentPanel : IDisposable
         // Removing a barcode changes how many rows the inspector has, and controls only leave the screen
         // during a layout pass -- without this the row stays visible under the ones that moved up.
         _layoutController?.Invalidate();
+        // The canvas headings and the upload button in the toolbar follow the queue, not this panel, so
+        // an identification corrected here has to be announced: the heading names the document by the
+        // file it would be filed as, and without this it went on showing the old name until a page
+        // happened to move.
+        _notifyingQueue = true;
+        try
+        {
+            _queue.NotifyChanged();
+        }
+        finally
+        {
+            _notifyingQueue = false;
+        }
     }
 
     private void UploadOne(ScannedDocument document) => _ = _uploadController.UploadDocument(document);

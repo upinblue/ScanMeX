@@ -50,6 +50,7 @@ public class ImageListActions
     {
         if (MayRearrange())
         {
+            ReportMove();
             _imageList.Mutate(new ImageListMutation.MoveDown(), Selection);
         }
     }
@@ -58,6 +59,7 @@ public class ImageListActions
     {
         if (MayRearrange())
         {
+            ReportMove();
             _imageList.Mutate(new ImageListMutation.MoveUp(), Selection);
         }
     }
@@ -66,9 +68,18 @@ public class ImageListActions
     {
         if (MayRearrange() && MayDropAt(index))
         {
+            ReportMove();
             _imageList.Mutate(new ImageListMutation.MoveTo(index), Selection);
         }
     }
+
+    /// <summary>
+    /// Tells the tracker which pages the operator is moving, so it does not have to work it out from the
+    /// order that comes out. Called only once the guards have let the change through, so a refused one
+    /// leaves no hint behind for the next change to be read by, and it falls back to the list's own
+    /// selection exactly the way the mutation does.
+    /// </summary>
+    private void ReportMove() => _pageTracker.ReportMove(Selection ?? _imageList.Selection);
 
     /// <summary>
     /// Clearing the window is the session starting over, not an edit to a document: a finished document
