@@ -1153,6 +1153,27 @@
   <data name="BarcodeStrictnessVeryTolerantHint" xml:space="preserve">
     <value>As above, but from 4 characters on 3 scan lines, and allowing the damaged character to be more misshapen. The margin against print noise gets thin here, so only go this far if 'Tolerant' demonstrably misses codes.</value>
   </data>
+  <data name="RestrictBarcodeArea" xml:space="preserve">
+    <value>Only search part of the page</value>
+  </data>
+  <data name="BarcodeAreaLabel" xml:space="preserve">
+    <value>Barcode search area</value>
+  </data>
+  <data name="BarcodeAreaHint" xml:space="preserve">
+    <value>Drag on the page to mark where the barcode is printed. Everything outside the area is ignored — a table rule cannot be read as a barcode there, and neither can a real barcode.</value>
+  </data>
+  <data name="BarcodeAreaPresetFullPage" xml:space="preserve">
+    <value>Full page</value>
+  </data>
+  <data name="BarcodeAreaPresetTopHeader" xml:space="preserve">
+    <value>Top quarter</value>
+  </data>
+  <data name="BarcodeAreaPresetBottomFooter" xml:space="preserve">
+    <value>Bottom quarter</value>
+  </data>
+  <data name="BarcodeAreaCoordinates" xml:space="preserve">
+    <value>Left {0} %, top {1} %, width {2} %, height {3} %</value>
+  </data>
   <data name="SeparationPatternLabel" xml:space="preserve">
     <value>Separation pattern (regex, optional)</value>
   </data>

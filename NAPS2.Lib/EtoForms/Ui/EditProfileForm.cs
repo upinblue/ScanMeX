@@ -60,6 +60,20 @@ public class EditProfileForm : EtoDialogBase
     };
     private readonly Label _barcodeStrictnessValue = C.Label(UiStrings.BarcodeStrictnessStrict);
     private readonly Label _barcodeStrictnessHint = C.Label(UiStrings.BarcodeStrictnessStrictHint);
+    // Where on the paper to look. Off by default and for every profile written before it existed, which
+    // is the whole page -- a restriction that arrives with an update and quietly stops seeing a barcode
+    // would be the worst version of this feature.
+    private readonly CheckBox _restrictBarcodeArea = new() { Text = UiStrings.RestrictBarcodeArea };
+    private readonly BarcodeSearchAreaPicker _barcodeArea = new();
+    private readonly Button _barcodeAreaFullPage = new() { Text = UiStrings.BarcodeAreaPresetFullPage };
+    private readonly Button _barcodeAreaTopHeader = new() { Text = UiStrings.BarcodeAreaPresetTopHeader };
+    private readonly Button _barcodeAreaBottomFooter =
+        new() { Text = UiStrings.BarcodeAreaPresetBottomFooter };
+    // The numbers behind the rectangle, for checking one profile against another. Given its text up
+    // front, because a label that starts empty has no height to grow into later.
+    private readonly Label _barcodeAreaCoordinates = C.Label(UiStrings.BarcodeAreaCoordinates);
+    private readonly LayoutVisibility _barcodeAreaVis = new(false);
+
     private readonly TextBox _separationPattern = new();
     private readonly CheckBox _keepSeparatorPage = new() { Text = UiStrings.KeepSeparatorPage };
     private readonly CheckBox _newDocumentOnlyOnValueChange =
@@ -163,6 +177,13 @@ public class EditProfileForm : EtoDialogBase
             box.CheckedChanged += (_, _) => UpdateDocumentControls();
         }
         _barcodeStrictness.ValueChanged += (_, _) => UpdateDocumentControls();
+        _restrictBarcodeArea.CheckedChanged += (_, _) => UpdateDocumentControls();
+        // The readout follows the rectangle while it is being dragged, so it is never a step behind what
+        // is on screen. It only sets a label's text, so no layout pass is needed for it.
+        _barcodeArea.AreaChanged += (_, _) => UpdateBarcodeAreaText();
+        _barcodeAreaFullPage.Click += (_, _) => ApplyBarcodeAreaPreset(BarcodeSearchArea.WholePage);
+        _barcodeAreaTopHeader.Click += (_, _) => ApplyBarcodeAreaPreset(BarcodeSearchArea.TopHeader);
+        _barcodeAreaBottomFooter.Click += (_, _) => ApplyBarcodeAreaPreset(BarcodeSearchArea.BottomFooter);
         _idMode.Format = x => x switch
         {
             DocumentIdMode.Barcode => UiStrings.DocumentIdModeBarcode,
@@ -315,6 +336,24 @@ public class EditProfileForm : EtoDialogBase
                 _barcodeStrictnessValue.Align(LayoutAlignment.Center)
             ),
             _barcodeStrictnessHint.DynamicWrap(HINT_WRAP_WIDTH).MaxWidth(HINT_WRAP_WIDTH),
+            C.Spacer(),
+            C.Label(UiStrings.BarcodeAreaLabel),
+            _restrictBarcodeArea,
+            L.Column(
+                L.Row(
+                    _barcodeArea
+                        .Width(BarcodeSearchAreaPicker.NATURAL_WIDTH)
+                        .Height(BarcodeSearchAreaPicker.NATURAL_HEIGHT),
+                    L.Column(
+                        _barcodeAreaFullPage,
+                        _barcodeAreaTopHeader,
+                        _barcodeAreaBottomFooter,
+                        C.Filler()
+                    )
+                ),
+                _barcodeAreaCoordinates,
+                C.Label(UiStrings.BarcodeAreaHint).DynamicWrap(HINT_WRAP_WIDTH).MaxWidth(HINT_WRAP_WIDTH)
+            ).Visible(_barcodeAreaVis),
             C.Spacer(),
             C.Label(UiStrings.SeparationPatternLabel),
             _separationPattern.MaxWidth(FIELD_WIDTH),
@@ -653,6 +692,10 @@ public class EditProfileForm : EtoDialogBase
         _symbologyCode128.Checked = workflow.BarcodeSymbologies.Contains(BarcodeSymbology.Code128);
         _symbologyEanUpc.Checked = workflow.BarcodeSymbologies.Contains(BarcodeSymbology.EanUpc);
         _barcodeStrictness.Value = (int) workflow.BarcodeStrictness;
+        _restrictBarcodeArea.Checked = workflow.RestrictBarcodeArea;
+        // A profile that never restricted the search opens on the whole page, so turning the box on
+        // starts from something the operator can drag rather than from an arbitrary rectangle.
+        _barcodeArea.Area = workflow.BarcodeArea ?? BarcodeSearchArea.WholePage;
         _separationPattern.Text = workflow.SeparationPattern ?? "";
         _keepSeparatorPage.Checked = workflow.KeepSeparatorPage;
         _newDocumentOnlyOnValueChange.Checked = workflow.NewDocumentOnlyOnValueChange;
@@ -685,6 +728,10 @@ public class EditProfileForm : EtoDialogBase
                 : DocumentSeparationMode.None,
             BarcodeSymbologies = symbologies,
             BarcodeStrictness = SelectedBarcodeStrictness,
+            RestrictBarcodeArea = _restrictBarcodeArea.IsChecked(),
+            // Kept even when the box is off, so unticking it and ticking it again doesn't lose the area
+            // that was drawn. Nothing reads it while the box is off.
+            BarcodeArea = _barcodeArea.Area,
             SeparationPattern = separationPattern,
             KeepSeparatorPage = _keepSeparatorPage.IsChecked(),
             NewDocumentOnlyOnValueChange = _newDocumentOnlyOnValueChange.IsChecked(),
@@ -718,6 +765,10 @@ public class EditProfileForm : EtoDialogBase
         // sheets are reusable blank cards and are never part of the document, hence no choice there.
         _keepSeparatorPage.Enabled = _sepBarcode.Checked;
         _newDocumentOnlyOnValueChange.Enabled = _sepBarcode.Checked;
+
+        _barcodeAreaVis.IsVisible = _restrictBarcodeArea.IsChecked();
+        _barcodeArea.Enabled = _restrictBarcodeArea.IsChecked();
+        UpdateBarcodeAreaText();
 
         _eanUpcWarningVis.IsVisible = _symbologyEanUpc.IsChecked();
         _eanUpcWarning.TextColor = EtoPlatform.Current.ColorScheme.CautionColor;
@@ -762,6 +813,27 @@ public class EditProfileForm : EtoDialogBase
         _barcodeStrictnessHint.TextColor = strictness == BarcodeStrictness.Strict
             ? EtoPlatform.Current.ColorScheme.SecondaryTextColor
             : EtoPlatform.Current.ColorScheme.CautionColor;
+    }
+
+    /// <summary>
+    /// A preset for the two places a cover sheet's barcode actually turns up, plus the way back to the
+    /// whole page. Presets are what makes this usable without dragging anything at all.
+    /// </summary>
+    private void ApplyBarcodeAreaPreset(BarcodeSearchArea area)
+    {
+        _barcodeArea.Area = area;
+        UpdateBarcodeAreaText();
+    }
+
+    /// <summary>
+    /// Writes the rectangle out as four percentages. The drawing says where the area is; this says
+    /// exactly where, which is what one profile being compared against another comes down to.
+    /// </summary>
+    private void UpdateBarcodeAreaText()
+    {
+        var (x, y, width, height) = _barcodeArea.Area.ToPercent();
+        _barcodeAreaCoordinates.Text = string.Format(UiStrings.BarcodeAreaCoordinates, x, y, width, height);
+        _barcodeAreaCoordinates.TextColor = EtoPlatform.Current.ColorScheme.SecondaryTextColor;
     }
 
     private void UpdateNoDestinationWarning()

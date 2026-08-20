@@ -108,6 +108,23 @@ public record DocumentWorkflowSettings
     public BarcodeStrictness BarcodeStrictness { get; init; } = BarcodeStrictness.Strict;
 
     /// <summary>
+    /// Whether barcode detection only looks at <see cref="BarcodeArea"/> instead of at the whole page.
+    /// </summary>
+    /// <remarks>
+    /// Kept apart from <see cref="BarcodeArea"/> rather than folded into it as "null means everywhere",
+    /// so that turning the restriction off and on again doesn't lose the area that was drawn. Absent from
+    /// every profile written before this existed, and false is exactly what those should get: nothing
+    /// starts ignoring part of a page because of an update.
+    /// </remarks>
+    public bool RestrictBarcodeArea { get; init; }
+
+    /// <summary>
+    /// The part of the page barcodes are looked for in, in fractions of the page. Null means the whole
+    /// page, and so does an area covering it.
+    /// </summary>
+    public BarcodeSearchArea? BarcodeArea { get; init; }
+
+    /// <summary>
     /// The profile's one barcode regex. A page's barcode only starts a new document if it matches, and
     /// the same pattern decides which of a page's barcodes is the one the operator means. If the pattern
     /// has a capturing group, group 1 becomes the value, otherwise the whole match does -- so one barcode
@@ -335,6 +352,25 @@ public record DocumentWorkflowSettings
             return BarcodeSymbologies;
         }
         return SeparationMode == DocumentSeparationMode.PatchT ? [BarcodeSymbology.PatchT] : [];
+    }
+
+    /// <summary>
+    /// The area to hand the detector, or null for the whole page.
+    /// </summary>
+    /// <remarks>
+    /// Everything downstream asks this rather than reading the two properties, so "restricted" and
+    /// "restricted to the whole page" cannot be told apart by accident, and a stored area that has
+    /// collapsed to nothing -- a hand-edited profile -- searches the whole page instead of nothing at
+    /// all. <see cref="ScanPerformer"/> says in the console which of the two happened.
+    /// </remarks>
+    public BarcodeSearchArea? GetBarcodeSearchArea()
+    {
+        if (!RestrictBarcodeArea || BarcodeArea == null || !BarcodeArea.IsUsable)
+        {
+            return null;
+        }
+        var area = BarcodeArea.Normalized();
+        return area.IsWholePage ? null : area;
     }
 
     /// <summary>

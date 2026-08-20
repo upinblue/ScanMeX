@@ -1185,6 +1185,27 @@
   <data name="BarcodeStrictnessVeryTolerantHint" xml:space="preserve">
     <value>Wie oben, aber ab 4 Zeichen auf 3 Scanlinien, und das beschädigte Zeichen darf stärker verformt sein. Der Abstand zum Druckrauschen wird hier dünn — nur wählen, wenn „Tolerant“ nachweislich Codes übersieht.</value>
   </data>
+  <data name="RestrictBarcodeArea" xml:space="preserve">
+    <value>Nur einen Teil der Seite durchsuchen</value>
+  </data>
+  <data name="BarcodeAreaLabel" xml:space="preserve">
+    <value>Barcode-Suchbereich</value>
+  </data>
+  <data name="BarcodeAreaHint" xml:space="preserve">
+    <value>Ziehen Sie auf der Seite auf, wo der Barcode gedruckt ist. Alles außerhalb wird ignoriert — dort kann keine Tabellenlinie als Barcode gelesen werden, ein echter Barcode aber auch nicht.</value>
+  </data>
+  <data name="BarcodeAreaPresetFullPage" xml:space="preserve">
+    <value>Ganze Seite</value>
+  </data>
+  <data name="BarcodeAreaPresetTopHeader" xml:space="preserve">
+    <value>Oberes Viertel</value>
+  </data>
+  <data name="BarcodeAreaPresetBottomFooter" xml:space="preserve">
+    <value>Unteres Viertel</value>
+  </data>
+  <data name="BarcodeAreaCoordinates" xml:space="preserve">
+    <value>Links {0} %, oben {1} %, Breite {2} %, Höhe {3} %</value>
+  </data>
   <data name="SeparationPatternLabel" xml:space="preserve">
     <value>Trennmuster (Regex, optional)</value>
   </data>

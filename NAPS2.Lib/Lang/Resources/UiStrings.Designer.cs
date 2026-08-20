@@ -3032,6 +3032,69 @@ namespace NAPS2.Lang.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Only search part of the page.
+        /// </summary>
+        internal static string RestrictBarcodeArea {
+            get {
+                return ResourceManager.GetString("RestrictBarcodeArea", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Barcode search area.
+        /// </summary>
+        internal static string BarcodeAreaLabel {
+            get {
+                return ResourceManager.GetString("BarcodeAreaLabel", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Drag on the page to mark where the barcode is printed. Everything outside the area is ignor [rest of string was truncated].
+        /// </summary>
+        internal static string BarcodeAreaHint {
+            get {
+                return ResourceManager.GetString("BarcodeAreaHint", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Full page.
+        /// </summary>
+        internal static string BarcodeAreaPresetFullPage {
+            get {
+                return ResourceManager.GetString("BarcodeAreaPresetFullPage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Top quarter.
+        /// </summary>
+        internal static string BarcodeAreaPresetTopHeader {
+            get {
+                return ResourceManager.GetString("BarcodeAreaPresetTopHeader", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Bottom quarter.
+        /// </summary>
+        internal static string BarcodeAreaPresetBottomFooter {
+            get {
+                return ResourceManager.GetString("BarcodeAreaPresetBottomFooter", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Left {0} %, top {1} %, width {2} %, height {3} %.
+        /// </summary>
+        internal static string BarcodeAreaCoordinates {
+            get {
+                return ResourceManager.GetString("BarcodeAreaCoordinates", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Barcode types.
         /// </summary>
         internal static string BarcodeTypesLabel {

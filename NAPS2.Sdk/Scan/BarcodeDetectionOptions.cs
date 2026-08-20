@@ -28,5 +28,12 @@ public class BarcodeDetectionOptions
     /// </summary>
     public BarcodeStrictness Strictness { get; set; } = BarcodeStrictness.Strict;
 
+    /// <summary>
+    /// The part of the page to look in, or null for the whole page. Null is what every profile written
+    /// before the search area existed deserializes to, so nothing starts ignoring part of a page on its
+    /// own -- see <see cref="BarcodeSearchArea"/>.
+    /// </summary>
+    public BarcodeSearchArea? SearchArea { get; set; }
+
     public DecodingOptions? ZXingOptions { get; set; }
 }

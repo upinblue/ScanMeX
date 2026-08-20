@@ -371,6 +371,37 @@ up in the same console.
   readily reads out of noise. It stays selectable — some paperwork really carries an article code — but
   the profile dialog and the console both warn when it is on.
 
+## Where on the page barcodes are looked for
+
+`DocumentWorkflowSettings.RestrictBarcodeArea` + `BarcodeArea` (a `BarcodeSearchArea`, four fractions of
+the page) restrict detection to part of the sheet, and `BarcodeSearchAreaPicker` is how it is drawn --
+a page in A4 proportions with the rectangle on it, three presets and the percentages written underneath.
+Paperwork that always carries its barcode in the same place can have the rest of the sheet ignored, which
+is the strongest defence there is against a phantom read out of a ruled table: what isn't looked at can't
+decode.
+
+- **Off is what every profile written before this existed reads as**, because neither element is in
+  those files and both default to "no restriction". A restriction arriving with an update would quietly
+  stop a working profile from seeing its barcode, which is the failure this feature exists to prevent,
+  not to cause.
+- **`GetBarcodeSearchArea()` is the only thing anything downstream asks.** It returns null -- the whole
+  page -- when the box is off, when the area covers the page anyway, and when a stored area has collapsed
+  to nothing. That last one can only come from a hand-edited profile, and honouring it would mean
+  decoding nothing at all; the same reasoning makes `BarcodeDetector` fall back to the whole page when
+  the crop can't be made. **The area is kept while the box is off** so unticking and re-ticking doesn't
+  lose the rectangle.
+- **The crop is a copy, and the page belongs to the caller.** `BarcodeDetector.CropToSearchArea` builds
+  it with `CopyBitwiseImageOp` rather than `image.Copy().PerformTransform(new CropTransform(...))`:
+  `PerformTransform` consumes what it is given -- it would take the scan with it -- and the copy route
+  allocates a full-size copy of a 300 dpi page to throw most of it away, on every page of every scan.
+  The crop is disposed as soon as the passes are done with it.
+- **Positions stay relative to whatever was decoded.** Every barcode found came out of the same crop, so
+  their order in it is their order on the page and the primary is still the topmost-leftmost one.
+- **Every scan says which area is in force**, and says so when a restriction is enabled but covers the
+  whole page. A barcode outside the area is not detected, and the document that results is
+  indistinguishable from paper that carried no barcode at all -- the console line is the only thing that
+  says why. `BarcodeSearchAreaTests` and `BarcodeSearchAreaDetectionTests` pin both directions.
+
 ## Barcode strictness, and the damaged stop guard
 
 `DocumentWorkflowSettings.BarcodeStrictness` (a slider under the profile's barcode types) decides how

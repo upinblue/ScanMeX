@@ -35,6 +35,70 @@ internal static class BarcodeDetector
             return Barcode.NoDetection;
         }
 
+        // A profile that says where on the paper its barcode is gets the rest of the sheet ignored. The
+        // crop is what the passes below run on, so nothing outside it can decode -- which is the point:
+        // ruled tables and dense print elsewhere on the page can't invent a value any more. The copy is
+        // disposed here rather than by the passes, which have to be able to run on the caller's page too.
+        var area = options.SearchArea?.Normalized();
+        if (area == null || area.IsWholePage)
+        {
+            return DetectIn(image, options);
+        }
+        using var cropped = CropToSearchArea(image, area);
+        // A crop we couldn't make falls back to the whole page. Reporting nothing at all instead would be
+        // the silent failure this restriction exists to avoid, only worse -- it would look like paper
+        // with no barcode on it.
+        return DetectIn(cropped ?? image, options);
+    }
+
+    /// <summary>
+    /// Copies the search area out of the page. Nothing is read back from the copy except barcodes, so it
+    /// carries no transforms and is disposed as soon as the passes are done with it.
+    /// </summary>
+    /// <remarks>
+    /// Built directly rather than as <c>image.Copy().PerformTransform(new CropTransform(...))</c>: that
+    /// route allocates a full-size copy of a 300 dpi page in order to throw most of it away, and this
+    /// runs on every page of every scan.
+    /// </remarks>
+    private static IMemoryImage? CropToSearchArea(IMemoryImage image, BarcodeSearchArea area)
+    {
+        var (x, y, width, height) = area.ToPixels(image.Width, image.Height);
+        if (width <= 0 || height <= 0 || (width == image.Width && height == image.Height))
+        {
+            return null;
+        }
+        IMemoryImage? cropped = null;
+        try
+        {
+            cropped = image.ImageContext.Create(width, height, image.PixelFormat);
+            cropped.SetResolution(image.HorizontalResolution, image.VerticalResolution);
+            new CopyBitwiseImageOp
+            {
+                SourceXOffset = x,
+                SourceYOffset = y,
+                Columns = width,
+                Rows = height
+            }.Perform(image, cropped);
+            return cropped;
+        }
+        catch (Exception)
+        {
+            cropped?.Dispose();
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// The decoding passes themselves, run either on the page or on the part of it the profile restricted
+    /// the search to.
+    /// </summary>
+    /// <remarks>
+    /// Positions are relative to whatever is passed in, which holds for a crop as well: every barcode
+    /// found came out of the same crop, so their order in it is their order on the page, and the primary
+    /// is still the topmost-leftmost one of them.
+    /// </remarks>
+    private static Barcode DetectIn(IMemoryImage image, BarcodeDetectionOptions options)
+    {
         var reader = new BarcodeReader<IMemoryImage>(x => new MemoryImageLuminanceSource(x))
         {
             Options = options.ZXingOptions ?? new DecodingOptions

@@ -38,6 +38,12 @@ public sealed record BarcodeDetectionPlan
     public BarcodeStrictness Strictness { get; private init; } = BarcodeStrictness.Strict;
 
     /// <summary>
+    /// The part of the page to look in, or null for the whole page -- which is what every profile that
+    /// never restricted the search gets. Only meaningful when <see cref="Detect"/> is true.
+    /// </summary>
+    public BarcodeSearchArea? SearchArea { get; private init; }
+
+    /// <summary>
     /// Set when the profile wants barcodes but no symbology restricts the search, in which case nothing
     /// is decoded. Null whenever detection runs, and null when the profile never wanted barcodes -- that
     /// is the normal case and not worth a warning.
@@ -75,20 +81,24 @@ public sealed record BarcodeDetectionPlan
         {
             return new BarcodeDetectionPlan();
         }
+        // The area restricts every path that decodes, the legacy patch-T one included: it is a statement
+        // about where on the paper the code is, and a patch-T sheet's mark is in a fixed place too.
+        var searchArea = workflow.GetBarcodeSearchArea();
         if (symbologies.Count > 0)
         {
             return new BarcodeDetectionPlan
             {
                 Detect = true,
                 Symbologies = symbologies,
-                Strictness = workflow.BarcodeStrictness
+                Strictness = workflow.BarcodeStrictness,
+                SearchArea = searchArea
             };
         }
         if (legacyPatchT)
         {
             // The legacy path predates the setting and separates on patch-T sheets, which the tolerant
             // pass deliberately doesn't touch, so there is nothing for a lower strictness to do here.
-            return new BarcodeDetectionPlan { Detect = true, PatchTOnly = true };
+            return new BarcodeDetectionPlan { Detect = true, PatchTOnly = true, SearchArea = searchArea };
         }
         return new BarcodeDetectionPlan
         {

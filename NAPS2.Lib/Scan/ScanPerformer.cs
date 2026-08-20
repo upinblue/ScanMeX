@@ -239,6 +239,28 @@ internal class ScanPerformer : IScanPerformer
                     break;
             }
 
+            // Where on the paper the detector looks. A barcode outside a restricted area is never seen,
+            // and the resulting document looks exactly like paper that carried no barcode at all -- so
+            // the area is on the record for every scan, and so is a restriction that ended up doing
+            // nothing because it covers the whole page.
+            if (plan.SearchArea is { } searchArea)
+            {
+                var (areaX, areaY, areaW, areaH) = searchArea.ToPercent();
+                ScanConsole.Profile(
+                    $"Barcodes are only looked for in the area x={areaX}%, y={areaY}%, w={areaW}%, " +
+                    $"h={areaH}% of each page. A barcode printed outside it is not detected.");
+            }
+            else if (workflow.RestrictBarcodeArea)
+            {
+                ScanConsole.Profile(
+                    "A restricted barcode search area is enabled but covers the whole page, so the " +
+                    "whole page is searched.");
+            }
+            else
+            {
+                ScanConsole.Profile("Barcodes are looked for on the whole page.");
+            }
+
             if (symbologies.Contains(BarcodeSymbology.EanUpc))
             {
                 // EAN-8 and UPC-E are eight digits with no usable self-check, so ZXing accepts patterns
@@ -476,7 +498,9 @@ internal class ScanPerformer : IScanPerformer
                 DetectBarcodes = plan.Detect,
                 Symbologies = plan.Symbologies.ToList(),
                 PatchTOnly = plan.PatchTOnly,
-                Strictness = plan.Strictness
+                Strictness = plan.Strictness,
+                // Null for every profile that never restricted the search, which is the whole page.
+                SearchArea = plan.SearchArea
             },
             OcrParams = scanParams.OcrParams ?? OcrParams.Empty,
             Brightness = scanProfile.Brightness,
