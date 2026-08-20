@@ -10,11 +10,22 @@ namespace NAPS2.PostScan;
 /// Position decides, because that is what the operator can see. A document is a run of consecutive pages,
 /// so a page dropped inside another document's run is a page of that document now, and the rule that
 /// makes this readable rather than clever is that <b>the pages that moved adapt, and the pages that
-/// stayed put do not</b>. Which pages moved is not guessed when it is known: a drop, and Move up/Move
-/// down, say which pages they acted on, and those of them that changed place are the ones that adapt. The
-/// rest -- interleaving, reversing, undo -- has to be read back out of the new order, which is the
-/// complement of the longest run of pages still in their old order relative to each other, so moving one
-/// page past ten others moves one page rather than eleven.
+/// stayed put do not</b>. Which pages moved is not guessed when it is known.
+///
+/// A drop knows the most: which pages it took, and which page the pointer was over when they were let
+/// go. That last one is the only thing that can tell the two ends of a document boundary apart -- "after
+/// the last page of this document" and "before the first page of the next" are one and the same insert
+/// position, and reading the answer off the resulting order can only ever pick one of them. It picked the
+/// document above, every time, so a page dragged to the front of a document joined the one before it
+/// instead and came to rest at its end; and when the page came from that document to begin with, the
+/// order did not change at all, so nothing happened whatsoever. Both of those are what the pointer
+/// settles: the pages join the document of the page they were dropped on.
+///
+/// Move up and Move down name their pages but land nowhere in particular, so for them what counts is a
+/// page's place among the pages that were <i>not</i> named -- those are the ones it can be said to have
+/// moved past. The rest -- interleaving, reversing, undo -- has to be read back out of the new order,
+/// which is the complement of the longest run of pages still in their old order relative to each other,
+/// so moving one page past ten others moves one page rather than eleven.
 ///
 /// Pure on purpose -- no window, no queue -- because the rule is the part worth pinning down.
 /// </remarks>
@@ -33,20 +44,30 @@ public static class DocumentPageAssignment
     /// <param name="named">The pages the operator moved, when the command that did it knows which they
     /// were -- a drop, or moving the selection up or down. Null for every other kind of reordering,
     /// which has to be read from the order alone.</param>
+    /// <param name="droppedOnto">For a drop, the page the pointer was over. Its document is the one the
+    /// named pages join. Null for a reordering that landed nowhere in particular, which falls back to
+    /// reading the answer off the resulting order.</param>
     public static IReadOnlyList<ScannedDocument?> Normalize(
         IReadOnlyList<UiImage> previousOrder,
         IReadOnlyList<UiImage> pages,
         IReadOnlyDictionary<UiImage, ScannedDocument> owners,
         ISet<ScannedDocument> locked,
-        IReadOnlyCollection<UiImage>? named = null)
+        IReadOnlyCollection<UiImage>? named = null,
+        UiImage? droppedOnto = null)
     {
         var result = pages
             .Select(x => owners.TryGetValue(x, out var document) ? document : null)
             .ToArray();
 
-        var moved = named != null
-            ? PagesThatChangedPlace(previousOrder, pages, named)
-            : MovedPages(previousOrder, pages);
+        // A page the drop named is gone from the window by the time this runs only if something else
+        // removed it, in which case the drop says nothing about anything and is ignored.
+        var dropped = named != null && droppedOnto != null && pages.Contains(droppedOnto);
+        var moved = named == null
+            ? MovedPages(previousOrder, pages)
+            : dropped
+                ? PagesNamed(previousOrder, pages, named)
+                : PagesThatChangedPlace(previousOrder, pages, named!);
+        var target = dropped && owners.TryGetValue(droppedOnto!, out var d) ? d : null;
         foreach (var index in moved.OrderBy(x => x))
         {
             var current = result[index];
@@ -54,7 +75,7 @@ public static class DocumentPageAssignment
             {
                 continue;
             }
-            var neighbour = NearestSettledOwner(result, moved, index);
+            var neighbour = dropped ? target : NearestSettledOwner(result, moved, index);
             if (neighbour != null && locked.Contains(neighbour))
             {
                 // Joining a document that is already archived would say the archive contains this page.
@@ -68,22 +89,49 @@ public static class DocumentPageAssignment
     }
 
     /// <summary>
+    /// Where the named pages are now. A drop says which document the pages join outright, so unlike
+    /// every other reordering it does not matter whether they ended up anywhere different: dragging a
+    /// document's last page to the front of the one below it leaves the order exactly as it was, and it
+    /// is still the move the operator made.
+    /// </summary>
+    /// <remarks>
+    /// Pages that were not in the window before are left out, as everywhere else: one of those has just
+    /// been scanned or imported and is not something the operator dragged anywhere.
+    /// </remarks>
+    private static HashSet<int> PagesNamed(IReadOnlyList<UiImage> previousOrder,
+        IReadOnlyList<UiImage> pages, IReadOnlyCollection<UiImage> named)
+    {
+        var wasNamed = new HashSet<UiImage>(named);
+        var wasThere = new HashSet<UiImage>(previousOrder);
+        var moved = new HashSet<int>();
+        for (int i = 0; i < pages.Count; i++)
+        {
+            if (wasNamed.Contains(pages[i]) && wasThere.Contains(pages[i]))
+            {
+                moved.Add(i);
+            }
+        }
+        return moved;
+    }
+
+    /// <summary>
     /// The positions of the pages that actually went somewhere, out of the ones the command named.
     /// </summary>
     /// <remarks>
-    /// A drop, and Move up/Move down, know which pages they acted on, so there is nothing to work out.
-    /// Reading it back out of the new order instead is ambiguous for exactly the move that matters here:
-    /// moving one page across a document boundary is explained equally well by the page next to it
-    /// having gone the other way, and <see cref="LongestIncreasingSubsequence"/> then settles it in
-    /// favour of whichever document has more pages. The page that stayed put ended up changing document
-    /// while the one the operator moved kept its own -- which looks like two pages swapping places
-    /// instead of one joining a document.
+    /// This is the reading for Move up and Move down, which say which pages they took but not where
+    /// those landed. A drop says where, and is handled by <see cref="PagesNamed"/> instead.
     ///
-    /// Being named is not enough on its own, because a command can name a page and move it nowhere: a
-    /// drop back onto the position it came from, Move up on the top page, Move down on the last one.
-    /// Taking those at their word would hand a document's last page to the document above it for a
-    /// gesture that did nothing at all -- and dropping a document back where it already sits is exactly
-    /// what someone trying to merge two of them tries first.
+    /// Move up/Move down know which pages they acted on, so there is nothing to work out. Reading it
+    /// back out of the new order instead is ambiguous for exactly the move that matters here: moving one
+    /// page across a document boundary is explained equally well by the page next to it having gone the
+    /// other way, and <see cref="LongestIncreasingSubsequence"/> then settles it in favour of whichever
+    /// document has more pages. The page that stayed put ended up changing document while the one the
+    /// operator moved kept its own -- which looks like two pages swapping places instead of one joining
+    /// a document.
+    ///
+    /// Being named is not enough on its own, because a command can name a page and move it nowhere:
+    /// Move up on the top page, Move down on the last one. Taking those at their word would hand a
+    /// document's last page to the document above it for a gesture that did nothing at all.
     ///
     /// What counts is a page's place among the pages that were <i>not</i> named: those are the ones it
     /// can be said to have moved past, and the ones it takes its new document from. That also settles

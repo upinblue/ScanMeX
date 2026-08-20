@@ -166,15 +166,29 @@ the one place that decides:
   result, and the longest-run reading settles it in favour of whichever document has more pages. The page
   that stayed put then changed document while the moved one kept its own, which is what "the pages swap
   instead of merging" was.
-- **Being named by a command is not the same as having gone anywhere.** A drop back onto the position it
-  came from, Move up on the top page and Move down on the last one all name a page the mutation then
-  leaves exactly where it was. What counts is a page's place among the pages that were *not* named --
-  those are the ones it can be said to have moved past, and the ones it takes its new document from.
-  Without that, dropping a document back where it already sits would silently give its pages to the
-  document above, and dropping one there is the first thing anyone trying to merge two of them does.
-  It also settles the case where every page is named: nothing is left to have moved past, so nothing is
-  reassigned. A page dropped between two documents joins **the one above it** -- it was dropped at the
-  end of that section.
+- **A drop is decided by the page the pointer was over, not by the insert position.** The boundary
+  between two documents is *one* index: "after the last page of this one" and "before the first page of
+  the next" are the same number, so nothing derived from the resulting order can tell them apart. It
+  always picked the document above, and a page dragged to the front of a document therefore joined the
+  one before it and came to rest at its end -- and when the page came from that document to begin with,
+  the order did not change at all and nothing happened whatsoever. The item under the pointer settles it
+  and is what the operator is looking at: `WinFormsListView.GetDragPosition` reports it as
+  `DropEventArgs.AnchorIndex` (the item hit, or a section's first page for a drop on its heading),
+  `ImageListActions` turns it into the page both the guard and the rule are given, and
+  `DocumentPageAssignment.Normalize` takes `droppedOnto`. **Drop on the left half of a page and the
+  pages join its document; drop on the right half of the page above and they join that one** -- which is
+  how two documents are merged by dragging. `DrawDropIndicator` follows the same anchor, so the bar is
+  drawn inside the section the pages will land in rather than at the next section's first page.
+- **A drop is believed even when nothing moved.** Dragging a document's last page onto the front of the
+  one below it leaves the order exactly as it was, and it is still the move the operator made. This is
+  the one place a named page that went nowhere is still reassigned, and it is safe only because the
+  pointer says which document is meant: dropping a document back on its own section names its own
+  document and changes nothing.
+- **Being named by a command is not the same as having gone anywhere -- for Move up and Move down.**
+  Those name a page and can move it nowhere: Move up on the top page, Move down on the last one. What
+  counts there is a page's place among the pages that were *not* named -- those are the ones it can be
+  said to have moved past, and the ones it takes its new document from. It also settles the case where
+  every page is named: nothing is left to have moved past, so nothing is reassigned.
 - **New pages never adopt a neighbour.** A page that was not in the window before is a page that has just
   been scanned (it belongs to the document the scan was split into) or imported (it belongs to none until
   someone drags it somewhere). Only pages that were already there and moved are reassigned.

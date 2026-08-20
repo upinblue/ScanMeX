@@ -733,7 +733,7 @@ public abstract class DesktopForm : EtoFormBase
             var data = _imageTransfer.FromBinaryData(args.CustomData);
             if (data.ProcessId == Process.GetCurrentProcess().Id)
             {
-                DragMoveImages(args.Position);
+                DragMoveImages(args.Position, args.AnchorIndex);
             }
             else
             {
@@ -746,7 +746,7 @@ public abstract class DesktopForm : EtoFormBase
         }
     }
 
-    private void DragMoveImages(int position)
+    private void DragMoveImages(int position, int anchorIndex)
     {
         if (!ImageList.Selection.Any())
         {
@@ -754,7 +754,7 @@ public abstract class DesktopForm : EtoFormBase
         }
         if (position != -1)
         {
-            _imageListActions.MoveTo(position);
+            _imageListActions.MoveTo(position, anchorIndex);
         }
     }
 

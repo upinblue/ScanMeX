@@ -51,6 +51,12 @@ public class DocumentPageTracker : IDisposable
     /// </summary>
     private IReadOnlyCollection<UiImage>? _movedPages;
 
+    /// <summary>
+    /// The page a drop landed on, alongside <see cref="_movedPages"/> and taken at the same moment. It
+    /// is the document that page belongs to that the dropped pages join.
+    /// </summary>
+    private UiImage? _dropAnchor;
+
     private readonly object _lock = new();
     private bool _syncing;
 
@@ -73,11 +79,17 @@ public class DocumentPageTracker : IDisposable
     /// Naming a page is not the same as claiming it went anywhere: see
     /// <see cref="DocumentPageAssignment"/> for what happens to one that did not.
     /// </remarks>
-    public void ReportMove(IEnumerable<UiImage> pages)
+    /// <param name="pages">The pages the command is about to move.</param>
+    /// <param name="droppedOnto">For a drop, the page the pointer was over. Its document is the one the
+    /// moved pages join, which is the only thing that can tell a drop at the end of one document from a
+    /// drop at the start of the next -- the two are the same insert position. Null for Move up and Move
+    /// down, which land nowhere in particular.</param>
+    public void ReportMove(IEnumerable<UiImage> pages, UiImage? droppedOnto = null)
     {
         lock (_lock)
         {
             _movedPages = pages.ToList();
+            _dropAnchor = droppedOnto;
         }
     }
 
@@ -105,6 +117,7 @@ public class DocumentPageTracker : IDisposable
                 // own sync is the one the hint belongs to, so it is dropped rather than left for
                 // whatever change comes next.
                 _movedPages = null;
+                _dropAnchor = null;
                 return;
             }
             _syncing = true;
@@ -179,9 +192,11 @@ public class DocumentPageTracker : IDisposable
             .ToHashSet();
 
         var movedPages = _movedPages;
+        var dropAnchor = _dropAnchor;
         _movedPages = null;
-        var assignment =
-            DocumentPageAssignment.Normalize(_previousOrder, images, before, locked, movedPages);
+        _dropAnchor = null;
+        var assignment = DocumentPageAssignment.Normalize(_previousOrder, images, before, locked,
+            movedPages, dropAnchor);
         var pagesByDocument = new Dictionary<ScannedDocument, List<UiImage>>();
         for (int i = 0; i < images.Count; i++)
         {

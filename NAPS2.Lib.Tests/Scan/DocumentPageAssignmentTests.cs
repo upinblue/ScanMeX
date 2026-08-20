@@ -89,6 +89,95 @@ public class DocumentPageAssignmentTests : ContextualTests
     }
 
     [Fact]
+    public void APageDroppedOnADocumentsFirstPageJoinsThatDocument()
+    {
+        // The reported failure. a0 is dragged to the front of B and comes to rest just before b0, which
+        // is the same insert position as "after a2" -- so reading the answer off the order alone put it
+        // in A, at the end, which is the one place the operator did not drop it. The page the pointer
+        // was over is the only thing that tells the two apart.
+        var before = Order(_pages, 0, 1, 2, 3, 4);
+        var after = Order(_pages, 1, 2, 0, 3, 4);
+
+        var result = DocumentPageAssignment.Normalize(before, after, StartingOwners(),
+            new HashSet<ScannedDocument>(), [_pages[0]], _pages[3]);
+
+        Assert.Equal([_a, _a, _b, _b, _b], result);
+    }
+
+    [Fact]
+    public void ADocumentsLastPageDroppedOnTheNextDocumentJoinsIt()
+    {
+        // The same drop from one page further up: a2 is already directly above b0, so dropping it there
+        // leaves the order exactly as it was. Nothing about the result says it happened, and the page
+        // stayed in A -- which is the same failure wearing a different hat.
+        var order = Order(_pages, 0, 1, 2, 3, 4);
+
+        var result = DocumentPageAssignment.Normalize(order, order, StartingOwners(),
+            new HashSet<ScannedDocument>(), [_pages[2]], _pages[3]);
+
+        Assert.Equal([_a, _a, _b, _b, _b], result);
+    }
+
+    [Fact]
+    public void APageDroppedOnADocumentsLastPageJoinsThatDocument()
+    {
+        // The other end of the same boundary, and it has to keep working: b0 dropped on a2 goes to A.
+        // This is how two documents are merged by dragging, which needs the drop to be believed even
+        // though it moved nothing.
+        var order = Order(_pages, 0, 1, 2, 3, 4);
+
+        var result = DocumentPageAssignment.Normalize(order, order, StartingOwners(),
+            new HashSet<ScannedDocument>(), [_pages[3]], _pages[2]);
+
+        Assert.Equal([_a, _a, _a, _a, _b], result);
+    }
+
+    [Fact]
+    public void ADocumentDroppedOnItselfChangesNothing()
+    {
+        // Both of B's pages picked up and let go over B's own first page. The pointer says B, so they
+        // stay in B -- a gesture that went nowhere gives nothing away.
+        var order = Order(_pages, 0, 1, 2, 3, 4);
+
+        var result = DocumentPageAssignment.Normalize(order, order, StartingOwners(),
+            new HashSet<ScannedDocument>(), [_pages[3], _pages[4]], _pages[3]);
+
+        Assert.Equal([_a, _a, _a, _b, _b], result);
+    }
+
+    [Fact]
+    public void APageDroppedOnAFinishedDocumentDoesNotJoinIt()
+    {
+        // The window refuses this drop, and the rule has to hold even if something gets past it: B's
+        // pages are in the archive exactly as they are.
+        _b.Status = DocumentStatus.Done;
+        var before = Order(_pages, 0, 1, 2, 3, 4);
+        var after = Order(_pages, 1, 2, 0, 3, 4);
+
+        var result = DocumentPageAssignment.Normalize(before, after, StartingOwners(),
+            new HashSet<ScannedDocument> { _b }, [_pages[0]], _pages[3]);
+
+        Assert.Equal([_a, _a, _a, _b, _b], result);
+    }
+
+    [Fact]
+    public void APageDroppedAmongPagesThatBelongToNoDocumentLeavesItsOwn()
+    {
+        // The unassigned pages are a section like any other, so dragging a page into it is how a page is
+        // taken out of a document without being deleted.
+        var owners = new Dictionary<UiImage, ScannedDocument>(StartingOwners());
+        owners.Remove(_pages[3]);
+        owners.Remove(_pages[4]);
+        var before = Order(_pages, 0, 1, 2, 3, 4);
+        var after = Order(_pages, 1, 2, 3, 0, 4);
+
+        var result = DocumentPageAssignment.Normalize(before, after, owners,
+            new HashSet<ScannedDocument>(), [_pages[0]], _pages[4]);
+
+        Assert.Equal([_a, _a, null, null, null], result);
+    }
+
+    [Fact]
     public void NothingMovedChangesNothing()
     {
         var order = Order(_pages, 0, 1, 2, 3, 4);

@@ -376,6 +376,61 @@ public class DocumentPageTrackerTests : ContextualTests
     }
 
     [Fact]
+    public async Task APageDroppedOnADocumentsFirstPageJoinsThatDocument()
+    {
+        // The drop indicator sits in front of the second document's first page, so that is where the
+        // page has to end up. It used to be handed to the document above instead, and came to rest as
+        // its last page -- the one place the operator did not put it.
+        var pipeline = CreatePipeline();
+        var profile = WaitingProfile();
+        await ScanIntoWindow(pipeline, profile, ImageResources.dog, ImageResources.dog_gray);
+        await ScanIntoWindow(pipeline, profile, ImageResources.dog, ImageResources.dog_gray);
+        var second = _queue.Documents[1];
+        var moved = _imageList.Images[0];
+
+        Drop(moved, 2, onto: _imageList.Images[2]);
+
+        Assert.Same(second, _pageTracker.DocumentFor(moved));
+        Assert.Equal(3, second.PageCount);
+    }
+
+    [Fact]
+    public async Task ADocumentsLastPageDroppedOnTheNextDocumentJoinsIt()
+    {
+        // The same drop from directly above the boundary, which leaves the order untouched: the page is
+        // already where it is being dropped. Nothing but the drop itself says it happened.
+        var pipeline = CreatePipeline();
+        var profile = WaitingProfile();
+        await ScanIntoWindow(pipeline, profile, ImageResources.dog, ImageResources.dog_gray);
+        await ScanIntoWindow(pipeline, profile, ImageResources.dog, ImageResources.dog_gray);
+        var second = _queue.Documents[1];
+        var moved = _imageList.Images[1];
+
+        Drop(moved, 2, onto: _imageList.Images[2]);
+
+        Assert.Same(second, _pageTracker.DocumentFor(moved));
+        Assert.Equal(3, second.PageCount);
+    }
+
+    [Fact]
+    public async Task APageDroppedOnTheLastPageOfTheDocumentAboveJoinsThatOne()
+    {
+        // The other end of the same boundary. Dropping on the right of a document's last page is how two
+        // documents are merged by dragging, so it has to keep meaning the document above.
+        var pipeline = CreatePipeline();
+        var profile = WaitingProfile();
+        await ScanIntoWindow(pipeline, profile, ImageResources.dog, ImageResources.dog_gray);
+        await ScanIntoWindow(pipeline, profile, ImageResources.dog, ImageResources.dog_gray);
+        var first = _queue.Documents[0];
+        var moved = _imageList.Images[2];
+
+        Drop(moved, 2, onto: _imageList.Images[1]);
+
+        Assert.Same(first, _pageTracker.DocumentFor(moved));
+        Assert.Equal(3, first.PageCount);
+    }
+
+    [Fact]
     public async Task ADropBackOntoItsOwnPositionMergesNothing()
     {
         // What someone trying to merge two documents by dragging tries first. It has to do nothing
@@ -396,7 +451,8 @@ public class DocumentPageTrackerTests : ContextualTests
 
     /// <summary>
     /// A drop, the way ImageListActions performs one: the pages that were picked up are named, and then
-    /// the window is rearranged.
+    /// the window is rearranged. Without an anchor, which is a drop from a list view that cannot say
+    /// which page the pointer was over.
     /// </summary>
     private void Move(UiImage page, int index) => Move([page], index);
 
@@ -404,6 +460,13 @@ public class DocumentPageTrackerTests : ContextualTests
     {
         _pageTracker.ReportMove(pages);
         _imageList.Mutate(new ImageListMutation.MoveTo(index), ListSelection.From(pages));
+    }
+
+    /// <summary>A drop that says which page it landed on, which is what the canvas reports.</summary>
+    private void Drop(UiImage page, int index, UiImage onto)
+    {
+        _pageTracker.ReportMove([page], onto);
+        _imageList.Mutate(new ImageListMutation.MoveTo(index), ListSelection.From([page]));
     }
 
     /// <summary>Move up / Move down, which name their selection the same way a drop does.</summary>

@@ -64,13 +64,38 @@ public class ImageListActions
         }
     }
 
-    public void MoveTo(int index)
+    /// <summary>
+    /// Drops the selection at the given position. <paramref name="anchorIndex"/> is the page the pointer
+    /// was over, which is what says which document the pages join -- see
+    /// <see cref="NAPS2.EtoForms.Widgets.DropEventArgs.AnchorIndex"/>. A caller that does not know it
+    /// passes -1, and the page the drop comes to rest after is used instead.
+    /// </summary>
+    public void MoveTo(int index, int anchorIndex = -1)
     {
-        if (MayRearrange() && MayDropAt(index))
+        var anchor = AnchorPage(index, anchorIndex);
+        if (MayRearrange() && MayDropAt(anchor))
         {
-            ReportMove();
+            ReportMove(anchor);
             _imageList.Mutate(new ImageListMutation.MoveTo(index), Selection);
         }
+    }
+
+    /// <summary>
+    /// The page whose document a drop joins: the one the pointer was over, or -- for a caller that
+    /// cannot say -- the one the pages come to rest after.
+    /// </summary>
+    private UiImage? AnchorPage(int index, int anchorIndex)
+    {
+        var pages = _imageList.Images;
+        if (pages.Count == 0)
+        {
+            return null;
+        }
+        if (anchorIndex >= 0 && anchorIndex < pages.Count)
+        {
+            return pages[anchorIndex];
+        }
+        return pages[index > 0 ? Math.Min(index - 1, pages.Count - 1) : 0];
     }
 
     /// <summary>
@@ -79,7 +104,10 @@ public class ImageListActions
     /// leaves no hint behind for the next change to be read by, and it falls back to the list's own
     /// selection exactly the way the mutation does.
     /// </summary>
-    private void ReportMove() => _pageTracker.ReportMove(Selection ?? _imageList.Selection);
+    /// <param name="anchor">The page a drop landed on, or null for Move up/Move down, which land
+    /// nowhere in particular and leave the document to be worked out from the resulting order.</param>
+    private void ReportMove(UiImage? anchor = null) =>
+        _pageTracker.ReportMove(Selection ?? _imageList.Selection, anchor);
 
     /// <summary>
     /// Clearing the window is the session starting over, not an edit to a document: a finished document
@@ -160,17 +188,15 @@ public class ImageListActions
     /// in a document belonging to a different profile -- that would move them to another folder, another
     /// name and another archive without anything saying so.
     /// </summary>
-    private bool MayDropAt(int index)
+    /// <param name="anchor">The page the drop takes its document from -- the same page
+    /// <see cref="DocumentPageAssignment"/> is given, so the guard and the rule cannot disagree about
+    /// where a drop at a boundary lands.</param>
+    private bool MayDropAt(UiImage? anchor)
     {
-        var pages = _imageList.Images;
-        if (pages.Count == 0)
+        if (anchor == null)
         {
             return true;
         }
-        // The page comes to rest after the one above the drop position, and that is the document it
-        // would join -- the same page DocumentPageAssignment takes its answer from, so the guard and the
-        // rule cannot disagree about where a drop at a boundary lands.
-        var anchor = pages[index > 0 ? Math.Min(index - 1, pages.Count - 1) : 0];
         var target = _pageTracker.DocumentFor(anchor);
         if (target == null)
         {

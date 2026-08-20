@@ -774,7 +774,7 @@ public class WinFormsListView<T> : IListView<T> where T : notnull
 
     private void OnDragDrop(object? sender, DragEventArgs e)
     {
-        var index = GetDragIndex(e);
+        var (index, anchor, _) = GetDragPosition(e);
         SetDropIndicator(-1, false);
         if (index != -1)
         {
@@ -784,7 +784,8 @@ public class WinFormsListView<T> : IListView<T> where T : notnull
             {
                 if (data.Contains(_behavior.CustomDragDataType))
                 {
-                    Drop?.Invoke(this, new DropEventArgs(index, data.GetData(_behavior.CustomDragDataType)));
+                    Drop?.Invoke(this,
+                        new DropEventArgs(index, data.GetData(_behavior.CustomDragDataType), anchor));
                 }
             }
             catch (COMException)
@@ -795,7 +796,7 @@ public class WinFormsListView<T> : IListView<T> where T : notnull
                 if (data.Contains("FileDrop"))
                 {
                     var filePaths = (string[]) e.Data!.GetData(DataFormats.FileDrop)!;
-                    Drop?.Invoke(this, new DropEventArgs(index, filePaths));
+                    Drop?.Invoke(this, new DropEventArgs(index, filePaths, anchor));
                 }
             }
             catch (COMException)
@@ -813,23 +814,25 @@ public class WinFormsListView<T> : IListView<T> where T : notnull
     {
         if (e.Effect == DragDropEffects.Move && Items.Count > 0)
         {
-            var index = GetDragIndex(e);
-            if (index == Items.Count)
-            {
-                SetDropIndicator(index - 1, true);
-            }
-            else
-            {
-                SetDropIndicator(index, false);
-            }
+            // Drawn against the page the pointer is over rather than the page the insert index names,
+            // so the bar sits inside the section the drop will land in. Between two documents those are
+            // different places: the same index is both "after the last page of this one" and "before the
+            // first page of the next", and the bar has to say which of the two is about to happen.
+            var (_, anchor, after) = GetDragPosition(e);
+            SetDropIndicator(anchor, after);
         }
     }
 
-    private int GetDragIndex(DragEventArgs e)
+    /// <summary>
+    /// Where a drop would land: the index it inserts at, the item the pointer is over, and which side of
+    /// that item it is on. The last two are what say which document the pages join; see
+    /// <see cref="DropEventArgs.AnchorIndex"/>.
+    /// </summary>
+    private (int Index, int Anchor, bool After) GetDragPosition(DragEventArgs e)
     {
         if (Items.Count == 0)
         {
-            return 0;
+            return (0, -1, false);
         }
         Point cp = _view.PointToClient(new Point(e.X, e.Y));
         ListViewItem? dragToItem = _view.GetItemAt(cp.X, cp.Y);
@@ -853,15 +856,13 @@ public class WinFormsListView<T> : IListView<T> where T : notnull
         if (dragToItem == null)
         {
             // With sections there are bands between the rows that hold no item -- the headings. A drop
-            // on one of those means the section it belongs to, not nowhere.
-            return SectionAt(cp.Y)?.StartIndex ?? -1;
+            // on one of those means the section it belongs to, not nowhere, and it means the front of
+            // it: the heading is above the section's first page.
+            var section = SectionAt(cp.Y);
+            return section == null ? (-1, -1, false) : (section.StartIndex, section.StartIndex, false);
         }
-        int dragToIndex = dragToItem.Index;
-        if (cp.X > (dragToItem.Bounds.X + dragToItem.Bounds.Width / 2))
-        {
-            dragToIndex++;
-        }
-        return dragToIndex;
+        var after = cp.X > dragToItem.Bounds.X + dragToItem.Bounds.Width / 2;
+        return (after ? dragToItem.Index + 1 : dragToItem.Index, dragToItem.Index, after);
     }
 
     private void OnMouseMove(object? sender, MouseEventArgs e)
