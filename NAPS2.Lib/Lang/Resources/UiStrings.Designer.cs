@@ -3846,17 +3846,6 @@ namespace NAPS2.Lang.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Leave empty to keep the stored password.
-        /// </summary>
-        internal static string SapPasswordKeepHint {
-            get {
-                return ResourceManager.GetString("SapPasswordKeepHint", resourceCulture);
-            }
-        }
-
-
-
-        /// <summary>
         ///   Looks up a localized string similar to {0} document(s) have no identification yet and were not uploaded. Enter one in the document list first..
         /// </summary>
         internal static string UploadBlockedByMissingId {
@@ -4569,6 +4558,124 @@ namespace NAPS2.Lang.Resources {
         internal static string BarcodeOnPage {
             get {
                 return ResourceManager.GetString("BarcodeOnPage", resourceCulture);
+            }
+        }
+
+
+        /// <summary>
+        ///   Looks up a localized string similar to Export....
+        /// </summary>
+        internal static string ProfileExport {
+            get {
+                return ResourceManager.GetString("ProfileExport", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Import....
+        /// </summary>
+        internal static string ProfileImport {
+            get {
+                return ResourceManager.GetString("ProfileImport", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Export profiles.
+        /// </summary>
+        internal static string ProfileExportTitle {
+            get {
+                return ResourceManager.GetString("ProfileExportTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Import profiles.
+        /// </summary>
+        internal static string ProfileImportTitle {
+            get {
+                return ResourceManager.GetString("ProfileImportTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to ScanMe profiles.
+        /// </summary>
+        internal static string ProfileFileType {
+            get {
+                return ResourceManager.GetString("ProfileFileType", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} profile(s) exported to: {1}.
+        /// </summary>
+        internal static string ProfileExportDone {
+            get {
+                return ResourceManager.GetString("ProfileExportDone", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The SAP password and the SharePoint Client Secret are not part of the file. They have to be entered again on the other computer..
+        /// </summary>
+        internal static string ProfileExportSecretsLeftOut {
+            get {
+                return ResourceManager.GetString("ProfileExportSecretsLeftOut", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The profiles could not be exported: {0}.
+        /// </summary>
+        internal static string ProfileExportFailed {
+            get {
+                return ResourceManager.GetString("ProfileExportFailed", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} profile(s) imported..
+        /// </summary>
+        internal static string ProfileImportDone {
+            get {
+                return ResourceManager.GetString("ProfileImportDone", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to No profiles were found in this file..
+        /// </summary>
+        internal static string ProfileImportNone {
+            get {
+                return ResourceManager.GetString("ProfileImportNone", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to This file could not be read as ScanMe profiles: {0}.
+        /// </summary>
+        internal static string ProfileImportFailed {
+            get {
+                return ResourceManager.GetString("ProfileImportFailed", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Renamed because the name was already in use: {0}.
+        /// </summary>
+        internal static string ProfileImportRenamed {
+            get {
+                return ResourceManager.GetString("ProfileImportRenamed", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to These profiles cannot upload until the SAP password or the SharePoint Client Secret has been entered: {0}.
+        /// </summary>
+        internal static string ProfileImportSecretsNeeded {
+            get {
+                return ResourceManager.GetString("ProfileImportSecretsNeeded", resourceCulture);
             }
         }
 

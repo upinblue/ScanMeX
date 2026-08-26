@@ -979,7 +979,7 @@
     <value>SAP-Benutzer:</value>
   </data>
   <data name="SapPasswordLabel" xml:space="preserve">
-    <value>SAP-Passwort (leer lassen, um es beizubehalten):</value>
+    <value>SAP-Passwort:</value>
   </data>
   <data name="SapIgnoreSslCertificateCheck" xml:space="preserve">
     <value>SSL-Zertifikatsprüfung deaktivieren (nur Testumgebung!)</value>
@@ -1296,9 +1296,6 @@
   <data name="SapObjectKeyFromSeparatorInfo" xml:space="preserve">
     <value>Die Kennzeichnung ist der Wert, unter dem das Dokument abgelegt wird — Dateiname und Archivschlüssel stimmen damit immer überein. Sie stammt aus dem im Reiter „Dokumente" gewählten Barcode oder aus der Eingabe in der Dokumentenliste.</value>
   </data>
-  <data name="SapPasswordKeepHint" xml:space="preserve">
-    <value>Leer lassen, um das gespeicherte Passwort zu behalten</value>
-  </data>
   <data name="EmptyStateNoPages" xml:space="preserve">
     <value>Noch keine Seiten</value>
   </data>
@@ -1541,5 +1538,45 @@
   </data>
   <data name="BarcodeOnPage" xml:space="preserve">
     <value>Seite {0}</value>
+  </data>
+  <data name="ProfileExport" xml:space="preserve">
+    <value>Exportieren...</value>
+  </data>
+  <data name="ProfileImport" xml:space="preserve">
+    <value>Importieren...</value>
+  </data>
+  <data name="ProfileExportTitle" xml:space="preserve">
+    <value>Profile exportieren</value>
+  </data>
+  <data name="ProfileImportTitle" xml:space="preserve">
+    <value>Profile importieren</value>
+  </data>
+  <data name="ProfileFileType" xml:space="preserve">
+    <value>ScanMe-Profile</value>
+  </data>
+  <data name="ProfileExportDone" xml:space="preserve">
+    <value>{0} Profil(e) exportiert nach:
+{1}</value>
+  </data>
+  <data name="ProfileExportSecretsLeftOut" xml:space="preserve">
+    <value>Das SAP-Passwort und das SharePoint-Client-Secret sind nicht Teil der Datei. Sie müssen auf dem anderen Rechner erneut eingegeben werden.</value>
+  </data>
+  <data name="ProfileExportFailed" xml:space="preserve">
+    <value>Die Profile konnten nicht exportiert werden: {0}</value>
+  </data>
+  <data name="ProfileImportDone" xml:space="preserve">
+    <value>{0} Profil(e) importiert.</value>
+  </data>
+  <data name="ProfileImportNone" xml:space="preserve">
+    <value>In dieser Datei wurden keine Profile gefunden.</value>
+  </data>
+  <data name="ProfileImportFailed" xml:space="preserve">
+    <value>Diese Datei konnte nicht als ScanMe-Profile gelesen werden: {0}</value>
+  </data>
+  <data name="ProfileImportRenamed" xml:space="preserve">
+    <value>Umbenannt, weil der Name bereits vergeben war: {0}</value>
+  </data>
+  <data name="ProfileImportSecretsNeeded" xml:space="preserve">
+    <value>Diese Profile können erst hochladen, wenn das SAP-Passwort bzw. das SharePoint-Client-Secret eingegeben wurde: {0}</value>
   </data>
 </root>

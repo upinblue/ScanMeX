@@ -115,9 +115,10 @@ public class EditProfileForm : EtoDialogBase
     private readonly TextBox _sapClient = new();
     private readonly TextBox _sapLanguage = new();
     private readonly TextBox _sapUser = new();
-    // Always starts empty and only overwrites the stored password when something is typed, so the box
-    // being blank has to read as "unchanged" rather than "no password set".
-    private readonly PasswordBox _sapPassword = new() { ToolTip = UiStrings.SapPasswordKeepHint };
+    // A stored password shows as five dots, so the box says on sight whether one is set. It used to
+    // start empty whatever was stored, which is indistinguishable from "no password" -- and the line of
+    // explanation under it was the only thing that said otherwise.
+    private readonly PasswordBox _sapPassword = new();
     private readonly CheckBox _sapIgnoreSsl = new() { Text = UiStrings.SapIgnoreSslCertificateCheck };
     private readonly TextBox _sapArchiveId = new();
     private readonly RadioButton _sapPromptObjectKey = new() { Text = UiStrings.SapObjectKeyPromptEachScan };
@@ -133,6 +134,20 @@ public class EditProfileForm : EtoDialogBase
     private bool _result;
     private bool _suppressChangeEvent;
     private CancellationTokenSource? _updateCapsCts;
+
+    /// <summary>
+    /// What a stored SAP password is shown as. Any five characters would do -- a password box draws a
+    /// dot per character whatever they are -- and five is a count, not the length of anything.
+    /// </summary>
+    private static readonly string StoredPasswordPlaceholder = new('*', 5);
+
+    /// <summary>
+    /// Whether the password box still holds the placeholder rather than something the operator typed.
+    /// The box is no longer empty when a password is stored, so "leave it alone" can't be read off the
+    /// text any more; it is tracked here instead. False means what the box shows is what gets saved --
+    /// including an empty box, which now means the stored password is to go.
+    /// </summary>
+    private bool _sapPasswordUntouched;
 
     public EditProfileForm(Naps2Config config, IScanPerformer scanPerformer, ErrorOutput errorOutput,
         ProfileNameTracker profileNameTracker, DeviceCapsCache deviceCapsCache,
@@ -207,6 +222,13 @@ public class EditProfileForm : EtoDialogBase
         _sapBarcodeObjectKey.CheckedChanged += (_, _) => UpdateSapControlsEnabled();
         _sapFilenameObjectKey.CheckedChanged += (_, _) => UpdateSapControlsEnabled();
         _sapFixedObjectKey.CheckedChanged += (_, _) => UpdateSapControlsEnabled();
+        _sapPassword.TextChanged += (_, _) =>
+        {
+            if (!_suppressChangeEvent)
+            {
+                _sapPasswordUntouched = false;
+            }
+        };
         _sapTestConnection.Click += SapTestConnection_Click;
     }
 
@@ -435,7 +457,6 @@ public class EditProfileForm : EtoDialogBase
                 _sapPassword
             ).Scale()
         ),
-        C.Secondary(UiStrings.SapPasswordKeepHint),
         _sapIgnoreSsl,
         C.Spacer(),
         C.BodyStrong(UiStrings.SapArchiveSection),
@@ -658,7 +679,10 @@ public class EditProfileForm : EtoDialogBase
         _sapClient.Text = sapConnection.Client ?? "";
         _sapLanguage.Text = string.IsNullOrWhiteSpace(sapConnection.Language) ? "DE" : sapConnection.Language;
         _sapUser.Text = sapConnection.User ?? "";
-        _sapPassword.Text = "";
+        // Dots mean a password is stored here and works here. That is only true because a profile that
+        // arrives from another machine has none: see ProfileFileTransfer.WithoutSecrets.
+        _sapPassword.Text = string.IsNullOrEmpty(sapConnection.EncryptedPassword) ? "" : StoredPasswordPlaceholder;
+        _sapPasswordUntouched = !string.IsNullOrEmpty(sapConnection.EncryptedPassword);
         _sapIgnoreSsl.Checked = sapConnection.IgnoreCertificateErrors;
         _sapArchiveId.Text = sap.ArchiveId ?? "";
         _sapDescriptionTemplate.Text = sap.ObjectId ?? "";
@@ -962,6 +986,16 @@ public class EditProfileForm : EtoDialogBase
             _profileNameTracker.RenamingProfile(ScanProfile.DisplayName, _displayName.Text);
         }
         _scanProfile = GetUpdatedScanProfile();
+        // A password that quietly went is the one change to this dialog nothing on screen records
+        // afterwards, so the console says which of the three things happened to it.
+        if (_enableSapArchiveUpload.IsChecked())
+        {
+            ScanConsole.Profile($"Profile '{_displayName.Text}': SAP password " + (_sapPasswordUntouched
+                ? "left as it was."
+                : string.IsNullOrEmpty(_sapPassword.Text)
+                    ? "cleared."
+                    : "replaced with the one just entered."));
+        }
         return true;
     }
 
@@ -1136,7 +1170,9 @@ public class EditProfileForm : EtoDialogBase
             ConnectTimeoutSeconds = currentConnection.ConnectTimeoutSeconds,
             UploadTimeoutSeconds = currentConnection.UploadTimeoutSeconds
         };
-        if (!string.IsNullOrEmpty(_sapPassword.Text))
+        // What the box shows is what is saved, now that a stored password shows as dots: the operator
+        // clearing it means the stored one is to go, where before an empty box meant "keep it".
+        if (!_sapPasswordUntouched)
         {
             SapCredentialStore.WritePassword(connection, _sapPassword.Text);
         }

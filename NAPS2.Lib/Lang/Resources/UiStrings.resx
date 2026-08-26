@@ -515,7 +515,7 @@
     <value>SAP user:</value>
   </data>
   <data name="SapPasswordLabel" xml:space="preserve">
-    <value>SAP password (leave blank to keep unchanged):</value>
+    <value>SAP password:</value>
   </data>
   <data name="SapIgnoreSslCertificateCheck" xml:space="preserve">
     <value>Disable SSL certificate validation (test environments only)</value>
@@ -1405,9 +1405,6 @@
   <data name="SapObjectKeyFromSeparatorInfo" xml:space="preserve">
     <value>The identification is the value the document is filed under, so the file name and the archive key always agree. It comes from the barcode selected on the Documents tab, or from what was entered in the document list.</value>
   </data>
-  <data name="SapPasswordKeepHint" xml:space="preserve">
-    <value>Leave empty to keep the stored password</value>
-  </data>
   <data name="EmptyStateNoPages" xml:space="preserve">
     <value>No pages yet</value>
   </data>
@@ -1650,5 +1647,45 @@
   </data>
   <data name="BarcodeOnPage" xml:space="preserve">
     <value>Page {0}</value>
+  </data>
+  <data name="ProfileExport" xml:space="preserve">
+    <value>Export...</value>
+  </data>
+  <data name="ProfileImport" xml:space="preserve">
+    <value>Import...</value>
+  </data>
+  <data name="ProfileExportTitle" xml:space="preserve">
+    <value>Export profiles</value>
+  </data>
+  <data name="ProfileImportTitle" xml:space="preserve">
+    <value>Import profiles</value>
+  </data>
+  <data name="ProfileFileType" xml:space="preserve">
+    <value>ScanMe profiles</value>
+  </data>
+  <data name="ProfileExportDone" xml:space="preserve">
+    <value>{0} profile(s) exported to:
+{1}</value>
+  </data>
+  <data name="ProfileExportSecretsLeftOut" xml:space="preserve">
+    <value>The SAP password and the SharePoint Client Secret are not part of the file. They have to be entered again on the other computer.</value>
+  </data>
+  <data name="ProfileExportFailed" xml:space="preserve">
+    <value>The profiles could not be exported: {0}</value>
+  </data>
+  <data name="ProfileImportDone" xml:space="preserve">
+    <value>{0} profile(s) imported.</value>
+  </data>
+  <data name="ProfileImportNone" xml:space="preserve">
+    <value>No profiles were found in this file.</value>
+  </data>
+  <data name="ProfileImportFailed" xml:space="preserve">
+    <value>This file could not be read as ScanMe profiles: {0}</value>
+  </data>
+  <data name="ProfileImportRenamed" xml:space="preserve">
+    <value>Renamed because the name was already in use: {0}</value>
+  </data>
+  <data name="ProfileImportSecretsNeeded" xml:space="preserve">
+    <value>These profiles cannot upload until the SAP password or the SharePoint Client Secret has been entered: {0}</value>
   </data>
 </root>

@@ -558,6 +558,54 @@ the operator's token, with `CancelAfter` from the connection.
   document size, no sign-in time, no retry, no timeout — so a customer's timeout could not be traced to
   anything. Keep every new step in that class on the callback.
 
+## Carrying profiles to another machine
+
+`ProfileFileTransfer` writes profiles to a file and reads them back; "Import..." and "Export..." are in
+the Profiles window, as buttons next to New/Edit/Delete and in the list's context menu. The clipboard
+`ProfileTransfer` next to it only reaches another window of the same installation, which is no help when
+the point is a second workstation.
+
+- **The file is a profiles.xml.** Both directions go through `ProfileSerializer`, so an export can be
+  opened and checked like the real thing, and a `profiles.xml` lifted straight out of AppData — including
+  one written by an older version, which the serializer upgrades — imports as it stands.
+- **A profile that crosses a machine boundary arrives without secrets.** `WithoutSecrets` clears the SAP
+  password and the SharePoint client secret on the way **out and on the way in**, so the rule holds
+  whichever file is opened. The SAP password is DPAPI-protected for one user on one machine, so
+  elsewhere it is not merely secret but unusable — kept, it would make the password box on the other
+  machine say a password is stored while every upload failed to decrypt it. The client secret is stored
+  in plain text and would travel readable in a file someone mails to themselves.
+- **The operator is told what is missing.** Both dialogs report what happened: the export names the file
+  and says the two secrets are not in it (only when the profiles actually had one), and the import names
+  the profiles that upload somewhere and therefore need a password or a client secret typed in before
+  they can. A profile that silently cannot upload is the invisible failure this app exists to prevent.
+- **Everything else travels, the scanner included.** A device id from another machine may well not exist
+  there, and the profile then fails at scan time rather than asking — but the device is part of the
+  profile, and on a rollout of identical hardware it is one less thing to set. `Device` is the field to
+  clear if that trade ever turns out the wrong way round.
+- **An import never overwrites.** Profiles are appended, and a name that is already taken is numbered
+  (`Invoices (2)`) rather than duplicated, so importing the same file twice is visible instead of
+  producing two rows nobody can tell apart. Locked is cleared — it says something about the
+  administrator's profiles file on the machine the profile came from, not about the profile.
+- **An imported profile becomes the default only when this machine has none.** A machine with no default
+  asks which profile to scan with every time; one that has a default must not have it moved by an import.
+
+### A stored SAP password shows as five dots
+
+The password box in the profile dialog is prefilled with a five-character placeholder when the profile
+has a password, so the box says on sight that one is set. It used to start empty whatever was stored,
+which is indistinguishable from "no password", and a line of explanation under the field was the only
+thing that said otherwise — that line and the parenthesis in the label are gone.
+
+- **"Unchanged" is tracked, not read off the text.** `_sapPasswordUntouched` is set when the placeholder
+  is put in and cleared by the box's first `TextChanged`. It cannot be derived from the content any
+  more, and a sentinel string the operator could also type would be a trap.
+- **What the box shows is what is saved.** Clearing it now removes the stored password, where an empty
+  box used to mean "keep it" — which also meant there was no way to remove one at all.
+- **The console says which of the three happened** when a profile with SAP upload is saved: kept,
+  replaced, or cleared. A password that quietly went is otherwise the one change to that dialog nothing
+  on screen records afterwards.
+- The connection dialog under Settings still has the old empty-means-keep box; the two are independent.
+
 ## Barcode detection
 
 `BarcodeDetector.Detect` decodes every page **twice** — once at full size and once on a copy scaled to
@@ -806,6 +854,9 @@ The document pipeline's own coverage: `DocumentPipelineTests` (splitting and wri
 `DocumentEditorTests` (splitting a document and merging one back),
 `DocumentWorkflowMigrationTests` (reading old profiles), `BarcodeDetectionPlanTests` (whether to decode
 at all) and `PhantomBarcodeTests` (what a noisy page yields).
+
+`ProfileFileTransferTests` covers what an exported profile takes to another machine and what it must
+never take -- both secrets, in both directions, including out of a file that still holds one.
 
 The SAP upload's own: `SapUploadTimeoutTests` (what a slow SAP costs, and that a timed-out document is
 not sent again), `SapConnectionTimeoutSettingsTests` (reading the deadlines out of an old connection),

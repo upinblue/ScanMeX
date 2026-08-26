@@ -16,6 +16,7 @@ public class ProfilesForm : EtoDialogBase
     private readonly ThumbnailController _thumbnailController;
     private readonly IIconProvider _iconProvider;
     private readonly ProfileTransfer _profileTransfer = new();
+    private readonly ProfileFileTransfer _profileFileTransfer = new();
 
     private readonly IListView<ScanProfile> _listView;
 
@@ -26,6 +27,8 @@ public class ProfilesForm : EtoDialogBase
     private readonly ActionCommand _setDefaultCommand;
     private readonly ActionCommand _copyCommand;
     private readonly ActionCommand _pasteCommand;
+    private readonly ActionCommand _exportCommand;
+    private readonly ActionCommand _importCommand;
     private readonly ActionCommand _scannerSharingCommand;
 
     public ProfilesForm(Naps2Config config, IScanPerformer scanPerformer, ProfileNameTracker profileNameTracker,
@@ -85,6 +88,14 @@ public class ProfilesForm : EtoDialogBase
         {
             MenuText = UiStrings.Paste
         };
+        _exportCommand = new ActionCommand(DoExport)
+        {
+            MenuText = UiStrings.ProfileExport
+        };
+        _importCommand = new ActionCommand(DoImport)
+        {
+            MenuText = UiStrings.ProfileImport
+        };
         _scannerSharingCommand = new ActionCommand(OpenScannerSharingForm)
         {
             MenuText = UiStrings.ScannerSharing,
@@ -108,6 +119,10 @@ public class ProfilesForm : EtoDialogBase
         _addCommand.Enabled = !NoUserProfiles;
         _editCommand.Enabled = false;
         _deleteCommand.Enabled = false;
+        // Importing adds profiles, so it goes where adding one goes. Exporting only reads, and is
+        // enabled from ReloadProfiles as soon as there is anything to write.
+        _importCommand.Enabled = !NoUserProfiles;
+        _exportCommand.Enabled = false;
 
         var contextMenu = new ContextMenu();
         _listView.ContextMenu = contextMenu;
@@ -121,6 +136,16 @@ public class ProfilesForm : EtoDialogBase
             contextMenu.AddItems(
                 C.ButtonMenuItem(this, _copyCommand),
                 C.ButtonMenuItem(this, _pasteCommand),
+                C.ButtonMenuItem(this, _exportCommand),
+                C.ButtonMenuItem(this, _importCommand),
+                new SeparatorMenuItem());
+        }
+        else
+        {
+            // Exporting is a read, so an installation whose profiles are the administrator's can still
+            // hand them on; importing would add one, which is exactly what NoUserProfiles forbids.
+            contextMenu.AddItems(
+                C.ButtonMenuItem(this, _exportCommand),
                 new SeparatorMenuItem());
         }
         contextMenu.AddItems(
@@ -144,6 +169,8 @@ public class ProfilesForm : EtoDialogBase
                         C.Button(_addCommand, ButtonImagePosition.Left),
                         C.Button(_editCommand, ButtonImagePosition.Left),
                         C.Button(_deleteCommand, ButtonImagePosition.Left),
+                        C.Button(_importCommand),
+                        C.Button(_exportCommand),
                         C.Filler(),
                         Config.Get(c => c.DisableScannerSharing)
                             ? C.None()
@@ -191,6 +218,7 @@ public class ProfilesForm : EtoDialogBase
     private void ReloadProfiles()
     {
         _listView.SetItems(_profileManager.Profiles);
+        _exportCommand.Enabled = _profileManager.Profiles.Count > 0;
     }
 
     private void SelectionChanged(object? sender, EventArgs e)
@@ -253,6 +281,7 @@ public class ProfilesForm : EtoDialogBase
         _deleteCommand.Enabled = SelectedProfile != null && !SelectedProfile.IsLocked;
         _copyCommand.Enabled = SelectedProfile != null;
         _pasteCommand.Enabled = _profileTransfer.IsInClipboard();
+        _exportCommand.Enabled = _profileManager.Profiles.Count > 0;
     }
 
     private async void DoScan()
@@ -368,6 +397,172 @@ public class ProfilesForm : EtoDialogBase
             var profile = data.ScanProfileXml.FromXml<ScanProfile>();
             _profileManager.Mutate(new ListMutation<ScanProfile>.AppendAndSelect(profile), _listView);
         }
+    }
+
+    /// <summary>
+    /// Writes profiles to a file that can be carried to another machine. Nothing selected means all of
+    /// them: setting a second workstation up is the reason this exists, and that is a whole-list job.
+    /// </summary>
+    private void DoExport()
+    {
+        // In list order rather than selection order -- the file is read back as a list of profiles, and
+        // the order they are in is the order they were in here.
+        var profiles = _listView.Selection.Count > 0
+            ? _profileManager.Profiles.Where(x => _listView.Selection.Contains(x)).ToList()
+            : _profileManager.Profiles.ToList();
+        if (profiles.Count == 0)
+        {
+            return;
+        }
+
+        var sd = new SaveFileDialog
+        {
+            Title = UiStrings.ProfileExportTitle,
+            FileName = DefaultExportFileName(profiles)
+        };
+        sd.Filters.Add(new FileFilter(UiStrings.ProfileFileType, ProfileFileTransfer.FileExtension, ".xml"));
+        sd.Filters.Add(new FileFilter(MiscResources.FileTypeAllFiles, ".*"));
+        EtoPlatform.Current.ConfigureFileDialog(sd);
+        if (sd.ShowDialog(this) != DialogResult.Ok)
+        {
+            return;
+        }
+
+        try
+        {
+            _profileFileTransfer.Export(profiles, sd.FileName);
+        }
+        catch (Exception ex)
+        {
+            Log.ErrorException($"Error exporting profiles to {sd.FileName}", ex);
+            ScanConsole.Profile($"Exporting {profiles.Count} profile(s) to '{sd.FileName}' failed: {ex.Message}");
+            MessageBox.Show(string.Format(UiStrings.ProfileExportFailed, ex.Message), UiStrings.ProfileExportTitle,
+                MessageBoxButtons.OK, MessageBoxType.Error);
+            return;
+        }
+
+        bool secretsLeftOut = profiles.Any(ProfileFileTransfer.HasStoredSecret);
+        ScanConsole.Profile(
+            $"Exported {profiles.Count} profile(s) to '{sd.FileName}': {string.Join(", ", profiles.Select(x => $"'{x.DisplayName}'"))}." +
+            (secretsLeftOut ? " The stored SAP password and SharePoint client secret were left out." : ""));
+        var message = string.Format(UiStrings.ProfileExportDone, profiles.Count, sd.FileName);
+        if (secretsLeftOut)
+        {
+            message += Environment.NewLine + Environment.NewLine + UiStrings.ProfileExportSecretsLeftOut;
+        }
+        MessageBox.Show(message, UiStrings.ProfileExportTitle, MessageBoxButtons.OK, MessageBoxType.Information);
+    }
+
+    /// <summary>
+    /// Reads profiles out of an exported file and appends them, leaving the ones already here alone.
+    /// </summary>
+    private void DoImport()
+    {
+        if (NoUserProfiles)
+        {
+            return;
+        }
+
+        var ofd = new OpenFileDialog
+        {
+            Title = UiStrings.ProfileImportTitle,
+            MultiSelect = false,
+            CheckFileExists = true
+        };
+        ofd.Filters.Add(new FileFilter(UiStrings.ProfileFileType, ProfileFileTransfer.FileExtension, ".xml"));
+        ofd.Filters.Add(new FileFilter(MiscResources.FileTypeAllFiles, ".*"));
+        EtoPlatform.Current.ConfigureFileDialog(ofd);
+        if (ofd.ShowDialog(this) != DialogResult.Ok)
+        {
+            return;
+        }
+        var path = ofd.Filenames.FirstOrDefault();
+        if (string.IsNullOrEmpty(path))
+        {
+            return;
+        }
+
+        IReadOnlyList<ScanProfile> imported;
+        try
+        {
+            imported = _profileFileTransfer.Import(path);
+        }
+        catch (Exception ex)
+        {
+            Log.ErrorException($"Error importing profiles from {path}", ex);
+            ScanConsole.Profile($"Importing profiles from '{path}' failed: {ex.Message}");
+            MessageBox.Show(string.Format(UiStrings.ProfileImportFailed, ex.Message), UiStrings.ProfileImportTitle,
+                MessageBoxButtons.OK, MessageBoxType.Error);
+            return;
+        }
+
+        if (imported.Count == 0)
+        {
+            ScanConsole.Profile($"'{path}' holds no profiles; nothing was imported.");
+            MessageBox.Show(UiStrings.ProfileImportNone, UiStrings.ProfileImportTitle, MessageBoxButtons.OK,
+                MessageBoxType.Warning);
+            return;
+        }
+
+        var taken = new HashSet<string>(_profileManager.Profiles.Select(x => x.DisplayName));
+        var renames = new List<string>();
+        ScanProfile? defaultInFile = null;
+        foreach (var profile in imported)
+        {
+            if (profile.IsDefault)
+            {
+                defaultInFile ??= profile;
+                profile.IsDefault = false;
+            }
+            var unique = ProfileFileTransfer.MakeNameUnique(profile.DisplayName, taken);
+            if (unique != null)
+            {
+                renames.Add($"{profile.DisplayName} -> {unique}");
+                profile.DisplayName = unique;
+            }
+            taken.Add(profile.DisplayName);
+        }
+
+        _profileManager.Mutate(new ListMutation<ScanProfile>.AppendAndSelect(imported), _listView);
+        // A machine with no default at all asks which profile to scan with every time, so a profile that
+        // was the default where it came from becomes the default here -- but only when nothing else is.
+        if (defaultInFile != null && _profileManager.DefaultProfile == null)
+        {
+            _profileManager.DefaultProfile = defaultInFile;
+        }
+
+        var needSecret = imported
+            .Where(x => ProfileFileTransfer.NeedsSapPassword(x) || ProfileFileTransfer.NeedsSharePointSecret(x))
+            .Select(x => x.DisplayName)
+            .ToList();
+        ScanConsole.Profile(
+            $"Imported {imported.Count} profile(s) from '{path}': {string.Join(", ", imported.Select(x => $"'{x.DisplayName}'"))}." +
+            (renames.Count > 0 ? $" Renamed: {string.Join(", ", renames)}." : "") +
+            (needSecret.Count > 0
+                ? $" Still needs a SAP password or SharePoint client secret: {string.Join(", ", needSecret.Select(x => $"'{x}'"))}."
+                : ""));
+        var message = string.Format(UiStrings.ProfileImportDone, imported.Count);
+        if (renames.Count > 0)
+        {
+            message += Environment.NewLine + Environment.NewLine +
+                       string.Format(UiStrings.ProfileImportRenamed, string.Join(", ", renames));
+        }
+        if (needSecret.Count > 0)
+        {
+            message += Environment.NewLine + Environment.NewLine +
+                       string.Format(UiStrings.ProfileImportSecretsNeeded, string.Join(", ", needSecret));
+        }
+        MessageBox.Show(message, UiStrings.ProfileImportTitle, MessageBoxButtons.OK, MessageBoxType.Information);
+    }
+
+    private static string DefaultExportFileName(IReadOnlyList<ScanProfile> profiles)
+    {
+        var name = profiles.Count == 1 ? profiles[0].DisplayName : "ScanMe-Profiles";
+        foreach (var c in Path.GetInvalidFileNameChars())
+        {
+            name = name.Replace(c, '_');
+        }
+        return (string.IsNullOrWhiteSpace(name) ? "ScanMe-Profiles" : name) + ProfileFileTransfer.FileExtension;
     }
 
     private void OpenScannerSharingForm()
