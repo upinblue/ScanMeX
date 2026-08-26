@@ -66,6 +66,70 @@ public class SapConnectionConfig : IEquatable<SapConnectionConfig>
     public bool IgnoreCertificateErrors { get; set; }
 
     /// <summary>
+    /// How long to wait for the gateway to answer the sign-in request, in seconds. Zero means
+    /// <see cref="DefaultConnectTimeoutSeconds" />.
+    /// </summary>
+    public int ConnectTimeoutSeconds { get; set; }
+
+    /// <summary>
+    /// How long to wait for a document to be sent and archived, in seconds. Zero means
+    /// <see cref="DefaultUploadTimeoutSeconds" />.
+    /// </summary>
+    public int UploadTimeoutSeconds { get; set; }
+
+    /// <summary>
+    /// The sign-in timeout used when the connection doesn't name one. A gateway that hasn't answered a
+    /// token request in half a minute isn't slow, it's unreachable.
+    /// </summary>
+    public const int DefaultConnectTimeoutSeconds = 30;
+
+    /// <summary>
+    /// The upload timeout used when the connection doesn't name one.
+    /// </summary>
+    /// <remarks>
+    /// This window covers sending every byte <em>and</em> the archiving SAP does afterwards, so it has to
+    /// fit the slowest realistic combination of the two: a large colour scan over a slow link, then an
+    /// ArchiveLink write. The 60 seconds this replaced were routinely too short for that, and each
+    /// expiry cost three full uploads before the operator was told anything.
+    /// </remarks>
+    public const int DefaultUploadTimeoutSeconds = 300;
+
+    private const int MinTimeoutSeconds = 5;
+    private const int MaxTimeoutSeconds = 3600;
+
+    /// <summary>
+    /// The sign-in timeout in force.
+    /// </summary>
+    /// <remarks>
+    /// Zero is what every connection written before these settings existed deserializes to, and it has to
+    /// mean "the default" rather than "give up immediately" -- an update must not stop a working
+    /// connection from signing in. The clamp is for hand-edited config files.
+    /// </remarks>
+    public TimeSpan GetConnectTimeout() => Clamp(ConnectTimeoutSeconds, DefaultConnectTimeoutSeconds);
+
+    /// <summary>
+    /// The upload timeout in force. See <see cref="GetConnectTimeout" /> for why zero means the default.
+    /// </summary>
+    public TimeSpan GetUploadTimeout() => Clamp(UploadTimeoutSeconds, DefaultUploadTimeoutSeconds);
+
+    private static TimeSpan Clamp(int seconds, int fallback)
+    {
+        if (seconds <= 0)
+        {
+            seconds = fallback;
+        }
+        if (seconds < MinTimeoutSeconds)
+        {
+            seconds = MinTimeoutSeconds;
+        }
+        if (seconds > MaxTimeoutSeconds)
+        {
+            seconds = MaxTimeoutSeconds;
+        }
+        return TimeSpan.FromSeconds(seconds);
+    }
+
+    /// <summary>
     /// Legacy property retained for compatibility. OData upload ignores this value.
     /// </summary>
     public ConnectionMode ConnectionMode { get; set; } = ConnectionMode.HttpContentServer;
@@ -163,7 +227,9 @@ public class SapConnectionConfig : IEquatable<SapConnectionConfig>
                string.Equals(Language, other.Language, StringComparison.Ordinal) &&
                string.Equals(User, other.User, StringComparison.Ordinal) &&
                string.Equals(EncryptedPassword, other.EncryptedPassword, StringComparison.Ordinal) &&
-               IgnoreCertificateErrors == other.IgnoreCertificateErrors;
+               IgnoreCertificateErrors == other.IgnoreCertificateErrors &&
+               ConnectTimeoutSeconds == other.ConnectTimeoutSeconds &&
+               UploadTimeoutSeconds == other.UploadTimeoutSeconds;
     }
 
     /// <inheritdoc />
@@ -180,6 +246,8 @@ public class SapConnectionConfig : IEquatable<SapConnectionConfig>
             hash = AddHash(hash, User);
             hash = AddHash(hash, EncryptedPassword);
             hash = hash * 31 + IgnoreCertificateErrors.GetHashCode();
+            hash = hash * 31 + ConnectTimeoutSeconds;
+            hash = hash * 31 + UploadTimeoutSeconds;
             return hash;
         }
     }

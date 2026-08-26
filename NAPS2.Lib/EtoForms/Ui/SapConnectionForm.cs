@@ -1,3 +1,4 @@
+using System.Globalization;
 using Eto.Drawing;
 using Eto.Forms;
 using NAPS2.EtoForms.Layout;
@@ -9,6 +10,9 @@ namespace NAPS2.EtoForms.Ui;
 
 internal class SapConnectionForm : EtoDialogBase
 {
+    private const int HintWrapWidth = 420;
+    private const int TimeoutFieldWidth = 110;
+
     private readonly TextBox _host = new();
     private readonly TextBox _serviceName = new();
     private readonly TextBox _client = new();
@@ -22,6 +26,8 @@ internal class SapConnectionForm : EtoDialogBase
         TextColor = Colors.Red
     };
     private readonly LayoutVisibility _certificateWarningVis = new(false);
+    private readonly NumericMaskedTextBox<int> _connectTimeout = new();
+    private readonly NumericMaskedTextBox<int> _uploadTimeout = new();
     private readonly Button _testConnection = new() { Text = UiStrings.SapTestConnection };
     private readonly Label _testResult = new();
 
@@ -51,6 +57,20 @@ internal class SapConnectionForm : EtoDialogBase
                 C.Label(UiStrings.SapPasswordLabel), _password,
                 _ignoreCertificateErrors,
                 _certificateWarning.Visible(_certificateWarningVis),
+                L.Row(
+                    L.Column(
+                        C.Label(UiStrings.SapConnectTimeoutLabel),
+                        // MaxWidth as well as NaturalWidth: the column is as wide as its label, and a
+                        // box left to fill it comes out a different size from the one next to it.
+                        _connectTimeout.NaturalWidth(TimeoutFieldWidth).MaxWidth(TimeoutFieldWidth)),
+                    L.Column(
+                        C.Label(UiStrings.SapUploadTimeoutLabel),
+                        _uploadTimeout.NaturalWidth(TimeoutFieldWidth).MaxWidth(TimeoutFieldWidth)),
+                    C.Filler()),
+                // Both hint and value are shown because the upload limit is the setting that decides
+                // whether a large document over a slow line reaches SAP at all, and a limit nobody can
+                // see is one nobody can raise.
+                C.Label(UiStrings.SapTimeoutHint).DynamicWrap(HintWrapWidth).MaxWidth(HintWrapWidth),
                 L.Row(_testConnection, _testResult)
             )),
             C.Filler(),
@@ -68,6 +88,10 @@ internal class SapConnectionForm : EtoDialogBase
         _password.Text = "";
         _ignoreCertificateErrors.Checked = config.IgnoreCertificateErrors;
         _certificateWarningVis.IsVisible = config.IgnoreCertificateErrors;
+        // The effective values rather than the stored ones: a connection written before these settings
+        // existed stores zero, and showing that would read as "no limit at all".
+        _connectTimeout.Text = Seconds(config.GetConnectTimeout());
+        _uploadTimeout.Text = Seconds(config.GetUploadTimeout());
     }
 
     private SapConnectionConfig BuildConfig()
@@ -81,7 +105,11 @@ internal class SapConnectionForm : EtoDialogBase
             Language = _language.SelectedItem ?? "DE",
             User = _user.Text.Trim(),
             EncryptedPassword = current.EncryptedPassword,
-            IgnoreCertificateErrors = _ignoreCertificateErrors.IsChecked()
+            IgnoreCertificateErrors = _ignoreCertificateErrors.IsChecked(),
+            ConnectTimeoutSeconds = ParseSeconds(_connectTimeout.Text,
+                SapConnectionConfig.DefaultConnectTimeoutSeconds),
+            UploadTimeoutSeconds = ParseSeconds(_uploadTimeout.Text,
+                SapConnectionConfig.DefaultUploadTimeoutSeconds)
         };
         if (!string.IsNullOrEmpty(_password.Text))
         {
@@ -125,6 +153,7 @@ internal class SapConnectionForm : EtoDialogBase
         }
         _testResult.Text = UiStrings.Ellipsis;
         using var uploader = new HttpSapArchiveUploader(config);
+        uploader.DiagnosticLog = ScanConsole.Upload;
         var result = await uploader.TestConnectionAsync(CancellationToken.None);
         _testResult.TextColor = result.Success ? Colors.Green : Colors.Red;
         _testResult.Text = result.Success
@@ -141,6 +170,15 @@ internal class SapConnectionForm : EtoDialogBase
         }
         Config.User.Set(c => c.SapConnection, config);
     }
+
+    private static string Seconds(TimeSpan value) =>
+        ((int) value.TotalSeconds).ToString(CultureInfo.CurrentCulture);
+
+    private static int ParseSeconds(string? text, int fallback) =>
+        int.TryParse(text, NumberStyles.AllowLeadingWhite | NumberStyles.AllowTrailingWhite,
+            CultureInfo.CurrentCulture, out var seconds) && seconds > 0
+            ? seconds
+            : fallback;
 
     private static string Shorten(string? value)
     {

@@ -95,6 +95,11 @@ internal class SapArchivePostScanService
         // batch creates one per document. Without this each document leaves a connection pool open until
         // the garbage collector gets to it, which on a station that scans all day adds up.
         using var uploader = new HttpSapArchiveUploader(connection);
+        // ScanMe.Sap targets netstandard2.0 and can't reference ScanConsole, so it reports through a
+        // callback instead. Without this the HTTP half of an upload -- signing in, sending, the wait for
+        // SAP, every retry and every timeout -- was the one part of the scan chain that said nothing,
+        // and a timeout at a customer site could not be told apart from a slow link.
+        uploader.DiagnosticLog = ScanConsole.Upload;
         var op = new UploadSapArchiveOperation();
         if (!op.Start(uploader, request))
         {

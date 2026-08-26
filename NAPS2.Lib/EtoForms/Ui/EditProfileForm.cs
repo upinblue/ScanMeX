@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Threading;
 using Eto.Drawing;
@@ -1129,7 +1129,12 @@ public class EditProfileForm : EtoDialogBase
             Language = string.IsNullOrWhiteSpace(_sapLanguage.Text) ? "DE" : _sapLanguage.Text.Trim(),
             User = _sapUser.Text.Trim(),
             EncryptedPassword = currentConnection.EncryptedPassword,
-            IgnoreCertificateErrors = _sapIgnoreSsl.IsChecked()
+            IgnoreCertificateErrors = _sapIgnoreSsl.IsChecked(),
+            // Carried over rather than rebuilt: the timeouts are edited in the SAP connection dialog, and
+            // a new object is built on every save here, so anything this form doesn't copy is silently
+            // reset to the default the next time the profile is opened.
+            ConnectTimeoutSeconds = currentConnection.ConnectTimeoutSeconds,
+            UploadTimeoutSeconds = currentConnection.UploadTimeoutSeconds
         };
         if (!string.IsNullOrEmpty(_sapPassword.Text))
         {
@@ -1227,6 +1232,7 @@ public class EditProfileForm : EtoDialogBase
             fileName,
             "application/pdf");
         using var uploader = new HttpSapArchiveUploader(request.Connection);
+        uploader.DiagnosticLog = ScanConsole.Upload;
         var result = await uploader.UploadAsync(request, CancellationToken.None);
         MessageBox.Show(this,
             result.Success

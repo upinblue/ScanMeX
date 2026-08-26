@@ -129,8 +129,16 @@ public class HttpSapArchiveUploaderTests
         Assert.Null(handler.ServerCertificateCustomValidationCallback);
     }
 
+    /// <summary>
+    /// The reverse of what this used to assert. Retrying a timed-out upload was measured to send the whole
+    /// document three times, and a request that timed out was received in full as far as anyone here
+    /// knows -- so those are up to three copies filed under one barcode, indistinguishable afterwards
+    /// from a scan done three times, followed by a message saying the upload failed. A single honest
+    /// failure is worth more than that, so the attempt is not repeated and the operator is told the
+    /// document may already be in SAP.
+    /// </summary>
     [Fact]
-    public async Task UploadAsync_RetriesTimeoutTwiceThenSucceeds()
+    public async Task UploadAsync_DoesNotSendTheDocumentAgainAfterATimeout()
     {
         var postAttempts = 0;
         var uploader = CreateUploader((request, _) =>
@@ -140,18 +148,14 @@ public class HttpSapArchiveUploaderTests
                 return Task.FromResult(TokenResponse("TOKEN1"));
             }
             postAttempts++;
-            if (postAttempts <= 2)
-            {
-                throw new TaskCanceledException("timeout");
-            }
-            return Task.FromResult(JsonResponse(HttpStatusCode.Created, "{\"d\":{\"DocId\":\"ABC\"}}"));
+            throw new TaskCanceledException("timeout");
         });
 
         var result = await uploader.UploadAsync(CreateRequest(), CancellationToken.None);
 
-        Assert.True(result.Success);
-        Assert.Equal(3, postAttempts);
-        Assert.Equal("ABC", result.ArchivDocId);
+        Assert.False(result.Success);
+        Assert.Equal(1, postAttempts);
+        Assert.Equal(HttpSapArchiveUploader.TimeoutErrorCode, result.ErrorCode);
     }
 
     private static HttpSapArchiveUploader CreateUploader(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> handler)

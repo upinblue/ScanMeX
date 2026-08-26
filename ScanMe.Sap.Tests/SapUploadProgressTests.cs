@@ -67,6 +67,52 @@ public class SapUploadProgressTests
         Assert.True(uploading.Max() <= 90, "The bar must not reach the end before SAP has answered.");
     }
 
+    /// <summary>
+    /// Sending gets a small share of the bar, because it takes a small share of the time. These are bytes
+    /// handed to the socket, not bytes SAP has: measured on a 3 MB document, the whole of it crossed in a
+    /// single millisecond and the remaining eight seconds were SAP archiving it. With the old split that
+    /// was seventy points in one tick followed by a bar frozen at 90% for 92% of the wait.
+    /// </summary>
+    [Fact]
+    public async Task UploadAsync_LeavesMostOfTheBarForTheWaitOnSap()
+    {
+        var reported = new List<SapUploadProgress>();
+        var uploader = CreateUploader(Ok);
+
+        await uploader.UploadAsync(CreateRequest(documentBytes: new byte[512 * 1024]),
+            new RecordingProgress(reported), CancellationToken.None);
+
+        var sent = reported.Where(x => x.Stage == SapUploadStage.Uploading).Max(x => x.Percent);
+        Assert.InRange(sent, 30, 60);
+    }
+
+    /// <summary>
+    /// The wait has to be announced when it starts, not when it ends. This used to be reported after
+    /// SendAsync returned -- by which time SAP has already answered and there is no wait left to tell the
+    /// operator about, so the status line never said "waiting" while anyone was waiting.
+    /// </summary>
+    [Fact]
+    public async Task UploadAsync_AnnouncesTheWaitOnSapBeforeSapAnswers()
+    {
+        var reported = new List<SapUploadProgress>();
+        var waitingWhenAnswered = false;
+        var uploader = CreateUploader((request, _) =>
+        {
+            if (request.Method == HttpMethod.Get)
+            {
+                return Task.FromResult(TokenResponse("TOKEN"));
+            }
+            waitingWhenAnswered = reported.Any(x => x.Stage == SapUploadStage.WaitingForSap);
+            return Task.FromResult(JsonResponse(HttpStatusCode.Created, "{\"d\":{\"DocId\":\"ABC\"}}"));
+        });
+
+        await uploader.UploadAsync(CreateRequest(documentBytes: new byte[128 * 1024]),
+            new RecordingProgress(reported), CancellationToken.None);
+
+        Assert.True(waitingWhenAnswered,
+            "The operator must be told SAP is being waited on while the wait is still happening.");
+    }
+
     [Fact]
     public async Task UploadAsync_ReportsARetryRatherThanStalling()
     {

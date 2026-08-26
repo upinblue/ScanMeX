@@ -1045,7 +1045,22 @@
     <value>{0} wird nach SAP ArchiveLink hochgeladen ({1} %)</value>
   </data>
   <data name="SapWaitingForArchive" xml:space="preserve">
-    <value>Warten auf die Archivierung von {0} durch SAP</value>
+    <value>Warten auf die Archivierung von {0} durch SAP ({1} s)</value>
+  </data>
+  <data name="SapUploadTimedOut" xml:space="preserve">
+    <value>SAP hat beim Archivieren von {0} innerhalb von {1} Sekunden nicht geantwortet. Das Dokument liegt möglicherweise bereits in SAP - bitte dort prüfen, bevor es erneut hochgeladen wird.</value>
+  </data>
+  <data name="SapSignInTimedOut" xml:space="preserve">
+    <value>SAP hat die Anmeldung innerhalb von {0} Sekunden nicht beantwortet. Es wurde nichts hochgeladen.</value>
+  </data>
+  <data name="SapConnectTimeoutLabel" xml:space="preserve">
+    <value>Zeitlimit für die Anmeldung (Sekunden)</value>
+  </data>
+  <data name="SapUploadTimeoutLabel" xml:space="preserve">
+    <value>Zeitlimit für den Upload (Sekunden)</value>
+  </data>
+  <data name="SapTimeoutHint" xml:space="preserve">
+    <value>Das Upload-Limit umfasst das Senden des Dokuments und die Archivierung durch SAP; ein großer Scan über eine langsame Leitung braucht daher einen großzügigen Wert. Nach einer Zeitüberschreitung wird nicht automatisch erneut gesendet, weil SAP das Dokument bereits haben kann.</value>
   </data>
   <data name="SapUploadRetrying" xml:space="preserve">
     <value>SAP-Upload für {0} wird erneut versucht</value>

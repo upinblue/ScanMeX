@@ -513,6 +513,51 @@ subfolder failed. `SharePointUploadService.BuildUploadUrl` is the only place tha
 When the configured library name matches no drive, the upload falls back to the first one rather than
 failing. That is deliberate but silent-looking, so it logs a WARNING naming the libraries that do exist.
 
+## SAP timeouts, and why a timed-out upload is never sent again
+
+The deadline belongs to `HttpSapArchiveUploader`, not to `HttpClient`. It was a single hard-coded
+`HttpClient.Timeout = 60s`, which is one value for every request and — because `SendAsync` runs with the
+default `ResponseContentRead` — covered connecting, sending every byte, SAP's own archiving *and* reading
+the answer, all in the same minute. Each request now carries its own `CancellationTokenSource` linked to
+the operator's token, with `CancelAfter` from the connection.
+
+- **Two deadlines, because they are two different waits.** `SapConnectionConfig.GetConnectTimeout()` (30 s)
+  is for the CSRF round trip: a gateway that will not hand out a token in half a minute is unreachable,
+  not slow. `GetUploadTimeout()` (300 s) has to fit a large colour scan over a slow link *plus* the
+  ArchiveLink write behind it. One number cannot be right for both, and 60 was too short for the second.
+  Both are editable in the SAP connection dialog, and both are named in the console on every upload —
+  a limit that decides whether a document reaches SAP at all must not be one nobody can see.
+- **Zero means the default**, the same migration rule as `RestrictBarcodeArea`: neither element is in a
+  connection written before this, and taking the deserialized `0` at face value would make every existing
+  installation give up the instant it asks SAP anything. `GetConnectTimeout`/`GetUploadTimeout` are the
+  only things anything downstream asks; they also clamp, for hand-edited config files.
+  Both dialogs build a fresh `SapConnectionConfig` on every save, so `EditProfileForm` copies the two
+  values across the way it already does `EncryptedPassword` — a field it does not copy is silently reset.
+- **A timeout is not retried, and that is the point.** A `TaskCanceledException` used to be treated as a
+  dropped connection and the whole document was sent up to three times — measured: three complete uploads
+  of a 2 MB document, then a message telling the operator the upload had failed. But a request that timed
+  out was *received*, as far as anyone here knows; SAP may be archiving it at that moment. Those are up to
+  three copies filed under one barcode, which afterwards is indistinguishable from scanning the stack
+  three times — exactly what `NewDocumentOnlyOnValueChange` exists to prevent at the other end of the
+  pipeline. The retry stays only for `HttpRequestException`, where the connection never carried anything.
+- **A timeout is not a cancellation.** `TaskCanceledException` derives from `OperationCanceledException`,
+  so `HttpClient`'s own expiry was caught by the handler meant for the operator pressing Cancel: a
+  gateway that simply did not answer was reported as "upload cancelled". The uploader now catches
+  `OperationCanceledException` twice — `when (ct.IsCancellationRequested)` rethrows, anything else is its
+  own deadline — and `CsrfTokenFetchResult.TimedOut` carries the sign-in case back rather than letting it
+  propagate. `UploadSapArchiveOperation.DescribeFailure` turns the two error codes into sentences that say
+  the document may already be in SAP, instead of `HTTP  TaskCanceledException: … (transaction )`.
+- **The console says which side of the transfer ran out of time**, because that is the whole diagnosis:
+  still sending means the link is too slow for the document, sent and waiting means SAP is the slow part.
+  `AttemptTrace` records the bytes handed over and the moment the last one went, and `DescribeTimeout`
+  reads it. `SapUploadTimeoutTests` pins both directions.
+- **`ScanMe.Sap` reports through `HttpSapArchiveUploader.DiagnosticLog`, an `Action<string>`**, because it
+  targets netstandard2.0 and cannot reference `ScanConsole`. `SapArchivePostScanService`, the profile
+  dialog's test upload and the connection dialog's test all hang `ScanConsole.Upload` on it. Before this
+  the HTTP half of an upload was the one step of the scan chain that reported nothing at all — no
+  document size, no sign-in time, no retry, no timeout — so a customer's timeout could not be traced to
+  anything. Keep every new step in that class on the callback.
+
 ## Barcode detection
 
 `BarcodeDetector.Detect` decodes every page **twice** — once at full size and once on a copy scaled to
@@ -551,6 +596,28 @@ has no preferred size for the layout engine to ask for.
   attached in an Autofac build callback and only when there is an Eto platform, so a control that touched
   it while a form's fields were initializing would make construction order load-bearing (and would throw
   outright in tests). A bar on a tinted surface is told what it sits on through `SurfaceColor`.
+
+### A share of the bar has to match a share of the time
+
+Bytes handed to `Stream.WriteAsync` are bytes in the socket buffer, not bytes the target system has. The
+SAP upload gave that 70 of its 100 points and the archiving behind it none: measured on a 3 MB document,
+20% → 90% crossed in a **single millisecond** and the bar then stood at 90% for the remaining eight
+seconds — 92% of the wait at one unchanging number, which is what a hung upload looks like. Sending is now
+20 → 45 (`HttpSapArchiveUploader.SentPercent`), and `UploadSapArchiveOperation` carries the rest.
+
+- **`WaitingForSap` is reported when the last byte goes out, not when the answer comes back.** It used to
+  be reported after `SendAsync` returned — by which time SAP has answered and there is no wait left to
+  tell anyone about, so the status line never said "waiting" while anyone was waiting. It comes from
+  `ProgressByteArrayContent`'s completion callback now, which also fires for an empty document.
+- **The wait is eased, never faked to the end.** No progress exists to report, so none is invented: the
+  bar approaches 95 asymptotically (`1 - e^(-t/25s)`) and never arrives, and `Math.Max` against the
+  current value keeps it monotonic whatever else moves it. Only a finished upload shows 100.
+- **The seconds in the status line are the honest part.** A bar that moves is a guess; "Waiting for SAP to
+  archive scan.pdf (24 s)" is the actual answer to "is this still going?". `SapWaitingForArchive` takes
+  the count as `{1}`.
+- The crawl is a `System.Threading.Timer` in the operation, not in the uploader — `ScanMe.Sap` is
+  netstandard2.0 and has no business ticking. Everything touching `Status` goes through `_statusLock`,
+  because the tick runs on the pool while the upload thread reports inline.
 
 ## Icons and theming
 
@@ -739,6 +806,12 @@ The document pipeline's own coverage: `DocumentPipelineTests` (splitting and wri
 `DocumentEditorTests` (splitting a document and merging one back),
 `DocumentWorkflowMigrationTests` (reading old profiles), `BarcodeDetectionPlanTests` (whether to decode
 at all) and `PhantomBarcodeTests` (what a noisy page yields).
+
+The SAP upload's own: `SapUploadTimeoutTests` (what a slow SAP costs, and that a timed-out document is
+not sent again), `SapConnectionTimeoutSettingsTests` (reading the deadlines out of an old connection),
+`SapUploadProgressTests` (what the uploader reports) and `SapUploadOperationProgressTests` (what the
+progress window shows while SAP archives). The timeout tests wait real deadlines out, so they take about
+half a minute between them — that is the shortest a connection will accept, and it is deliberate.
 
 `dotnet test NAPS2.Lib.Tests` currently has 5 pre-existing failures unrelated to ScanMe changes
 (`Naps2ConfigTests`, `CommandLineIntegrationTests.ScanPdfSettings_*`,

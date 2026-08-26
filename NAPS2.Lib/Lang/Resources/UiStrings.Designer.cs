@@ -3575,11 +3575,56 @@ namespace NAPS2.Lang.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Waiting for SAP to archive {0}.
+        ///   Looks up a localized string similar to Waiting for SAP to archive {0} ({1} s).
         /// </summary>
         internal static string SapWaitingForArchive {
             get {
                 return ResourceManager.GetString("SapWaitingForArchive", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to SAP did not answer within {1} seconds while archiving {0}. The document may already be in SAP - please check there before uploading it again..
+        /// </summary>
+        internal static string SapUploadTimedOut {
+            get {
+                return ResourceManager.GetString("SapUploadTimedOut", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to SAP did not answer the sign-in request within {0} seconds. Nothing was uploaded..
+        /// </summary>
+        internal static string SapSignInTimedOut {
+            get {
+                return ResourceManager.GetString("SapSignInTimedOut", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Sign-in timeout (seconds).
+        /// </summary>
+        internal static string SapConnectTimeoutLabel {
+            get {
+                return ResourceManager.GetString("SapConnectTimeoutLabel", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Upload timeout (seconds).
+        /// </summary>
+        internal static string SapUploadTimeoutLabel {
+            get {
+                return ResourceManager.GetString("SapUploadTimeoutLabel", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The upload limit covers sending the document and SAP archiving it, so a large scan over a slow line needs a generous value. A timeout is never retried automatically, because SAP may already have the document..
+        /// </summary>
+        internal static string SapTimeoutHint {
+            get {
+                return ResourceManager.GetString("SapTimeoutHint", resourceCulture);
             }
         }
 

@@ -28,22 +28,59 @@ public class HttpSapArchiveUploader : ISapArchiveUploader, IDisposable
     private const string CsrfHeaderName = "x-csrf-token";
 
     /// <summary>
+    /// The error code reported when the document was sent but SAP did not answer in time.
+    /// </summary>
+    public const string TimeoutErrorCode = "TIMEOUT";
+
+    /// <summary>
+    /// The error code reported when the gateway did not answer the sign-in request in time.
+    /// </summary>
+    public const string SignInTimeoutErrorCode = "SIGNIN_TIMEOUT";
+
+    /// <summary>
     /// Percentage reached once the CSRF token is in hand. The token round trip is a real wait against a
     /// slow gateway, so it gets a visible share of the bar rather than being folded into "starting".
     /// </summary>
     private const int AuthenticatedPercent = 20;
 
     /// <summary>
-    /// Percentage reached once every byte has been handed to the socket. The rest is SAP's own processing,
-    /// which reports nothing, so the bar stops here until the response arrives.
+    /// Percentage reached once every byte has been handed to the socket.
     /// </summary>
-    private const int SentPercent = 90;
+    /// <remarks>
+    /// A small share on purpose. This number counts bytes handed to <c>Stream.WriteAsync</c>, which is
+    /// how much sits in the socket buffer, not how much SAP has -- for a document of any ordinary size it
+    /// is reached in milliseconds. It used to be 90, so the bar crossed seventy points in a single tick
+    /// and then stood still for the whole archiving, which is the part that actually takes the time. The
+    /// caller carries the bar the rest of the way while it waits; see the crawl in
+    /// <c>UploadSapArchiveOperation</c>.
+    /// </remarks>
+    private const int SentPercent = 45;
+
+    /// <summary>
+    /// How many times an upload is attempted when the connection fails outright. A timeout is deliberately
+    /// not one of those cases; see <see cref="UploadAsync(SapUploadRequest,IProgress{SapUploadProgress},CancellationToken)" />.
+    /// </summary>
+    private const int MaxAttempts = 3;
 
     private readonly SapConnectionConfig _connection;
     private readonly HttpClient _httpClient;
     private readonly bool _ownsHttpClient;
     private readonly CookieContainer _cookieContainer;
     private bool _disposed;
+
+    /// <summary>
+    /// Receives a line of diagnostic text for every step of an upload. Null discards them.
+    /// </summary>
+    /// <remarks>
+    /// A callback rather than a logger because this assembly targets netstandard2.0 and cannot reference
+    /// <c>NAPS2.Lib</c>; the caller hangs <c>ScanConsole.Upload</c> on it. Without this the HTTP half of
+    /// the upload was the one step of the scan chain that reported nothing at all, so a timeout at a
+    /// customer site could not be traced to the sending or to SAP's own processing -- which is exactly
+    /// the difference that decides what to do about it.
+    /// </remarks>
+    public Action<string>? DiagnosticLog { get; set; }
+
+    private void Log(string message) => DiagnosticLog?.Invoke(message);
 
     /// <summary>
     /// Initializes a new instance of the <see cref="HttpSapArchiveUploader" /> class with a managed HTTP handler.
@@ -64,7 +101,7 @@ public class HttpSapArchiveUploader : ISapArchiveUploader, IDisposable
     {
         _connection = connection ?? throw new ArgumentNullException(nameof(connection));
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-        TrySetTimeout(_httpClient);
+        DisableClientTimeout(_httpClient);
         _cookieContainer = cookieContainer ?? new CookieContainer();
     }
 
@@ -74,7 +111,7 @@ public class HttpSapArchiveUploader : ISapArchiveUploader, IDisposable
         _cookieContainer = new CookieContainer();
         _httpClient = new HttpClient(handler, disposeHttpClient);
         _ownsHttpClient = disposeHttpClient;
-        TrySetTimeout(_httpClient);
+        DisableClientTimeout(_httpClient);
     }
 
     /// <inheritdoc />
@@ -82,6 +119,26 @@ public class HttpSapArchiveUploader : ISapArchiveUploader, IDisposable
         UploadAsync(request, null, ct);
 
     /// <inheritdoc />
+    /// <remarks>
+    /// <para>
+    /// Each request gets its own deadline from <see cref="SapConnectionConfig.GetUploadTimeout" /> rather
+    /// than relying on <see cref="HttpClient.Timeout" />, which is disabled here. Two reasons: the two
+    /// waits need different lengths -- a gateway that won't hand out a token in half a minute is
+    /// unreachable, while an upload can legitimately run for minutes -- and a deadline this class owns is
+    /// one it can tell apart from the operator pressing Cancel. It could not before, because
+    /// <c>HttpClient</c> reports its own timeout as <see cref="TaskCanceledException" />, which derives
+    /// from <see cref="OperationCanceledException" />: a timeout while signing in was reported to the
+    /// operator as "upload cancelled".
+    /// </para>
+    /// <para>
+    /// <b>A timeout is not retried.</b> A connection that never came up carried nothing, so trying again
+    /// is free; a request that timed out was received in full as far as anyone here knows, and SAP may
+    /// well be archiving it at that moment. Retrying used to send the whole document twice more --
+    /// measured: three complete uploads, then a failure message -- which is up to three copies filed
+    /// under one barcode and indistinguishable afterwards from a scan done three times. The failure says
+    /// the document may already be in SAP instead.
+    /// </para>
+    /// </remarks>
     public async Task<SapUploadResult> UploadAsync(SapUploadRequest request,
         IProgress<SapUploadProgress>? progress, CancellationToken ct)
     {
@@ -97,32 +154,60 @@ public class HttpSapArchiveUploader : ISapArchiveUploader, IDisposable
         void Report(SapUploadStage stage, int percent) =>
             progress?.Report(new SapUploadProgress(stage, percent));
 
+        var uploadTimeout = request.Connection.GetUploadTimeout();
+        var totalWatch = Stopwatch.StartNew();
+        Log($"SAP upload of '{request.FileName}' started: {DescribeSize(request.DocumentBytes.Length)}, " +
+            $"barcode '{request.Barcode}', sign-in timeout {Seconds(request.Connection.GetConnectTimeout())}, " +
+            $"upload timeout {Seconds(uploadTimeout)}.");
+
         Report(SapUploadStage.Preparing, 0);
         Report(SapUploadStage.Authenticating, 5);
+        var signInWatch = Stopwatch.StartNew();
         var csrf = await FetchCsrfTokenAsync(request.Connection, ct).ConfigureAwait(false);
+        signInWatch.Stop();
+        if (csrf.TimedOut)
+        {
+            Log($"Signing in to SAP timed out after {Elapsed(signInWatch)}. The gateway at " +
+                $"'{request.Connection.Host}' did not answer; nothing was uploaded.");
+            return new SapUploadResult(false, null, null, null, SignInTimeoutErrorCode,
+                $"SAP did not answer the sign-in request within {Seconds(request.Connection.GetConnectTimeout())}.",
+                null, null, Array.Empty<SapErrorDetail>());
+        }
         if (string.IsNullOrWhiteSpace(csrf.Token))
         {
+            Log($"No CSRF token after {Elapsed(signInWatch)} (HTTP {Describe(csrf.HttpStatusCode)}): " +
+                $"{csrf.ErrorMessage ?? "no reason given"}. Nothing was uploaded.");
             return new SapUploadResult(false, csrf.HttpStatusCode, null, null, null,
                 "CSRF-Token konnte nicht ermittelt werden", null, csrf.RawResponseBody, Array.Empty<SapErrorDetail>());
         }
+        Log($"Signed in to SAP after {Elapsed(signInWatch)} (HTTP {Describe(csrf.HttpStatusCode)}).");
         Report(SapUploadStage.Uploading, AuthenticatedPercent);
 
         var uploadUri = new Uri(request.Connection.GetUploadUrl(), UriKind.Absolute);
         var token = csrf.Token!;
         var csrfRetryUsed = false;
-        for (var attempt = 0; attempt < 3; attempt++)
+        for (var attempt = 1; attempt <= MaxAttempts; attempt++)
         {
+            var trace = new AttemptTrace();
+            var attemptWatch = Stopwatch.StartNew();
+            // Linked so the operator's Cancel still gets through, and separate so an expiry of ours can be
+            // told apart from it below.
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            deadline.CancelAfter(uploadTimeout);
             try
             {
-                using var message = BuildUploadMessage(request, uploadUri, token, progress);
-                using var response = await _httpClient.SendAsync(message, ct).ConfigureAwait(false);
-                Report(SapUploadStage.WaitingForSap, SentPercent);
+                using var message = BuildUploadMessage(request, uploadUri, token, progress, trace, attemptWatch);
+                using var response = await _httpClient.SendAsync(message, deadline.Token).ConfigureAwait(false);
                 CaptureCookies(uploadUri, response);
                 var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                 var result = CreateUploadResult(response, body);
+                attemptWatch.Stop();
+                Log($"SAP answered HTTP {(int) response.StatusCode} for '{request.FileName}' after " +
+                    $"{Elapsed(attemptWatch)} ({DescribeSplit(trace, attemptWatch)}).");
                 if (!result.Success && !csrfRetryUsed && IsCsrfFailure(response, result))
                 {
                     csrfRetryUsed = true;
+                    Log("SAP rejected the CSRF token; fetching a new one and sending the document again.");
                     Report(SapUploadStage.Authenticating, AuthenticatedPercent);
                     var refreshed = await FetchCsrfTokenAsync(request.Connection, ct).ConfigureAwait(false);
                     if (!string.IsNullOrWhiteSpace(refreshed.Token))
@@ -130,28 +215,94 @@ public class HttpSapArchiveUploader : ISapArchiveUploader, IDisposable
                         token = refreshed.Token!;
                         continue;
                     }
+                    Log("A new CSRF token could not be fetched either; giving up on this document.");
+                }
+                if (result.Success)
+                {
+                    Log($"'{request.FileName}' archived as ArchivDocId '{result.ArchivDocId ?? "(none returned)"}' " +
+                        $"in {Elapsed(totalWatch)} overall.");
+                }
+                else
+                {
+                    Log($"SAP refused '{request.FileName}': code '{result.ErrorCode ?? "(none)"}', " +
+                        $"message '{result.ErrorMessage ?? "(none)"}', transaction '{result.TransactionId ?? "(none)"}'.");
                 }
                 return result;
             }
-            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !ct.IsCancellationRequested)
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
-                if (attempt >= 2)
+                // The operator pressed Cancel. Not ours to turn into a failed upload.
+                Log($"The upload of '{request.FileName}' was cancelled after {Elapsed(attemptWatch)}.");
+                throw;
+            }
+            catch (OperationCanceledException)
+            {
+                attemptWatch.Stop();
+                Log(DescribeTimeout(request, trace, attemptWatch, uploadTimeout));
+                return new SapUploadResult(false, null, null, null, TimeoutErrorCode,
+                    $"SAP did not answer within {Seconds(uploadTimeout)}.", null, null,
+                    Array.Empty<SapErrorDetail>());
+            }
+            catch (HttpRequestException ex)
+            {
+                attemptWatch.Stop();
+                // The connection failed rather than expired, so nothing usable reached SAP and sending it
+                // again cannot duplicate anything.
+                if (attempt >= MaxAttempts)
                 {
+                    Log($"Attempt {attempt} of {MaxAttempts} for '{request.FileName}' failed after " +
+                        $"{Elapsed(attemptWatch)}: {ex.Message}. Giving up.");
                     return new SapUploadResult(false, null, null, null, ex.GetType().Name, ex.Message, null, null,
                         Array.Empty<SapErrorDetail>());
                 }
+                var delay = attempt == 1 ? TimeSpan.FromSeconds(1) : TimeSpan.FromSeconds(3);
+                Log($"Attempt {attempt} of {MaxAttempts} for '{request.FileName}' failed after " +
+                    $"{Elapsed(attemptWatch)}: {ex.Message}. Retrying in {Seconds(delay)}.");
                 Report(SapUploadStage.Retrying, AuthenticatedPercent);
-                await Task.Delay(attempt == 0 ? TimeSpan.FromSeconds(1) : TimeSpan.FromSeconds(3), ct)
-                    .ConfigureAwait(false);
+                await Task.Delay(delay, ct).ConfigureAwait(false);
             }
         }
 
+        Log($"'{request.FileName}' was not uploaded: {MaxAttempts} attempts, none of them accepted.");
         return new SapUploadResult(false, null, null, null, "UPLOAD_FAILED", "SAP upload failed.", null, null,
             Array.Empty<SapErrorDetail>());
     }
 
+    /// <summary>
+    /// Says where the deadline expired, which is the one thing that decides what to do about it: still
+    /// sending means the link is too slow for the document, sent and waiting means SAP is the slow part
+    /// -- and that the document may already be in the archive.
+    /// </summary>
+    private static string DescribeTimeout(SapUploadRequest request, AttemptTrace trace, Stopwatch watch,
+        TimeSpan timeout)
+    {
+        var total = request.DocumentBytes.Length;
+        if (trace.SentAt == null)
+        {
+            return $"Timed out after {Elapsed(watch)} (limit {Seconds(timeout)}) while still sending " +
+                   $"'{request.FileName}': {DescribeSize(trace.BytesSent)} of {DescribeSize(total)} handed over. " +
+                   "The link to SAP is too slow for a document this size, or the connection stalled. " +
+                   "Nothing was archived.";
+        }
+        var waited = watch.Elapsed - trace.SentAt.Value;
+        return $"Timed out after {Elapsed(watch)} (limit {Seconds(timeout)}): '{request.FileName}' " +
+               $"({DescribeSize(total)}) was sent in full after {Format(trace.SentAt.Value)}, then SAP did not " +
+               $"answer for {Format(waited)}. SAP had the whole document, so it may already be archived -- " +
+               "check there before uploading it again.";
+    }
+
+    private static string DescribeSplit(AttemptTrace trace, Stopwatch watch)
+    {
+        if (trace.SentAt == null)
+        {
+            return "sending time not measured";
+        }
+        var waited = watch.Elapsed - trace.SentAt.Value;
+        return $"{Format(trace.SentAt.Value)} sending, {Format(waited)} waiting for SAP";
+    }
+
     private HttpRequestMessage BuildUploadMessage(SapUploadRequest request, Uri uploadUri, string token,
-        IProgress<SapUploadProgress>? progress)
+        IProgress<SapUploadProgress>? progress, AttemptTrace trace, Stopwatch watch)
     {
         var message = new HttpRequestMessage(HttpMethod.Post, uploadUri);
         AddCommonHeaders(message, request.Connection);
@@ -164,15 +315,47 @@ public class HttpSapArchiveUploader : ISapArchiveUploader, IDisposable
         AddIfNotEmpty(message, "x-sap-arobject", request.Profile.ArObject);
         AddIfNotEmpty(message, "x-sap-sapobj", request.Profile.SapObject);
         AddIfNotEmpty(message, "x-sap-objectid", request.ObjectId);
-        message.Content = progress == null
-            ? new ByteArrayContent(request.DocumentBytes)
-            : new ProgressByteArrayContent(request.DocumentBytes, sent => progress.Report(
-                new SapUploadProgress(SapUploadStage.Uploading,
-                    AuthenticatedPercent + sent * (SentPercent - AuthenticatedPercent) / 100)));
+        // Always the counting content, progress callback or not: how far the document got is what says
+        // where a timeout struck, and that has to be known whether or not anyone is watching a bar.
+        message.Content = new ProgressByteArrayContent(request.DocumentBytes,
+            (sentBytes, sentPercent) =>
+            {
+                trace.BytesSent = sentBytes;
+                progress?.Report(new SapUploadProgress(SapUploadStage.Uploading,
+                    AuthenticatedPercent + sentPercent * (SentPercent - AuthenticatedPercent) / 100));
+            },
+            () =>
+            {
+                trace.SentAt = watch.Elapsed;
+                // Reported here rather than after SendAsync returns, which is where it used to be -- by
+                // then SAP has already answered and the wait the operator was meant to be told about is
+                // over. This is also the moment the caller starts carrying the bar on its own.
+                progress?.Report(new SapUploadProgress(SapUploadStage.WaitingForSap, SentPercent));
+            });
         message.Content.Headers.ContentType = new MediaTypeHeaderValue(
             request.OverrideMimeType ?? SapMimeTypeResolver.Resolve(request.FileName));
         return message;
     }
+
+    /// <summary>
+    /// What one attempt did, so a timeout can say where it struck.
+    /// </summary>
+    private sealed class AttemptTrace
+    {
+        public long BytesSent;
+        public TimeSpan? SentAt;
+    }
+
+    private static string Describe(int? httpStatusCode) => httpStatusCode?.ToString() ?? "(no response)";
+
+    private static string Elapsed(Stopwatch watch) => Format(watch.Elapsed);
+
+    private static string Format(TimeSpan value) => $"{value.TotalSeconds:0.0} s";
+
+    private static string Seconds(TimeSpan value) => $"{value.TotalSeconds:0} s";
+
+    private static string DescribeSize(long bytes) =>
+        bytes >= 1024 * 1024 ? $"{bytes / 1024.0 / 1024.0:0.0} MB" : $"{bytes / 1024.0:0.0} kB";
 
     private static SapUploadResult CreateUploadResult(HttpResponseMessage response, string? body)
     {
@@ -205,11 +388,21 @@ public class HttpSapArchiveUploader : ISapArchiveUploader, IDisposable
         return body == null || body.Length <= 4096 ? body : body.Substring(0, 4096);
     }
 
-    private static void TrySetTimeout(HttpClient httpClient)
+    /// <summary>
+    /// Hands the deadline to this class instead of the client.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="HttpClient.Timeout" /> is one value for every request and reports its expiry as a
+    /// <see cref="TaskCanceledException" />, which is indistinguishable from the operator cancelling.
+    /// Both matter here, so each request carries its own linked token with its own deadline instead.
+    /// Throws once the client has sent a request, which only a caller-supplied client can have done; its
+    /// own timeout then stays in force and simply caps ours.
+    /// </remarks>
+    private static void DisableClientTimeout(HttpClient httpClient)
     {
         try
         {
-            httpClient.Timeout = TimeSpan.FromSeconds(60);
+            httpClient.Timeout = Timeout.InfiniteTimeSpan;
         }
         catch (InvalidOperationException)
         {
@@ -219,10 +412,17 @@ public class HttpSapArchiveUploader : ISapArchiveUploader, IDisposable
     /// <inheritdoc />
     public async Task<SapConnectionTestResult> TestConnectionAsync(SapConnectionConfig cfg, CancellationToken ct)
     {
+        var watch = Stopwatch.StartNew();
         var token = await FetchCsrfTokenAsync(cfg, ct).ConfigureAwait(false);
-        return string.IsNullOrWhiteSpace(token.Token)
-            ? new SapConnectionTestResult(false, null, token.ErrorMessage ?? "CSRF token could not be fetched.")
-            : new SapConnectionTestResult(true, token.Token, null);
+        watch.Stop();
+        if (string.IsNullOrWhiteSpace(token.Token))
+        {
+            Log($"SAP connection test to '{cfg.Host}' failed after {Elapsed(watch)}: " +
+                $"{token.ErrorMessage ?? "no CSRF token returned"}.");
+            return new SapConnectionTestResult(false, null, token.ErrorMessage ?? "CSRF token could not be fetched.");
+        }
+        Log($"SAP connection test to '{cfg.Host}' succeeded after {Elapsed(watch)}.");
+        return new SapConnectionTestResult(true, token.Token, null);
     }
 
     /// <summary>
@@ -241,11 +441,14 @@ public class HttpSapArchiveUploader : ISapArchiveUploader, IDisposable
         var rootUri = new Uri(connection.GetRootUrl(), UriKind.Absolute);
         var result = await SendTokenRequestAsync(HttpMethod.Get, rootUri, "application/json", connection, ct)
             .ConfigureAwait(false);
-        if (!string.IsNullOrWhiteSpace(result.Token) || result.HttpStatusCode == 401)
+        // A timeout is the gateway not answering at all -- asking a second URL on the same host would only
+        // spend the deadline again for the same answer.
+        if (!string.IsNullOrWhiteSpace(result.Token) || result.HttpStatusCode == 401 || result.TimedOut)
         {
             return result;
         }
 
+        Log($"The service root gave no CSRF token ({result.ErrorMessage ?? "no reason given"}); trying $metadata.");
         var metadataUri = new Uri(connection.GetMetadataUrl(), UriKind.Absolute);
         var fallback = await SendTokenRequestAsync(HttpMethod.Get, metadataUri, "application/json", connection, ct)
             .ConfigureAwait(false);
@@ -257,6 +460,8 @@ public class HttpSapArchiveUploader : ISapArchiveUploader, IDisposable
     {
         HttpResponseMessage? response = null;
         string? body = null;
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        deadline.CancelAfter(connection.GetConnectTimeout());
         try
         {
             using var message = new HttpRequestMessage(method, uri);
@@ -265,7 +470,7 @@ public class HttpSapArchiveUploader : ISapArchiveUploader, IDisposable
             message.Headers.TryAddWithoutValidation(CsrfHeaderName, "Fetch");
             message.Headers.Accept.ParseAdd(accept);
 
-            response = await _httpClient.SendAsync(message, ct).ConfigureAwait(false);
+            response = await _httpClient.SendAsync(message, deadline.Token).ConfigureAwait(false);
             CaptureCookies(uri, response);
             var token = GetHeader(response, CsrfHeaderName);
             if (response.Content != null)
@@ -278,7 +483,21 @@ public class HttpSapArchiveUploader : ISapArchiveUploader, IDisposable
                     : response.IsSuccessStatusCode ? null : $"HTTP {(int) response.StatusCode} {response.ReasonPhrase}",
                 body);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // The operator pressed Cancel, which is the one case that really is a cancellation.
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            // Ours expired. Reported as a timeout rather than left to propagate: it used to escape as a
+            // TaskCanceledException -- an OperationCanceledException by inheritance -- straight past this
+            // handler and out of UploadAsync, where the caller reported it to the operator as "upload
+            // cancelled".
+            return new CsrfTokenFetchResult(null, null,
+                $"SAP did not answer within {Seconds(connection.GetConnectTimeout())}.", null, TimedOut: true);
+        }
+        catch (Exception ex)
         {
             return new CsrfTokenFetchResult(null, response == null ? null : (int) response.StatusCode, ex.Message, body);
         }
@@ -508,12 +727,14 @@ public class HttpSapArchiveUploader : ISapArchiveUploader, IDisposable
     {
         private const int BufferSize = 64 * 1024;
         private readonly byte[] _bytes;
-        private readonly Action<int> _onPercentSent;
+        private readonly Action<long, int> _onSent;
+        private readonly Action _onCompleted;
 
-        public ProgressByteArrayContent(byte[] bytes, Action<int> onPercentSent)
+        public ProgressByteArrayContent(byte[] bytes, Action<long, int> onSent, Action onCompleted)
         {
             _bytes = bytes;
-            _onPercentSent = onPercentSent;
+            _onSent = onSent;
+            _onCompleted = onCompleted;
         }
 
         protected override async Task SerializeToStreamAsync(Stream stream, TransportContext? context)
@@ -523,8 +744,12 @@ public class HttpSapArchiveUploader : ISapArchiveUploader, IDisposable
             {
                 var count = Math.Min(BufferSize, _bytes.Length - offset);
                 await stream.WriteAsync(_bytes, offset, count).ConfigureAwait(false);
-                _onPercentSent((int) ((offset + (long) count) * 100 / total));
+                var sent = offset + (long) count;
+                _onSent(sent, (int) (sent * 100 / total));
             }
+            // Outside the loop so an empty document reaches it too, and so the caller is told the sending
+            // is over at the moment it is over rather than when SAP eventually answers.
+            _onCompleted();
         }
 
         protected override bool TryComputeLength(out long length)
@@ -538,4 +763,13 @@ public class HttpSapArchiveUploader : ISapArchiveUploader, IDisposable
 /// <summary>
 /// Result of fetching a CSRF token from SAP Gateway.
 /// </summary>
-public record CsrfTokenFetchResult(string? Token, int? HttpStatusCode, string? ErrorMessage, string? RawResponseBody);
+/// <param name="Token">The token, or null if none was returned.</param>
+/// <param name="HttpStatusCode">The status the gateway answered with, or null if it did not answer.</param>
+/// <param name="ErrorMessage">Why no token was returned.</param>
+/// <param name="RawResponseBody">The response body, for diagnosis.</param>
+/// <param name="TimedOut">
+/// Whether the gateway failed to answer within the connection's sign-in timeout. Kept apart from the
+/// other failures because it is the one the operator must not be shown as a cancellation.
+/// </param>
+public record CsrfTokenFetchResult(string? Token, int? HttpStatusCode, string? ErrorMessage, string? RawResponseBody,
+    bool TimedOut = false);
