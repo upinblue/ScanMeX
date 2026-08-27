@@ -1,0 +1,4 @@
+# The PDFs are built from the Markdown by ../Build-Pdf.ps1, so they are output, not source: a 1.4 MB
+# binary rewritten in full on every text edit does not belong in the history. Delete these two lines if
+# you would rather hand someone the PDF straight out of the repository.
+*.pdf
