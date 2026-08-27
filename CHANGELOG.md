@@ -8,6 +8,25 @@ available at https://github.com/cyanfish/naps2/blob/master/CHANGELOG.md
 
 ---
 
+## 1.1.1.0 — 27 August 2026
+
+Full notes: [`docs/releases/1.1.1.0.md`](docs/releases/1.1.1.0.md)
+
+- Profiles can be exported to a file and imported on another machine, from buttons in the Profiles window.
+  An import adds rather than overwrites, and numbers a name that is already in use.
+- The SAP password and the SharePoint client secret never travel with a profile, in either direction, and
+  the import names the profiles that still need one entered.
+- The SAP upload has its own sign-in and upload time limits, both editable in the SAP connection dialog,
+  in place of one 60-second limit that covered everything at once.
+- The progress bar keeps moving while SAP archives the document, and the status line counts the seconds.
+- The console reports the transfer itself — size, sign-in, retry, timeout — and says which side of it ran
+  out of time.
+- A stored SAP password shows as five dots, and clearing the box now removes it.
+- Fixed: a SAP upload that timed out was sent again, filing up to three copies under one barcode.
+- Fixed: a SAP that did not answer was reported as an upload the operator had cancelled.
+
+---
+
 ## 1.1.0.0 — 20 August 2026
 
 Full notes: [`docs/releases/1.1.0.0.md`](docs/releases/1.1.0.0.md)
