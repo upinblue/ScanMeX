@@ -89,8 +89,11 @@ Two files, same content:
   product and version, so it still makes sense as an email attachment with no surrounding page.
 - **`CHANGELOG.md`** — the same entry, prepended above the previous ones.
 
-**Write the changelog in English.** Not bilingual, not German — English, even though the interface the
-release describes is German and the customers are. This is settled; do not offer to translate it.
+**Write the changelog in English, and name the English UI labels.** Not bilingual, not German —
+English, even though the operators are German. This is settled; do not offer to translate it. It extends
+to the controls the notes name: the app is localized, so quote the English resource string ("Remove
+finished", "Filed locally") and not the German one the operator happens to see. A German label dropped
+into an English sentence is exactly the bilingual half-measure this rule exists to prevent.
 
 Turn the commits into what changed *for the operator*, not what changed in the code:
 
@@ -118,7 +121,7 @@ dotnet build NAPS2.App.WinForms/ScanMe.App.WinForms.csproj -c Release
 Then run the built exe from `NAPS2.App.WinForms/bin/Release/net9.0-windows10.0.17763.0/win-x64/` and:
 
 ```bash
-pwsh -NoProfile -File tools/setup/Capture-Window.ps1 -TitlePattern 'ScanMe - ' -OutPath docs/releases/assets/<version>/hauptfenster.png
+pwsh -NoProfile -File tools/setup/Capture-Window.ps1 -TitlePattern 'ScanMe - ' -OutPath docs/releases/assets/<version>/main-window.png
 ```
 
 Reference it from `docs/releases/<version>.md` with a relative path, so the file works both on GitHub and
@@ -126,17 +129,42 @@ as a local attachment.
 
 Two things that will otherwise waste an hour:
 
-- **Build Release, not Debug.** Only Release compiles the `de` satellite assembly, and the screenshot in
-  a German customer's release notes should be German. If the app still comes up English, the UI culture
-  is following the Windows display language — set `<Culture>de</Culture>` in
-  `%APPDATA%\ScanMe\config.xml`, take the shot, and **put the config back afterwards**.
+- **The window in the shot has to be in English**, like the notes around it. The UI culture follows the
+  Windows display language unless it is told otherwise, and this machine's is German — so set
+  `<Culture>en</Culture>` in `%APPDATA%\ScanMe\config.xml` before launching, and **put the config back
+  afterwards**. Build Release rather than Debug even so: a Debug build omits the `de` satellite assembly
+  and therefore comes up English by accident, which is the right result for the wrong reason and hides
+  the culture setting having gone missing.
 - **Do not try to click the app open with synthetic input.** `mouse_event`/`SetCursorPos` from this
   environment do not reach ScanMe's windows at all — verified against a plain toolbar button, not just
   the stacked Settings/About one. If a dialog ever does need capturing, ask the user to open it and then
   run the capture script; the script itself works.
 
-**Say plainly what the screenshot shows.** Without a scanner attached the window comes up with no pages,
-so the caption should say so rather than letting a customer wonder what they are looking at.
+**Scan a demo stack first — an empty window shows none of what the release is about.** Serve pages over
+a fake ESCL scanner and let the app scan them, so there are documents in the shot:
+
+- A throwaway xunit host in `NAPS2.Sdk.Tests` (`MockScanBridge` is internal, so it has to live there)
+  builds a `ScanServer` over `MockScanBridge`, registers a device on a fixed port, starts it and then
+  polls for a stop file. `MockScanBridge.MockOutput` is the pages it hands back; draw cover sheets
+  carrying a real Code 39 barcode with `Code39Writer`, the way `MultiBarcodeDetectionTests` does.
+- **Back up `%APPDATA%\ScanMe\profiles.xml` and `config.xml` first, and scan only with a profile you
+  wrote yourself** — the installed ones upload to a real customer tenant. Author it by serializing a real
+  `ScanProfile` through `XmlSerializer<ImmutableList<ScanProfile>>` from a throwaway test rather than by
+  hand: `DocumentWorkflowSettings` is a record of `init` properties, and hand-written XML is easy to get
+  subtly wrong. `SeparationMode=Barcode`, `SaveLocally` on, no upload target and
+  `UploadTrigger=Automatic` produces finished documents, so the canvas shows one section per document and
+  the panel shows the list, the inspector and "Remove finished". Point it at the host with `<ID>` = the
+  UUID the host prints, `<ConnectionUri>http://127.0.0.1:<port>/eSCL</ConnectionUri>` and
+  `<DriverName>escl</DriverName>`.
+- Before capturing: answer the recovery prompt with **Not Now** — it is an inline panel in the main
+  window rather than a modal, so UIA `Invoke` reaches it, and never Delete, which throws away the user's
+  own unsaved scans — close the "PDF saved" notification toasts (UIA name `Close`, below y=500), and
+  press **Zoom out** about three times so every document's section fits in the frame.
+- Close the app before restoring the backups, since it rewrites `profiles.xml` on exit, and check the
+  restore with `diff`.
+
+**Say plainly what the screenshot shows**, so the caption names what the customer is looking at instead
+of leaving them to work it out.
 
 ## Phase 5 — Commit and tag
 
