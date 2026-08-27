@@ -231,9 +231,26 @@ git push origin master
 git push origin v<version>
 ```
 
+**The release page needs absolute image URLs, and the committed file keeps relative ones.** They differ
+on purpose. A release body is rendered outside the repository's file tree, so `assets/<version>/…`
+resolves to nothing there and every screenshot comes up broken — while that same relative path is exactly
+what makes the file work in GitHub's file view and as an email attachment with its `assets` folder beside
+it. So publish from a rewritten copy — in the scratchpad, not in the repository, since it is not a file
+anyone keeps — and leave `docs/releases/<version>.md` alone:
+
 ```bash
-gh release create v<version> --title "ScanMe <version>" --notes-file docs/releases/<version>.md NAPS2.Setup/publish/<version>/ScanMe-<version>-win-x64.msi NAPS2.Setup/publish/<version>/ScanMe-<version>-src.zip
+sed 's#](assets/#](https://raw.githubusercontent.com/upinblue/ScanMeX/v<version>/docs/releases/assets/#g' docs/releases/<version>.md > <scratchpad>/release-body.md
 ```
+
+```bash
+gh release create v<version> --title "ScanMe <version>" --notes-file <scratchpad>/release-body.md NAPS2.Setup/publish/<version>/ScanMe-<version>-win-x64.msi NAPS2.Setup/publish/<version>/ScanMe-<version>-src.zip
+```
+
+**Pin the URLs at the tag, not at `master`**, so they still resolve after the file is moved or renamed.
+The raw URL only exists once the tag is pushed, which it is by this point — so check each one afterwards
+rather than assuming, `curl -s -o /dev/null -w '%{http_code}'` over every `raw.githubusercontent.com` link
+in `gh release view <tag> --json body`. This was fixed by hand for 1.1.0.0, written down nowhere, and
+therefore broke again in 1.1.1.0.
 
 If `gh` is missing or not authenticated, do not try to work around it with raw API calls and a token
 pasted into a command line — tell the user to install it (`winget install --id GitHub.cli`) and run
