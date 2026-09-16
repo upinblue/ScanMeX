@@ -8,6 +8,17 @@ available at https://github.com/cyanfish/naps2/blob/master/CHANGELOG.md
 
 ---
 
+## 1.1.2.0 — 16 September 2026
+
+Full notes: [`docs/releases/1.1.2.0.md`](docs/releases/1.1.2.0.md)
+
+- Fixed: when a scan produced a single document, the scan window drew its last page under a separate
+  "Default" heading instead of under the document. Only the picture was wrong — the document list, the
+  page count in the heading and the filed or uploaded file always had every page.
+- Fixed: clicking a document's heading could select the wrong pages in the same situation.
+
+---
+
 ## 1.1.1.0 — 27 August 2026
 
 Full notes: [`docs/releases/1.1.1.0.md`](docs/releases/1.1.1.0.md)
