@@ -127,6 +127,31 @@ to be rebuilt after every change to the list; `DesktopForm.UpdateSections` does 
 list and the document queue, because a document that finishes uploading changes its heading without a
 single page having moved.
 
+**The index is an index into the canvas, not into the image list, and the two are not the same list.**
+`ImageListSyncer` throttles passive updates -- a scan arriving -- to one canvas refresh per 200 ms, so at
+the end of every scan the image list holds pages the canvas has not been given yet. Sections built over
+the image list therefore named pages that were not there, `WinFormsListView.SetSections` wrote groups
+only as far as `Items.Count`, and the pages past the end got no group at all -- which on Windows means
+the control's own default group, drawn under a heading of its own as though those pages belonged to no
+document. It was permanent, because the canvas catching up produces the *same* section list and
+`SetSections` takes its `SequenceEqual` early return. Display only: the document, the document list and
+the archived file had the pages all along, and the heading itself said "6 page(s)" over five of them.
+
+- **`ImageListDiffer.CurrentPages` is what the canvas holds** -- the pages the diffs handed out so far
+  bring it to -- and `DesktopForm.CanvasPages` is what everything positional is worked out over:
+  `UpdateSections`, and `ListViewSectionClicked`, which turns a heading into a selection by index.
+- **A queue change flushes the canvas before it rebuilds the sections.** `DocumentQueue.Changed` fires
+  because a scan has just been split, and the pages the new documents head are exactly the ones still
+  waiting on the throttle. `ImageListSyncer.Flush` lets them through first; it runs the callback on the
+  calling thread, so it may only be called from the thread the callback otherwise runs on.
+- **More documents used to hide it.** `DocumentQueue.Add` raises `Changed` per document, so a split into
+  five documents put five full rebuilds between the end of the scan and the sync that adopts the pages --
+  long enough for the throttle to fire. One document had no such delay and failed every time, which is
+  why a customer saw a stack separate correctly and a single document lose its last page.
+- The clamp in `SetSections` stays as a guard -- an exception thrown out of a repaint would be worse --
+  but it now says so in the console. A page drawn outside its document with nothing reporting why is the
+  silent nothing this app exists to prevent.
+
 Four things about the WinForms side, each of them measured on a throwaway harness rather than assumed:
 
 - **The native group heading is never used.** comctl32 draws it in the light Explorer blue whatever the
@@ -849,6 +874,8 @@ The document pipeline's own coverage: `DocumentPipelineTests` (splitting and wri
 `DocumentPipelineUploadTests` (the hand-off to the archive and everything that must not happen),
 `DocumentPageTrackerTests` (what editing pages in the window does to the document that will be archived),
 `DocumentSectionBuilderTests` (which pages the canvas draws under which heading),
+`ImageListDifferTests` (which pages the canvas *holds*, as against the ones the image list has -- the
+list the headings are worked out over),
 `DocumentPageAssignmentTests` (where a page belongs after it has been dragged somewhere else) and
 `FinishedDocumentGuardTests` (what the window refuses to do to an archived document),
 `DocumentEditorTests` (splitting a document and merging one back),

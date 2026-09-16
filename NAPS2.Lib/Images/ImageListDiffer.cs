@@ -20,6 +20,27 @@ public class ImageListDiffer
     }
 
     /// <summary>
+    /// The pages the diffs handed out so far bring a view to -- which is exactly what it holds once it
+    /// has applied them, and not necessarily what the image list holds now.
+    /// </summary>
+    /// <remarks>
+    /// Anything that addresses a view's items by position has to be worked out from this rather than
+    /// from the image list. The two are a moment apart whenever a scan is coming in, because
+    /// <see cref="ImageListSyncer"/> throttles the passive updates -- and a page the image list has but
+    /// the view does not is a page that everything positional silently misses.
+    /// </remarks>
+    public IReadOnlyList<UiImage> CurrentPages
+    {
+        get
+        {
+            lock (this)
+            {
+                return _currentState.Select(x => x.Source).ToList();
+            }
+        }
+    }
+
+    /// <summary>
     /// Produces the set of changes since the last call to GetAndFlushDiffs. The first call assumes the previous state
     /// is an empty list, i.e. all items in the list are included as appended items in the diff.
     ///

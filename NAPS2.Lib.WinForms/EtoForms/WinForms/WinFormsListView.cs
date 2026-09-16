@@ -373,6 +373,20 @@ public class WinFormsListView<T> : IListView<T> where T : notnull
                 // still reserves the band, which is what DrawSectionHeaders paints into.
                 var group = new ListViewGroup(" ") { HeaderAlignment = HorizontalAlignment.Left };
                 _view.Groups.Add(group);
+                if (section.EndIndex >= Items.Count)
+                {
+                    // Never, now that the sections are built over the very pages this list was brought
+                    // to. It used to happen at the end of every scan -- they were built over the image
+                    // list, which runs ahead -- and the pages past the end quietly got no group at all,
+                    // which puts them in the control's own default group under a heading of its own.
+                    // Guarded rather than assumed, because the alternative is an exception thrown from
+                    // a repaint; said out loud, because a page drawn outside its document with nothing
+                    // reporting why is what this cost a customer a morning of scanning.
+                    ScanConsole.App(
+                        $"The canvas holds {Items.Count} page(s) but was asked to head " +
+                        $"{section.StartIndex + section.Count} of them as '{section.Title}'. The pages " +
+                        "past the end are drawn under no document until the next change puts it right.");
+                }
                 for (int i = section.StartIndex; i <= section.EndIndex && i < Items.Count; i++)
                 {
                     Items[i].Group = group;

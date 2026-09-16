@@ -229,34 +229,48 @@ public abstract class DesktopForm : EtoFormBase
     /// </summary>
     private void ListViewSectionClicked(object? sender, int index)
     {
-        var sections = _sectionBuilder.Build(ImageList.Images);
+        var pages = CanvasPages;
+        var sections = _sectionBuilder.Build(pages);
         if (index < 0 || index >= sections.Count)
         {
             return;
         }
         var section = sections[index];
         ImageList.UpdateSelection(ListSelection.From(
-            ImageList.Images.Skip(section.StartIndex).Take(section.Count)));
+            pages.Skip(section.StartIndex).Take(section.Count)));
     }
 
-    private void ApplyListDiffs(ListViewDiffs<UiImage> diffs)
+    private void ApplyListDiffs(ListViewDiffs<UiImage> diffs, IReadOnlyList<UiImage> pages)
     {
         _listView.ApplyDiffs(diffs);
-        UpdateSections();
+        UpdateSections(pages);
     }
+
+    /// <summary>
+    /// The pages the canvas holds, which is not always what the image list holds: while a scan is coming
+    /// in the canvas is refreshed on a throttle and trails it by up to a page or two.
+    /// </summary>
+    /// <remarks>
+    /// Everything that addresses the canvas by position belongs on this list. Built from the image list
+    /// instead, a section can name a page the canvas has not been given yet -- and that page then gets
+    /// no section at all, because there is nothing there to put in one.
+    /// </remarks>
+    private IReadOnlyList<UiImage> CanvasPages => _imageListSyncer?.CurrentPages ?? ImageList.Images;
 
     /// <summary>
     /// Groups the pages in the canvas by the document they belong to.
     /// </summary>
     /// <remarks>
-    /// Sections address the pages by position, so this has to run after every change to the list. It is
-    /// built from the image list rather than from what the canvas currently shows: the two can be a
-    /// moment apart while a scan is coming in, and a section that reaches past the last page is trimmed
-    /// rather than being an error -- the next change puts it right.
+    /// Sections address the pages by position, so this has to run after every change to the list -- and
+    /// over the very pages the canvas was brought to, never over the image list. The two are a moment
+    /// apart whenever a scan is coming in, and a section reaching past the canvas's last page leaves
+    /// that page out of every section: on Windows it drops into the list view's own default group,
+    /// drawn as though it belonged to no document, while the document list and the archived file have
+    /// it all along.
     /// </remarks>
-    private void UpdateSections()
+    private void UpdateSections(IReadOnlyList<UiImage> pages)
     {
-        _listView.SetSections(_sectionBuilder.Build(ImageList.Images));
+        _listView.SetSections(_sectionBuilder.Build(pages));
     }
 
     private void DocumentQueue_Changed(object? sender, EventArgs e)
@@ -264,7 +278,11 @@ public abstract class DesktopForm : EtoFormBase
         Invoker.Current.Invoke(() =>
         {
             UpdateToolbar();
-            UpdateSections();
+            // The queue changed because a scan has just been split into documents, and the pages those
+            // documents are about to head are very likely still waiting on the canvas's throttle. They
+            // go in first, so the sections and the pages they address are one and the same list.
+            _imageListSyncer?.Flush();
+            UpdateSections(CanvasPages);
         });
     }
 

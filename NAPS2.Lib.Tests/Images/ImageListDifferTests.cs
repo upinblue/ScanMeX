@@ -195,4 +195,59 @@ public class ImageListDifferTests : ContextualTests
         Assert.Equal(3, diffs.TrimOperations[0].Count);
         Assert.True(diffs.HasAnyDiff);
     }
+
+    /// <summary>
+    /// What the view holds is what the diffs handed out so far bring it to -- not what the image list
+    /// holds. Anything addressing the view's items by position has to be worked out over this list, and
+    /// the document sections in the canvas are exactly that.
+    /// </summary>
+    /// <remarks>
+    /// A scan arriving is a passive update, which <see cref="ImageListSyncer"/> throttles, so the view
+    /// trails the image list by a page or more at the end of every scan. Sections built over the image
+    /// list instead named pages the canvas had not been given, and those pages ended up in no section
+    /// at all: on Windows they drop into the list view's own default group, drawn as belonging to no
+    /// document, while the document list and the archived file have them all along.
+    /// </remarks>
+    [Fact]
+    public void CurrentPagesIsWhatTheViewHoldsNotWhatTheImageListHolds()
+    {
+        var image1 = new UiImage(CreateScannedImage());
+        var image2 = new UiImage(CreateScannedImage());
+        var image3 = new UiImage(CreateScannedImage());
+        _imageList.Mutate(new ListMutation<UiImage>.Append(image1, image2));
+        _differ.GetAndFlushDiffs();
+
+        // The next page of the scan arrives before the view has been told about anything.
+        _imageList.Mutate(new ListMutation<UiImage>.Append(image3));
+
+        Assert.Equal([image1, image2], _differ.CurrentPages);
+        Assert.Equal([image1, image2, image3], _imageList.Images);
+
+        _differ.GetAndFlushDiffs();
+        Assert.Equal([image1, image2, image3], _differ.CurrentPages);
+    }
+
+    [Fact]
+    public void CurrentPagesFollowsPagesLeavingTheList()
+    {
+        var image1 = new UiImage(CreateScannedImage());
+        var image2 = new UiImage(CreateScannedImage());
+        var image3 = new UiImage(CreateScannedImage());
+        _imageList.Mutate(new ListMutation<UiImage>.Append(image1, image2, image3));
+        _differ.GetAndFlushDiffs();
+
+        _imageList.Mutate(new ListMutation<UiImage>.DeleteSelected(), ListSelection.Of(image3));
+        Assert.Equal([image1, image2, image3], _differ.CurrentPages);
+
+        _differ.GetAndFlushDiffs();
+        Assert.Equal([image1, image2], _differ.CurrentPages);
+    }
+
+    [Fact]
+    public void CurrentPagesIsEmptyBeforeAnythingHasBeenHandedOut()
+    {
+        _imageList.Mutate(new ListMutation<UiImage>.Append(new UiImage(CreateScannedImage())));
+
+        Assert.Empty(_differ.CurrentPages);
+    }
 }

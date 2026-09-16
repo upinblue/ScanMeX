@@ -13,13 +13,15 @@ public class ImageListSyncer
     private static readonly TimeSpan SyncThrottleInterval = TimeSpan.FromMilliseconds(200);
 
     private readonly UiImageList _imageList;
-    private readonly Action<ListViewDiffs<UiImage>> _diffCallback;
+    private readonly Action<ListViewDiffs<UiImage>, IReadOnlyList<UiImage>> _diffCallback;
     private readonly SynchronizationContext _syncContext;
     private readonly TimedThrottle _syncThrottle;
     private readonly ImageListDiffer _differ;
     private bool _disposed;
+    private bool _syncing;
 
-    public ImageListSyncer(UiImageList imageList, Action<ListViewDiffs<UiImage>> diffCallback,
+    public ImageListSyncer(UiImageList imageList,
+        Action<ListViewDiffs<UiImage>, IReadOnlyList<UiImage>> diffCallback,
         SynchronizationContext syncContext)
     {
         _imageList = imageList;
@@ -45,12 +47,50 @@ public class ImageListSyncer
         }
     }
 
+    /// <summary>
+    /// The pages the view is up to date with -- what it holds once the changes handed to the callback
+    /// have been applied. Anything addressing its items by position belongs on this list rather than on
+    /// the image list, which runs ahead of it while a scan comes in.
+    /// </summary>
+    public IReadOnlyList<UiImage> CurrentPages => _differ.CurrentPages;
+
+    /// <summary>
+    /// Hands over any changes still waiting on the throttle, now, on the calling thread -- which has to
+    /// be the thread the callback otherwise runs on.
+    /// </summary>
+    /// <remarks>
+    /// For the moments where something other than the image list has to act on what the view holds --
+    /// a scan being split into documents, which then head the pages by position. Waiting out the
+    /// throttle there would mean working out those positions against a view that is a page or two
+    /// behind.
+    ///
+    /// Everywhere else the callback reaches the view by being posted to the sync context, so it only
+    /// ever runs on the one thread; calling this from another would be the first time two of them could
+    /// overlap, and the view throws rather than being updated twice at once.
+    /// </remarks>
+    public void Flush() => _syncThrottle.RunActionNow(null);
+
     private void Sync()
     {
-        var diffs = _differ.GetAndFlushDiffs();
-        if (diffs.HasAnyDiff)
+        if (_syncing)
         {
-            _diffCallback(diffs);
+            // Applying a diff can come back round to here through the view's own events. The view is
+            // mid-update and already has everything this call would hand it; whatever changed during it
+            // announces itself again and arrives on the next run.
+            return;
+        }
+        _syncing = true;
+        try
+        {
+            var diffs = _differ.GetAndFlushDiffs();
+            if (diffs.HasAnyDiff)
+            {
+                _diffCallback(diffs, _differ.CurrentPages);
+            }
+        }
+        finally
+        {
+            _syncing = false;
         }
     }
 
