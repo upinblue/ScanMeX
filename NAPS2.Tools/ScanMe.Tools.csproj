@@ -18,6 +18,15 @@
     <PackageReference Include="NuGet.Protocol" Version="6.10.1" />
     <PackageReference Include="Octokit" Version="13.0.1" />
     <PackageReference Include="SSH.NET" Version="2026.0.0" />
+    <!--
+      Not used here directly. NuGet.Protocol to NuGet.Packaging to System.Security.Cryptography.Pkcs
+      6.0.4 asks for System.Formats.Asn1 6.0.0, which carries GHSA-447r-wph3-92pm (CVE-2024-38095, a
+      denial of service in ASN.1 parsing); this lifts it to the 9.0.x servicing line that goes with
+      this project's net9 target. Fixing it at the source would mean NuGet.Protocol 7.x, the first
+      one whose Packaging drops the 6.0.4 chain, which is a major bump of the API the uploader uses.
+      Drop this line if NuGet.Protocol is ever updated that far.
+    -->
+    <PackageReference Include="System.Formats.Asn1" Version="9.0.20" />
     <PackageReference Include="System.Security.Principal.Windows" Version="5.0.0" />
     <PackageReference Include="VirusTotalNet" Version="2.2.0" />
   </ItemGroup>
