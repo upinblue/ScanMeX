@@ -1,0 +1,17 @@
+<Project>
+
+    <PropertyGroup>
+        <!--
+            Audit the whole package graph, not just the references written in a csproj. The default,
+            "direct", is why a build reported SSH.NET's advisory and said nothing about the one three
+            levels under NuGet.Protocol: the only thing that found that one was asking dotnet for the
+            vulnerable packages including transitive ones, by hand, which nobody does on a schedule.
+            A package reachable only transitively is no less present in the build.
+
+            Verified rather than assumed: with this set, taking the System.Formats.Asn1 pin back out of
+            NAPS2.Tools makes the restore report NU1903 for it, which it did not do before.
+        -->
+        <NuGetAuditMode>all</NuGetAuditMode>
+    </PropertyGroup>
+
+</Project>

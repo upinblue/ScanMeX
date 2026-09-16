@@ -839,6 +839,13 @@ compile error is indistinguishable from the usual noise, and the one that hid he
   `dotnet run --project NAPS2.Tools -- pkg msi` builds only the net9 apps and so **passes**: a `net462`
   break shows up in Visual Studio and nowhere near the release path. `NAPS2.Internals` and
   `NAPS2.Images` target it too; `NAPS2.Lib` is net9 only, so the same call is fine there.
+- **A vulnerable package warns on the build, transitive ones included.** `Directory.Build.props` sets
+  `NuGetAuditMode=all`; the default audits only the references written in a csproj, which is how a
+  high-severity advisory three levels under `NuGet.Protocol` sat in the tree while the build reported
+  the one on `SSH.NET` next to it. Nothing warns today, so a NU19xx line is new and worth acting on
+  rather than noise to scroll past — which is the same reason the solution has to build clean at all.
+  The one pin this produced, `System.Formats.Asn1` in `NAPS2.Tools`, carries a comment saying when it
+  can go: `NuGet.Protocol` 7.x is the first whose `NuGet.Packaging` drops the chain that needs it.
 
 ---
 
