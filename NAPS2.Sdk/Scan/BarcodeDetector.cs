@@ -1,5 +1,4 @@
 using NAPS2.Images.Bitwise;
-using NAPS2.Images.Transforms;
 using ZXing;
 using ZXing.Common;
 
@@ -99,7 +98,7 @@ internal static class BarcodeDetector
     /// </remarks>
     private static Barcode DetectIn(IMemoryImage image, BarcodeDetectionOptions options)
     {
-        var reader = new BarcodeReader<IMemoryImage>(x => new MemoryImageLuminanceSource(x))
+        var reader = new BarcodeReader<LuminanceSource>(x => x)
         {
             Options = options.ZXingOptions ?? new DecodingOptions
             {
@@ -107,6 +106,11 @@ internal static class BarcodeDetector
                 PossibleFormats = GetPossibleFormats(options)
             }
         };
+
+        // The page as ZXing wants it: one byte of luminance per pixel. Built once and handed to every
+        // pass -- it used to be built again for the tolerant pass, and a third time out of the
+        // downscaled copy, which is the same walk over the same 26 MB each time.
+        var source = GrayLuminanceSource.FromImage(image);
 
         // A page may carry several barcodes (e.g. an order and an article code), so we keep all of them
         // and let the profile's symbology selection decide which one is the primary.
@@ -116,9 +120,9 @@ internal static class BarcodeDetector
         // both run and the results are merged, rather than one being a fallback for the other. Positions
         // from the smaller copy are scaled back up so the merged list is still in page reading order --
         // the primary is whatever comes first in it, so a wrong order picks a wrong barcode.
-        var found = DecodeAll(reader, image, 1);
-        found.AddRange(DecodeDownscaled(reader, image));
-        found.AddRange(DecodeDamagedCode39(image, options));
+        var found = DecodeAll(reader, source, 1);
+        found.AddRange(DecodeDownscaled(reader, source));
+        found.AddRange(DecodeDamagedCode39(source, options));
 
         // Two passes over the same page report the same barcode twice, and the tolerant pass reports one
         // ZXing already read. Collapse by value, keeping the topmost-leftmost position so the merged list
@@ -146,7 +150,7 @@ internal static class BarcodeDetector
     /// carry a readable Code 128 next to a Code 39 whose stop guard is damaged, and a fallback that only
     /// ran when the page yielded nothing would drop the second one without saying so.
     /// </summary>
-    private static List<Detection> DecodeDamagedCode39(IMemoryImage image, BarcodeDetectionOptions options)
+    private static List<Detection> DecodeDamagedCode39(LuminanceSource source, BarcodeDetectionOptions options)
     {
         var tolerance = Code39Tolerance.For(options.Strictness);
         // Patch-T is deliberately excluded even though it rides on Code 39. A patch-T sheet is a reusable
@@ -159,7 +163,7 @@ internal static class BarcodeDetector
         try
         {
             return DamagedCode39Reader
-                .Read(new MemoryImageLuminanceSource(image), tolerance)
+                .Read(source, tolerance)
                 .Select(x => new Detection(x.Text, BarcodeFormat.CODE_39.ToString(), x.Y, x.X, true))
                 .ToList();
         }
@@ -172,12 +176,12 @@ internal static class BarcodeDetector
     }
 
     private static List<Detection> DecodeAll(
-        BarcodeReader<IMemoryImage> reader, IMemoryImage image, double positionScale)
+        BarcodeReader<LuminanceSource> reader, LuminanceSource source, double positionScale)
     {
-        var results = reader.DecodeMultiple(image);
+        var results = reader.DecodeMultiple(source);
         if (results == null || results.Length == 0)
         {
-            var single = reader.Decode(image);
+            var single = reader.Decode(source);
             results = single != null ? [single] : [];
         }
         return results
@@ -189,23 +193,20 @@ internal static class BarcodeDetector
             .ToList();
     }
 
-    private static List<Detection> DecodeDownscaled(BarcodeReader<IMemoryImage> reader, IMemoryImage image)
+    private static List<Detection> DecodeDownscaled(BarcodeReader<LuminanceSource> reader, GrayLuminanceSource source)
     {
-        if (image.Width < MIN_WIDTH_FOR_RETRY)
+        if (source.Width < MIN_WIDTH_FOR_RETRY)
         {
             return [];
         }
         try
         {
-            // PerformTransform consumes the image it is given, so the copy is what gets scaled and
-            // disposed -- the caller's page has to survive this.
-            using var scaled = image.Copy().PerformTransform(new ScaleTransform(RETRY_SCALE));
-            return DecodeAll(reader, scaled, RETRY_SCALE);
+            return DecodeAll(reader, source.Downscaled(RETRY_SCALE), RETRY_SCALE);
         }
         catch (Exception)
         {
-            // A page we can't scale (an unusual pixel format, say) is not a reason to lose the barcodes
-            // the full-resolution pass already found.
+            // A page we can't scale is not a reason to lose the barcodes the full-resolution pass
+            // already found.
             return [];
         }
     }
@@ -249,20 +250,41 @@ internal static class BarcodeDetector
     private static float GetReadingOrderX(Result result) =>
         result.ResultPoints is { Length: > 0 } points ? points.Min(p => p.X) : 0;
     
-    private class MemoryImageLuminanceSource : LuminanceSource
+    /// <summary>
+    /// The page as one byte of luminance per pixel, which is the only form any of the passes reads it
+    /// in. Sharing one of these across the passes is what keeps the page from being walked over once per
+    /// pass, and it is what the downscaled pass resamples -- two thirds of the bytes GDI+ used to
+    /// resample were the colour channels the decode then threw away.
+    /// </summary>
+    private class GrayLuminanceSource : LuminanceSource
     {
-        public MemoryImageLuminanceSource(IMemoryImage image)
-            : base(image.Width, image.Height)
+        public static GrayLuminanceSource FromImage(IMemoryImage image)
         {
             var dstPixelInfo = new PixelInfo(image.Width, image.Height, SubPixelType.Gray);
             var matrix = new byte[dstPixelInfo.Length];
             new CopyBitwiseImageOp().Perform(image, matrix, dstPixelInfo);
+            return new GrayLuminanceSource(matrix, image.Width, image.Height);
+        }
+
+        public GrayLuminanceSource(byte[] matrix, int width, int height) : base(width, height)
+        {
             Matrix = matrix;
         }
 
-        private MemoryImageLuminanceSource(byte[] matrix, int width, int height) : base(width, height)
+        /// <summary>
+        /// A smaller copy of the page, filtered rather than sampled: the kernel widens with the scale, so
+        /// an output pixel averages every source pixel it covers. That averaging is the whole reason the
+        /// second pass exists -- print noise between the bars defeats the binarizer at full size and
+        /// disappears here -- so a cheaper resampling is not a substitute. Measured over the customer's
+        /// paperwork, a box filter loses barcodes on pages where this pass is the only one that reads
+        /// them.
+        /// </summary>
+        public GrayLuminanceSource Downscaled(double scale)
         {
-            Matrix = matrix;
+            var width = Math.Max((int) Math.Round(Width * scale), 1);
+            var height = Math.Max((int) Math.Round(Height * scale), 1);
+            return new GrayLuminanceSource(
+                BicubicResampler.Resample(Matrix, Width, Height, 1, width, height), width, height);
         }
 
         public override byte[] getRow(int y, byte[]? row)
@@ -290,7 +312,7 @@ internal static class BarcodeDetector
             {
                 Array.Copy(Matrix, (top + y) * Width + left, cropped, y * width, width);
             }
-            return new MemoryImageLuminanceSource(cropped, width, height);
+            return new GrayLuminanceSource(cropped, width, height);
         }
     }
 }
