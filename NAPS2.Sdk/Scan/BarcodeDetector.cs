@@ -175,15 +175,19 @@ internal static class BarcodeDetector
         }
     }
 
+    /// <remarks>
+    /// There is deliberately no single-barcode retry when this finds nothing. ZXing's multi-barcode
+    /// reader begins by decoding the whole page exactly as the single-barcode one does and only then
+    /// recurses around what it found, so a second call repeats the same scan for the same answer. There
+    /// used to be one; over the customer's sample set it never once found something the multi-barcode
+    /// call had missed. What it saves depends on how much the page gives the row scanners to chew on --
+    /// about 4 ms a page on that sample set, 41 ms on a synthetic form built out of ruled tables and
+    /// noise, and it is spent on every page of a stack that carries no barcode, which is most of them.
+    /// </remarks>
     private static List<Detection> DecodeAll(
         BarcodeReader<LuminanceSource> reader, LuminanceSource source, double positionScale)
     {
-        var results = reader.DecodeMultiple(source);
-        if (results == null || results.Length == 0)
-        {
-            var single = reader.Decode(source);
-            results = single != null ? [single] : [];
-        }
+        var results = reader.DecodeMultiple(source) ?? [];
         return results
             .Select(x => new Detection(
                 x.Text,
