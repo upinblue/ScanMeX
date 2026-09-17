@@ -33,25 +33,45 @@ internal class RemotePostProcessor : IRemotePostProcessor
     public ProcessedImage? PostProcess(IMemoryImage image, ScanOptions options,
         PostProcessingContext postProcessingContext)
     {
+        // Every page of a scan goes through this on one thread, and which of these steps costs what
+        // depends entirely on the paper and the profile -- a page with a barcode on it costs several
+        // times one without. When an operator reports that scanning is slow, this line is the difference
+        // between guessing and knowing.
+        var timer = new StepTimer();
+        var pageNumber = postProcessingContext.PageNumber;
+        var size = $"{image.Width}x{image.Height}";
         image = DoInitialTransforms(image, options);
+        timer.Mark("initial transforms");
         try
         {
             if (options.ExcludeBlankPages)
             {
                 var op = new BlankDetectionImageOp(options.BlankPageWhiteThreshold, options.BlankPageCoverageThreshold);
                 op.Perform(image);
+                timer.Mark("blank detection");
                 if (op.IsBlank)
                 {
                     // TODO: Consider annotating the image as blank via postprocessingdata rather than excluding here
                     // TODO: In theory we might want to add some functionality to allow the user to correct blank detection
+                    // A page that leaves the scan here leaves no other trace: it is not in the window, not
+                    // in a document and not in the archive, and to the operator it looks exactly like a
+                    // sheet the feeder missed.
+                    _logger.LogDebug(
+                        "Page {Page} ({Size}) was detected as blank and dropped from the scan. " +
+                        "Post-processing took {Total} ms ({Steps}).",
+                        pageNumber, size, timer.TotalMs, timer.Describe());
                     return null;
                 }
             }
 
             var scannedImage = _scanningContext.CreateProcessedImage(image, options.MaxQuality,
                 options.Quality, options.PageSize);
-            DoRevertibleTransforms(ref scannedImage, ref image, options, postProcessingContext);
+            timer.Mark("store");
+            DoRevertibleTransforms(ref scannedImage, ref image, options, postProcessingContext, timer);
             postProcessingContext.TempPath = SaveForBackgroundOcr(image, options);
+            timer.Mark("ocr hand-off");
+            _logger.LogDebug("Page {Page} ({Size}) post-processed in {Total} ms ({Steps}).",
+                pageNumber, size, timer.TotalMs, timer.Describe());
             return scannedImage;
         }
         finally
@@ -59,6 +79,29 @@ internal class RemotePostProcessor : IRemotePostProcessor
             // Can't use "using" as the image reference could change
             image.Dispose();
         }
+    }
+
+    /// <summary>
+    /// Times the post-processing steps for one page. A step is only named once it has actually run, so a
+    /// step the profile skips costs no line rather than showing up as zero; the time of anything between
+    /// two marks falls to the later one.
+    /// </summary>
+    private class StepTimer
+    {
+        private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
+        private readonly List<string> _steps = [];
+        private long _previous;
+
+        public void Mark(string step)
+        {
+            var elapsed = _stopwatch.ElapsedMilliseconds;
+            _steps.Add($"{step} {elapsed - _previous} ms");
+            _previous = elapsed;
+        }
+
+        public long TotalMs => _stopwatch.ElapsedMilliseconds;
+
+        public string Describe() => _steps.Count > 0 ? string.Join(", ", _steps) : "no steps";
     }
 
     private IMemoryImage DoInitialTransforms(IMemoryImage original, ScanOptions options)
@@ -135,7 +178,7 @@ internal class RemotePostProcessor : IRemotePostProcessor
 
     // TODO: This is more than just transforms.
     private void DoRevertibleTransforms(ref ProcessedImage processedImage, ref IMemoryImage image, ScanOptions options,
-        PostProcessingContext postProcessingContext)
+        PostProcessingContext postProcessingContext, StepTimer timer)
     {
         var data = processedImage.PostProcessingData with
         {
@@ -169,6 +212,7 @@ internal class RemotePostProcessor : IRemotePostProcessor
         if (options.AutoDeskew)
         {
             processedImage = processedImage.WithTransform(Deskewer.GetDeskewTransform(image), true);
+            timer.Mark("deskew");
         }
 
         if (!data.Barcode.IsDetected)
@@ -178,6 +222,7 @@ internal class RemotePostProcessor : IRemotePostProcessor
             {
                 Barcode = BarcodeDetector.Detect(image, options.BarcodeDetectionOptions)
             };
+            timer.Mark("barcode");
         }
         if (options.ThumbnailSize.HasValue)
         {
@@ -189,6 +234,7 @@ internal class RemotePostProcessor : IRemotePostProcessor
                     .PerformTransform(new ThumbnailTransform(options.ThumbnailSize.Value)),
                 ThumbnailTransformState = processedImage.TransformState
             };
+            timer.Mark("thumbnail");
         }
         processedImage = processedImage.WithPostProcessingData(data, true);
     }
