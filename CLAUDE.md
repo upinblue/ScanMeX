@@ -649,6 +649,70 @@ therefore **no unit test that fails without the second pass** — the merge logi
 `MultiBarcodeDetectionTests`, and the end-to-end behaviour was verified against the sample PDFs, which
 live outside the repo (customer documents, not committed).
 
+**Both passes read one shared luminance matrix**, built once by `GrayLuminanceSource.FromImage`. The
+full-resolution pass, the tolerant Code 39 pass and the downscaled pass each used to build their own,
+which is three walks over the same 26 MB; the downscaled one is now resampled from that matrix rather
+than from a full-size RGB copy of the page. **There is no single-barcode retry after `DecodeMultiple`
+finds nothing** — ZXing's multi-barcode reader starts by decoding the whole page exactly as the
+single-barcode one does, so it was the same scan for the same answer, and over the customer's sample set
+it never once found something the first call had missed.
+
+## Throughput, and why a resize in the scan chain never goes back on GDI+
+
+**GDI+ serializes every interpolated `Graphics.DrawImage` across the whole process.** Measured with each
+thread holding its own source and destination bitmap: eight threads resize no faster than one, at every
+size down to 128×128 — 48 KB, which fits in L1, so memory bandwidth cannot explain it. Two resizes sat in
+the per-page chain (the barcode pass's 60% copy and the thumbnail), and while they did, no amount of
+page-level parallelism could get past them: the barcode step scaled 1.8× over eight threads and the
+thumbnail 1.0×.
+
+Both now go through `BicubicResampler` — separable Catmull-Rom, banded over cores, in `NAPS2.Images`.
+`ResizeTransform` itself is deliberately *not* changed: it is also the preview and the PDF export's
+rasterization, and that is a blast radius this did not need.
+
+- **The kernel widens by 1/scale when downsampling, and that is not decoration.** It is what averages
+  away the print noise between the bars, which is the entire reason the second barcode pass exists. A box
+  or bilinear filter loses barcodes on three of the customer's pages, one of which *only* the downscaled
+  pass reads. Any change to the filter has to be re-verified on real paper.
+- **It resamples in bands with a ring of horizontally filtered rows**, so the intermediate stays a few
+  rows deep instead of the 83 MB a plain two-pass version needs for a 600 dpi page — which matters
+  because several pages are now in flight at once. `BicubicResamplerTests` compares it byte for byte
+  against a plainly written reference; an off-by-one in the ring draws a band-shaped stripe into a picture
+  that still looks like the page.
+- **The thumbnail is not pixel-identical to the GDI+ one** (RMSE 8.8–20.1 on the customer's pages): at a
+  27× reduction GDI+ stops widening its kernel and undersamples where this does not. An image with alpha
+  stays on the backend's own path, because resampling colour and alpha separately draws halos.
+
+`PostProcessingPipeline` then spreads the per-page work over cores. Four things it decides on purpose:
+
+- **Order is preserved and is not negotiable.** `TransformBlock` hands results on in the order it received
+  them; out of order, a stack separates into the wrong documents and pages are archived under the wrong
+  barcode. The page number is assigned on the driver's thread before anything is queued, because duplex
+  front/back is derived from it.
+- **How many pages are in flight is bounded by bytes, not by count.** A 300 dpi page is 26 MB and a 600
+  dpi one 104 MB, so a fixed page count would mean a gigabyte at the high end. `Submit` blocks when the
+  pipeline is full, so a feeder faster than the processing makes the scanner wait instead of filling
+  memory.
+- **A page is copied before it is queued.** The drivers disagree about who owns it once the callback
+  returns — WIA and Twain's native transfer dispose it immediately, Twain's memory transfer and ESCL hand
+  it over. Unifying that contract across four drivers, two of which can't be tested here, is what the
+  copy buys its way out of.
+- **Too few cores, or pages too big for the budget, and every page runs inline as before**, with no copy
+  and no queue.
+
+Measured on the customer's paperwork, Release build, i5-14400: 300 dpi 153 → 517 pages/min, 600 dpi 63 →
+247. Held to two threads it is still 136 → 153 and 55 → 75, which is the check that mattered — the work
+is spread rather than reduced, so a machine with nothing to spread it over had to be shown not to
+regress. Total CPU time per page goes *up* by 66–88%; the application used 1.2 of 16 threads during a
+scan and now uses 7 to 9. `docs/releases/unreleased.md` carries the full figures and the approaches that
+were measured and rejected — a GPU, a cheaper downscale, storing pages as JPEG, holding grayscale as
+8-bit, and ImageSharp.
+
+**Every page says what it cost.** `RemotePostProcessor` logs its size and the time of each step, and says
+when a page was detected as blank and dropped — which used to happen silently and looks exactly like a
+sheet the feeder missed. That line is what makes the next report of slow scanning answerable with the
+customer's own numbers.
+
 ## Progress reporting
 
 `FluentProgressBar` is drawn, not themed: the native WinForms bar renders the Windows 7-era comctl32
@@ -899,6 +963,17 @@ at all) and `PhantomBarcodeTests` (what a noisy page yields).
 
 `ProfileFileTransferTests` covers what an exported profile takes to another machine and what it must
 never take -- both secrets, in both directions, including out of a file that still holds one.
+
+The throughput work's own: `BicubicResamplerTests` (that the banding the resampler uses to spread work
+over cores does not change a single output byte, compared against a plainly written reference, and that
+it does not shift brightness) and `PostProcessingPipelineTests` (that pages are handed on in scan order
+under deliberately scrambled processing times, that a page survives a driver which disposes it the moment
+the callback returns, that a dropped blank page does not reorder the rest, that a failed page throws its
+own exception rather than a wrapped one, and that no more pages are held at once than the bound allows).
+**Both force the parallel path rather than letting the machine's cores decide it** -- on a two-core agent
+every one of those properties holds trivially, and the suite would report a pipeline it never ran as
+correct. What no test in the repo can cover is whether a change to `BarcodeDetector` still reads the same
+values off real paper; that needs the customer's sample PDFs, which are not committed.
 
 The SAP upload's own: `SapUploadTimeoutTests` (what a slow SAP costs, and that a timed-out document is
 not sent again), `SapConnectionTimeoutSettingsTests` (reading the deadlines out of an old connection),
