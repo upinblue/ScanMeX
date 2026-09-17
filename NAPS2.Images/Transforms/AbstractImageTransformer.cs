@@ -198,10 +198,42 @@ internal abstract class AbstractImageTransformer<TImage> where TImage : IMemoryI
     /// <param name="image">The bitmap to resize.</param>
     /// <param name="transform">The maximum width and height of the thumbnail.</param>
     /// <returns>The thumbnail bitmap.</returns>
+    /// <remarks>
+    /// Resampled here rather than through ResizeTransform because on Windows that lands in GDI+, which
+    /// serializes every interpolated DrawImage for the whole process -- measured at eight threads being
+    /// no faster than one, down to bitmaps small enough to sit in L1. A thumbnail is made for every page
+    /// of every scan (68 ms for a 300 dpi page, 264 ms for a 600 dpi one), so on a batch it is one of
+    /// the two things holding the per-page work on a single core.
+    ///
+    /// An image with alpha is left on the backend's own path: resampling colour and alpha channels
+    /// separately draws halos around transparent edges, where GDI+ premultiplies first. A scan never has
+    /// alpha, so this only concerns thumbnails of imported images.
+    /// </remarks>
     protected virtual TImage PerformTransform(TImage image, ThumbnailTransform transform)
     {
         var (_, _, width, height) = transform.GetDrawRect(image.Width, image.Height);
-        return PerformTransform(image, new ResizeTransform(width, height));
+        if (image.PixelFormat == ImagePixelFormat.ARGB32)
+        {
+            return PerformTransform(image, new ResizeTransform(width, height));
+        }
+
+        var srcInfo = new PixelInfo(image.Width, image.Height, SubPixelType.Rgb);
+        var src = new byte[srcInfo.Length];
+        new CopyBitwiseImageOp().Perform(image, src, srcInfo);
+        var resampled = BicubicResampler.Resample(src, image.Width, image.Height, 3, width, height);
+
+        var result = ImageContext.Create(width, height, ImagePixelFormat.RGB24);
+        new CopyBitwiseImageOp().Perform(resampled, new PixelInfo(width, height, SubPixelType.Rgb), result);
+        // The same resolution ResizeTransform would have given it, so a thumbnail is no different from
+        // the one this used to produce in any respect a caller can read back.
+        result.SetResolution(
+            image.HorizontalResolution * image.Width / width,
+            image.VerticalResolution * image.Height / height);
+        // OriginalFileFormat is deliberately left unset, as ResizeTransform leaves it: it decides how
+        // ImageExportHelper stores an image, and a thumbnail that claims to have come from a JPEG would
+        // be encoded as one instead of as whichever comes out smaller.
+        image.Dispose();
+        return (TImage) result;
     }
 
     protected abstract TImage PerformTransform(TImage image, ResizeTransform transform);
