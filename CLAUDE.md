@@ -846,6 +846,14 @@ compile error is indistinguishable from the usual noise, and the one that hid he
   rather than noise to scroll past — which is the same reason the solution has to build clean at all.
   The one pin this produced, `System.Formats.Asn1` in `NAPS2.Tools`, carries a comment saying when it
   can go: `NuGet.Protocol` 7.x is the first whose `NuGet.Packaging` drops the chain that needs it.
+- **The audit has the same blind spot the build has, and it is permanent on Windows.** The three Mac
+  projects cannot be restored without the `macos` workload, so nothing audits them here — and
+  `NAPS2.Sdk.Worker.Win32`, being excluded from `Debug|*` and `Release|*`, is not restored by a
+  solution build either, though `dotnet list NAPS2.Sdk.Worker.Win32 package --vulnerable
+  --include-transitive` reaches it on its own. A clean build is therefore a statement about what was
+  restored, not about the repository. Checked by hand on 2026-09-17, every project one at a time: all
+  30 that restore are clean, and the only packages the Mac projects do not share with them —
+  `Eto.Platform.macOS` and `Eto.Platform.Mac64` — have no advisories against them.
 
 ---
 
