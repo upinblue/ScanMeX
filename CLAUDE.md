@@ -797,14 +797,90 @@ pwsh tools/icons/Generate-Icons.ps1
   the one at the top of `icon-map.tsv` — an icon that is regenerated is monochrome and belongs in
   neither list. `exclamation` is tinted with the caution colour rather than the text colour, because
   it only ever means an error state and would otherwise lose the signal the old coloured icon had.
-- **`ColorScheme` is the only place a colour is chosen.** Its constants are Fluent 2 design tokens,
-  named in comments after the WinUI resources they come from, so a value can be checked rather than
-  guessed at. `AccentColor` follows the user's Windows accent (via `IDarkModeProvider.AccentColor`,
-  a default interface member so Gtk/Mac need no implementation) and is nudged for contrast, since
-  Windows lets you pick an accent that would vanish against the current surface.
+- **`ColorScheme` is the only place a colour is chosen.** See **Leonardo** below for where its values
+  come from; only the status colours (Fluent's InfoBar palette) are still constants in the file.
 - `FluentToolStripRenderer` draws the toolbars and menus; `DwmWindowStyle` opts windows into rounded
   corners and the dark title bar. Both attributes are Windows 11 only and fail silently on Windows
   10, which the app still targets (`net9.0-windows10.0.17763.0`).
+
+## Leonardo
+
+ScanMe follows Leonardo, up in blue's design language. Its Windows packages (`UpInBlue.Leonardo.WinUI`,
+`.Wpf`) are XAML resources, and a shell rewrite to WinUI or WPF is not planned, so ScanMe takes the
+values and leaves the controls: `docs/reviews/2026-11-23-scanme-desktop.md` is the review this came out
+of, with the findings that are still open.
+
+- **The values are generated, not typed.** `tools/leonardo/leonardo.tokens.json` (Leonardo 0.1.1) ->
+  `pwsh tools/leonardo/Generate-Tokens.ps1` -> `NAPS2.Lib/EtoForms/LeonardoTokens.g.cs`. Only what the
+  Windows outputs carry is written; status colours are web-only in Leonardo and stay Fluent's here. To
+  update Leonardo, replace the JSON and re-run -- never edit the .g.cs.
+- **Brand blue is the accent, not the user's Windows accent.** Far blue on dark ground, with depth blue
+  text on it (`AccentForegroundColor`). Neutrals are Leonardo's slightly blue ones; the canvas is
+  `surfaceAlt`, one step back from the `surface` chrome.
+- **A Windows contrast theme overrides all of it.** `IDarkModeProvider.IsHighContrastEnabled` (WinForms:
+  `SystemInformation.HighContrast`, re-read on `UserPreferenceChanged`) makes every `ColorScheme`
+  property return an Eto `SystemColors` value. Before this, no code path looked at contrast themes and
+  every drawn surface kept its own palette -- unreadable for exactly the people who chose the theme.
+  `Pick` takes the system colour as a `Func` on purpose: `SystemColors` needs a running Eto platform,
+  and tests build a `ColorScheme` over a stub provider. Not checked on screen: switching Windows into a
+  contrast theme is a system setting, which an agent may not change.
+- **Spacing is Leonardo's grid.** `LayoutController` defaults are `space.l` root padding, `space.s`
+  between controls and `space.xs` label-to-control; panels use `space.l` horizontally. Use
+  `LeonardoTokens.Space.*` for anything new rather than a number.
+- **Type roles: `C.Section` (20 epx, panel headings), `C.BodyStrong`, `C.Meta` (12 epx, tertiary
+  colour).** Body text stays the Windows message font (9 pt) rather than Leonardo's 14 epx: dialogs here
+  were laid out for it, some at fixed widths, and German labels clip first. That is a recorded
+  exception, not an oversight.
+- **Green is not a permanent state.** A finished document is drawn neutral with its check mark
+  (`DocumentInspector.SeverityOf(Done)` is `Neutral`); the notification that it was filed is the brief
+  green. Status is a shape everywhere -- the canvas headings draw the status icon, not a coloured dot.
+- **The toolbar is ordered by the work** (`DesktopForm.CreateToolbarsAndMenus`): Scan, Import | Upload
+  documents, Save PDF | Image, Rotate, Move, Reorder, Document | Delete, Clear, then "More" (Save
+  images, Email PDF, Print, OCR, Console) and an icon-only Settings. Profiles moved into the Scan menu,
+  Language and About into the settings dialog. Every command keeps its shortcut and `HiddenButtons`
+  flag. Save images and Email PDF are submenus of "More", so `ShowToolbarMenu` opens them there
+  (`GetSubMenuType`) -- otherwise `SaveButtonDefaultAction.AlwaysPrompt` silently did nothing for them.
+- **A disabled command says why.** `ActionCommand.Hint` becomes the toolbar item's tooltip;
+  `ShowItemToolTips` is on with `AutoToolTip` off per item, so labelled buttons don't repeat their label.
+- Icon-only controls need `EtoPlatform.SetAccessibleName` -- Eto has no API for it, and a button with
+  no text is otherwise announced as nothing.
+
+### Document motion
+
+Three of Leonardo's motions, played by the document list and the canvas headings together:
+**Arrive** (a new document gets a short accent bar for `motion.arrive.hold`, which then fades, and a
+screen reader hears "New document: ..."), the brief **green of a filing** (the check mark of a document
+that has just finished is green for the hold, then turns neutral), and **Leave** (a removed document's
+row fades out in `motion.duration.short` instead of vanishing). `DocumentMotion` decides all of it;
+`DocumentMotionTests` pins it with a hand-driven clock and ticker.
+
+- **One instance per window, owned by the document panel**, and the canvas reads the same one
+  (`IListView.SetSectionMotion`), so a marker fades on both at the same moment. What is in the queue when
+  the window opens is the baseline, not news: a language change rebuilds the window, and every document
+  lighting up afterwards would be motion at launch, which Leonardo forbids.
+- **Nothing is animated while nothing changes.** The 60 Hz timer only runs while something is in motion,
+  and `Frame` is only raised while a value is actually moving -- not during the two-second hold. A frame
+  repaints the heading bands (`WinFormsListView.InvalidateSections`), not the thumbnails under them.
+  There is no GPU path and none is needed: WinForms draws with GDI+ on the CPU, and what moves is a
+  3 px bar and a 16 px icon. Direct2D or DirectComposition would mean interop for nothing measurable.
+- **"Animation effects" off in Windows** (`EtoPlatform.AnimationsEnabled`, `SPI_GETCLIENTAREAANIMATION`,
+  read every frame) turns every transition into the `motion.duration.fade` crossfade. The bar and the
+  green still appear: they carry meaning, not movement.
+- **A click in the document list ends everything** (`SkipToEnd`) -- motion never stands between the
+  operator and the next thing they do.
+- **The list's bar lives in the grid's row header**, narrowed to the bar plus a gap
+  (`EtoPlatform.SetRowMarker`). Eto's `ImageTextCell` draws its image into a fixed square at the cell's
+  left edge whatever the cell padding says, so a bar composed into the icon came out squeezed to half
+  its size, and one painted over the row landed on the icon. The header's own drawing is replaced by
+  the grid background in `CellPainting`.
+- **A leaving row is a ghost**: the panel keeps the removed document's `DocumentRow` where it was until
+  it has faded, then rebuilds the list without it. Because of that, the list maps a selected row to its
+  document **by id, never by index** -- `RowIndexOf`, and `ListSelectionChanged` reads `_rows[i].Id`.
+  A ghost is not selectable. The canvas has no Leave: its items are a native list view, whose items
+  cannot be animated without drawing copies of them over the drag-and-drop code.
+- **Checked on screen with the fake scanner** (see the UI-verification notes): four one-page documents
+  arrive with bars in both places, turn green when filed and neutral after the hold, and "Remove
+  finished" fades them out.
 
 ## The Eto layout engine — three things that will bite you
 
@@ -957,7 +1033,8 @@ The document pipeline's own coverage: `DocumentPipelineTests` (splitting and wri
 list the headings are worked out over),
 `DocumentPageAssignmentTests` (where a page belongs after it has been dragged somewhere else) and
 `FinishedDocumentGuardTests` (what the window refuses to do to an archived document),
-`DocumentEditorTests` (splitting a document and merging one back),
+`DocumentEditorTests` (splitting a document and merging one back), `DocumentMotionTests` (which event
+starts which animation, and that nothing already there when a window opens is announced as new),
 `DocumentWorkflowMigrationTests` (reading old profiles), `BarcodeDetectionPlanTests` (whether to decode
 at all) and `PhantomBarcodeTests` (what a noisy page yields).
 

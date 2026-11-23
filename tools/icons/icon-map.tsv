@@ -151,3 +151,7 @@ color_gradient	color_fill
 color_wheel	color_background
 draw_ellipse	oval
 weather_sun	weather_sunny
+
+# --- overflow ----------------------------------------------------------------------------------
+# The "More" menu at the trailing end of the main toolbar, as Fluent's CommandBar draws "See more".
+more	more_horizontal

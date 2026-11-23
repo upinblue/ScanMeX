@@ -62,7 +62,7 @@ public static class InternalDefaults
             EventLogging = EventType.None,
             ShowPageNumbers = false,
             SidebarVisible = true,
-            SidebarWidth = 230,
+            SidebarWidth = 260,
             DocumentPanelVisible = true,
             DocumentPanelWidth = 320,
             EditWithAppPath = "",

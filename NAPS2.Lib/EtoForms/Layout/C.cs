@@ -167,18 +167,22 @@ public static class C
 
     public static Label Label(string text) => new() { Text = text };
 
-    // The Fluent type ramp is defined in absolute pixels (Body 14/20, Body Strong 14/20 semibold,
-    // Subtitle 20/28 semibold). These helpers scale the *app's* base font instead, because setting
-    // absolute sizes would mean overriding the size in every form that uses one, and any form whose
-    // layout was measured for the smaller default could clip -- German labels are long enough to
-    // make that a real risk. The ratios below match the ramp's relative steps.
+    // Leonardo's type roles (LeonardoTokens.Type), in the base font's family. Body text stays the
+    // app's base font -- the Windows message font, 9 pt -- rather than Leonardo's 14 epx body: every
+    // dialog here was laid out for that size and several have fixed widths, and German labels are long
+    // enough for a larger body to clip them. The roles that are not body are set at their token size,
+    // so a section heading is Leonardo's 20 epx whatever the body is.
     //
-    // Bold rather than Semibold: Fluent asks for Semibold, but that is a separate font family
-    // ("Segoe UI Semibold") that does not exist on Gtk or Mac, and the rest of this codebase already
-    // emphasises with Bold (see the notification views). Consistency beats the weight difference.
+    // Bold rather than Semibold: that is a separate font family ("Segoe UI Semibold") that does not
+    // exist on Gtk or Mac, and the rest of this codebase already emphasises with Bold (see the
+    // notification views). Consistency beats the weight difference.
+
+    /// <summary>Epx (Leonardo's unit, 1/96 inch) to points, which is what Eto sizes fonts in.</summary>
+    private static float EpxToPoints(float epx) => epx * 72f / 96f;
 
     /// <summary>
-    /// Fluent's Body Strong: a label that titles a group of controls without being a heading.
+    /// Leonardo's body role in semibold: a label that titles a group of controls without being a
+    /// heading. Emphasis is a weight, never another size.
     /// </summary>
     public static Label BodyStrong(string text)
     {
@@ -188,12 +192,29 @@ public static class C
     }
 
     /// <summary>
-    /// Fluent's Subtitle: the heading of an empty state or a page-level section.
+    /// Leonardo's section role (20/28 epx, semibold): the heading of a panel -- the scan sidebar, the
+    /// document list, the inspector -- or of an empty state. Hierarchy comes from this size and the
+    /// white space around it, not from a line or a box.
     /// </summary>
-    public static Label Subtitle(string text)
+    public static Label Section(string text)
     {
         var label = NoWrap(text);
-        label.Font = new Font(label.Font.Family, label.Font.Size * 5 / 3, FontStyle.Bold);
+        label.Font = new Font(label.Font.Family, EpxToPoints(LeonardoTokens.Type.Section.FontSize), FontStyle.Bold);
+        return label;
+    }
+
+    /// <summary>The heading of an empty state; Leonardo's section role.</summary>
+    public static Label Subtitle(string text) => Section(text);
+
+    /// <summary>
+    /// Leonardo's meta role (12 epx, tertiary text colour): counts, page numbers and other small print
+    /// next to what they describe.
+    /// </summary>
+    public static Label Meta(string text)
+    {
+        var label = NoWrap(text);
+        label.Font = new Font(label.Font.Family, EpxToPoints(LeonardoTokens.Type.Meta.FontSize));
+        label.TextColor = EtoPlatform.Current.ColorScheme.TertiaryTextColor;
         return label;
     }
 

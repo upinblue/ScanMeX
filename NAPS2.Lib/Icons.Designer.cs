@@ -572,6 +572,16 @@ namespace NAPS2 {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
+        internal static byte[] close_small {
+            get {
+                object obj = ResourceManager.GetObject("close_small", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
         internal static byte[] close_hires {
             get {
                 object obj = ResourceManager.GetObject("close_hires", resourceCulture);
@@ -585,6 +595,26 @@ namespace NAPS2 {
         internal static byte[] cog {
             get {
                 object obj = ResourceManager.GetObject("cog", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] more {
+            get {
+                object obj = ResourceManager.GetObject("more", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] more_hires {
+            get {
+                object obj = ResourceManager.GetObject("more_hires", resourceCulture);
                 return ((byte[])(obj));
             }
         }
@@ -785,6 +815,16 @@ namespace NAPS2 {
         internal static byte[] console {
             get {
                 object obj = ResourceManager.GetObject("console", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] console_small {
+            get {
+                object obj = ResourceManager.GetObject("console_small", resourceCulture);
                 return ((byte[])(obj));
             }
         }
@@ -1105,6 +1145,16 @@ namespace NAPS2 {
         internal static byte[] email_attach {
             get {
                 object obj = ResourceManager.GetObject("email_attach", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] email_attach_small {
+            get {
+                object obj = ResourceManager.GetObject("email_attach_small", resourceCulture);
                 return ((byte[])(obj));
             }
         }
@@ -1632,6 +1682,16 @@ namespace NAPS2 {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
+        internal static byte[] pictures_small {
+            get {
+                object obj = ResourceManager.GetObject("pictures_small", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
         internal static byte[] pictures_hires {
             get {
                 object obj = ResourceManager.GetObject("pictures_hires", resourceCulture);
@@ -1645,6 +1705,16 @@ namespace NAPS2 {
         internal static byte[] printer {
             get {
                 object obj = ResourceManager.GetObject("printer", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] printer_small {
+            get {
+                object obj = ResourceManager.GetObject("printer_small", resourceCulture);
                 return ((byte[])(obj));
             }
         }

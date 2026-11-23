@@ -29,7 +29,7 @@ public class DocumentInspector
     private readonly Label _status = C.Label("");
     private readonly Label _identifierLabel = C.Secondary("");
     private readonly TextBox _identifier = new();
-    private readonly LayoutColumn _barcodes = L.Column().Spacing(1);
+    private readonly LayoutColumn _barcodes = L.Column().Spacing(LeonardoTokens.Space.XS);
     private readonly Label _fileName = C.NoWrap("");
     private readonly Label _targets = C.Secondary("");
     private readonly Button _uploadButton;
@@ -82,11 +82,11 @@ public class DocumentInspector
         });
 
         Content = L.Column(
-            C.BodyStrong(UiStrings.DocumentInspectorTitle),
+            C.Section(UiStrings.DocumentInspectorTitle),
             L.Column(C.Label(UiStrings.DocumentInspectorNoSelection)
                 .DynamicWrap(DocumentPanel.PANEL_WRAP_WIDTH)).Visible(_emptyVis),
             L.Column(
-                L.Row(_statusIcon.AlignCenter(), _title.Scale()).Spacing(6),
+                L.Row(_statusIcon.AlignCenter(), _title.Scale()).Spacing(LeonardoTokens.Space.S),
                 _status.DynamicWrap(DocumentPanel.PANEL_WRAP_WIDTH),
                 C.Spacer(),
                 _identifierLabel,
@@ -98,12 +98,15 @@ public class DocumentInspector
                 L.Row(C.Secondary(UiStrings.DocumentFileNameLabel).Width(70), _fileName.Scale()),
                 L.Row(C.Secondary(UiStrings.DocumentTargetsLabel).Width(70), _targets.Scale()),
                 C.Spacer(),
-                L.Row(_uploadButton, _discardButton, C.Filler()).Spacing(4)
+                L.Row(_uploadButton, _discardButton, C.Filler()).Spacing(LeonardoTokens.Space.S)
             ).Visible(_detailVis)
-        ).Spacing(3);
+        ).Spacing(LeonardoTokens.Space.XS);
     }
 
     public LayoutElement Content { get; }
+
+    /// <summary>WCAG 2.2's minimum target size (SC 2.5.8), in epx.</summary>
+    private const int RemoveButtonSize = 24;
 
     public ScannedDocument? Document => _document;
 
@@ -149,8 +152,9 @@ public class DocumentInspector
         try
         {
             var severity = SeverityOf(_document.Status);
-            _title.Text = string.Format(UiStrings.DocumentListRow, _document.SequenceIndex + 1,
-                _document.PageCount);
+            _title.Text = _document.PageCount == 1
+                ? string.Format(UiStrings.DocumentListRowOnePage, _document.SequenceIndex + 1)
+                : string.Format(UiStrings.DocumentListRow, _document.SequenceIndex + 1, _document.PageCount);
             _status.Text = DescribeStatus(_document);
             _status.TextColor = severity == NotificationSeverity.Neutral
                 ? _colorScheme.SecondaryTextColor
@@ -207,13 +211,23 @@ public class DocumentInspector
             .GetIcon(IconOf(_document.Status), _iconScale)?.Tint(iconColor);
     }
 
+    /// <summary>
+    /// The colour a document's status is drawn in. A finished document is neutral, not green: green
+    /// confirms briefly (the notification that says it was filed), and a day of finished documents
+    /// painted green would leave nothing for a failure to stand out against. The check mark still
+    /// says it is done; only the colour is reserved for what needs attention.
+    /// </summary>
     public static NotificationSeverity SeverityOf(DocumentStatus status) => status switch
     {
-        DocumentStatus.Done => NotificationSeverity.Success,
+        DocumentStatus.Done => NotificationSeverity.Neutral,
         DocumentStatus.Failed => NotificationSeverity.Error,
         DocumentStatus.NeedsIdentifier => NotificationSeverity.Warning,
         _ => NotificationSeverity.Neutral
     };
+
+    /// <summary>"1 page" or "4 pages": the counts the operator reads are written out, not "page(s)".</summary>
+    public static string PageCount(int count) =>
+        count == 1 ? UiStrings.DocumentPageCountOne : string.Format(UiStrings.DocumentPageCount, count);
 
     public static string IconOf(DocumentStatus status) => status switch
     {
@@ -346,19 +360,23 @@ public class DocumentInspector
             // Where it was found, not what kind it is. The symbology mattered while phantom reads were
             // possible; now that detection is restricted to the profile's own types, a code that turns up
             // here is one of them, and the page is what the operator needs to go and look at.
-            var detail = C.Secondary(barcode.Source == DocumentBarcodeSource.Manual
+            var detail = C.Meta(barcode.Source == DocumentBarcodeSource.Manual
                 ? UiStrings.BarcodeSourceManual
                 : string.Format(UiStrings.BarcodeOnPage, barcode.PageIndex + 1));
-            var remove = C.Link("×", () =>
+            // An icon button the size of a touch target, not a "×" link: the link was a 10 px glyph
+            // in link blue, which is hard to hit and says "this leads somewhere" rather than "remove".
+            var remove = C.Button(new ActionCommand(() =>
             {
                 _document?.RemoveBarcode(current);
                 BuildBarcodeRows();
                 Refresh();
                 _onChanged();
-            });
+            }) { IconName = "close_small" }, ButtonImagePosition.Overlay);
             remove.ToolTip = UiStrings.RemoveBarcodeTooltip;
+            EtoPlatform.Current.SetAccessibleName(remove, string.Format(UiStrings.RemoveBarcodeAccessibleName, barcode.Value));
             _barcodes.Children.Add(
-                L.Row(choice.Scale(), detail.AlignCenter(), remove.AlignCenter()).Spacing(6));
+                L.Row(choice.Scale(), detail.AlignCenter(),
+                    remove.Size(RemoveButtonSize, RemoveButtonSize).AlignCenter()).Spacing(LeonardoTokens.Space.S));
         }
 
         _ownValueChoice = first == null

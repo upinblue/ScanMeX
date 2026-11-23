@@ -21,6 +21,13 @@ public class WinFormsDesktopForm : DesktopForm
     private readonly Dictionary<DesktopToolbarMenuType, WF.ToolStripSplitButton> _menuButtons = new();
 
     /// <summary>
+    /// The submenus of "More" that stand in for a toolbar menu (Save images, Email PDF), with the
+    /// button that opens "More". See <see cref="ShowToolbarMenu"/>.
+    /// </summary>
+    private readonly Dictionary<DesktopToolbarMenuType, (WF.ToolStripDropDownItem owner, WF.ToolStripMenuItem item)>
+        _subMenus = new();
+
+    /// <summary>
     /// Where the trailing-aligned utility group starts in the item list, or -1 while the leading
     /// group is still being built. See <see cref="AddToolbarItem"/>.
     /// </summary>
@@ -159,6 +166,8 @@ public class WinFormsDesktopForm : DesktopForm
     {
         // The item list is rebuilt from scratch here, so the marker from the last pass is stale.
         _utilityGroupIndex = -1;
+        _menuButtons.Clear();
+        _subMenus.Clear();
         base.CreateToolbarsAndMenus();
     }
 
@@ -198,7 +207,9 @@ public class WinFormsDesktopForm : DesktopForm
         _mainToolStrip = ((ToolBarHandler) ToolBar.Handler).Control;
         _profilesToolStrip = new WF.ToolStrip();
 
-        _mainToolStrip.ShowItemToolTips = false;
+        // Tooltips only where an item sets one: the icon-only buttons, and a command saying why it is
+        // disabled. AutoToolTip is turned off per item, so labelled buttons don't repeat their label.
+        _mainToolStrip.ShowItemToolTips = true;
         _mainToolStrip.TabStop = true;
         EtoPlatform.Current.AttachDpiDependency(this,
             scale => _mainToolStrip.ImageScalingSize = new Size((int) (32 * scale), (int) (32 * scale)));
@@ -343,6 +354,25 @@ public class WinFormsDesktopForm : DesktopForm
         AddToolbarItem(item);
     }
 
+    protected override void CreateToolbarIconButton(Command command)
+    {
+        var item = new WF.ToolStripButton { DisplayStyle = WF.ToolStripItemDisplayStyle.Image };
+        ApplyCommand(item, command, iconOnly: true);
+        AddToolbarItem(item);
+    }
+
+    protected override void CreateToolbarIconMenu(Command command, MenuProvider menu)
+    {
+        var item = new WF.ToolStripDropDownButton
+        {
+            DisplayStyle = WF.ToolStripItemDisplayStyle.Image,
+            ShowDropDownArrow = false
+        };
+        ApplyCommand(item, command, iconOnly: true);
+        AddToolbarItem(item);
+        menu.Handle(subItems => SetUpMenu(item, subItems));
+    }
+
     protected override void CreateToolbarButtonWithMenu(Command command, DesktopToolbarMenuType menuType,
         MenuProvider menu)
     {
@@ -380,8 +410,12 @@ public class WinFormsDesktopForm : DesktopForm
                     }, commandSubItem.Command));
                     break;
                 case MenuProvider.SubMenuItem subMenuSubItem:
-                    var subMenu = new WF.ToolStripMenuItem();
+                    var subMenu = new WF.ToolStripMenuItem { ImageScaling = WF.ToolStripItemImageScaling.None };
                     ApplyCommand(subMenu, subMenuSubItem.Command);
+                    if (GetSubMenuType(subMenuSubItem.Command) is { } subMenuType)
+                    {
+                        _subMenus[subMenuType] = (item, subMenu);
+                    }
                     // TODO: If submenus are dynamic this will memory leak or something
                     subMenuSubItem.MenuProvider.Handle(subSubItems => SetUpMenu(subMenu, subSubItems));
                     item.DropDownItems.Add(subMenu);
@@ -429,15 +463,33 @@ public class WinFormsDesktopForm : DesktopForm
         AddToolbarItem(item);
     }
 
-    private WF.ToolStripItem ApplyCommand(WF.ToolStripItem item, Command command)
+    private WF.ToolStripItem ApplyCommand(WF.ToolStripItem item, Command command, bool iconOnly = false)
     {
         void SetItemText() => item.Text = item is WF.ToolStripMenuItem ? command.MenuText : command.ToolBarText;
+        void SetToolTip()
+        {
+            var hint = (command as ActionCommand)?.Hint;
+            item.ToolTipText = hint ?? (iconOnly ? command.ToolBarText : null);
+        }
         EtoPlatform.Current.AttachDpiDependency(this,
-            scale => item.Image = ((ActionCommand) command).GetIconImage(scale).ToSD());
+            scale => item.Image = GetItemIcon(item, (ActionCommand) command, scale));
         SetItemText();
+        item.AutoToolTip = false;
+        if (iconOnly)
+        {
+            // The text stays set -- it carries the Alt access key -- but only the icon is drawn, so
+            // the accessible name and the tooltip are what name the button.
+            item.AccessibleName = command.ToolBarText;
+        }
+        SetToolTip();
         if (command is ActionCommand actionCommand)
         {
-            actionCommand.TextChanged += (_, _) => SetItemText();
+            actionCommand.TextChanged += (_, _) =>
+            {
+                SetItemText();
+                SetToolTip();
+            };
+            actionCommand.HintChanged += (_, _) => SetToolTip();
         }
         // TODO: We want a better way of determining which keyboard shortcuts are worth showing
         // Ideally we could show them all, but it can be really distracting. So only showing F2/F3 etc. right now.
@@ -468,7 +520,36 @@ public class WinFormsDesktopForm : DesktopForm
 
     public override void ShowToolbarMenu(DesktopToolbarMenuType menuType)
     {
-        _menuButtons.Get(menuType)?.ShowDropDown();
+        if (_menuButtons.Get(menuType) is { } button)
+        {
+            button.ShowDropDown();
+        }
+        else if (_subMenus.TryGetValue(menuType, out var subMenu))
+        {
+            // Save images and Email PDF live in "More" now; asking for their menu opens it there.
+            subMenu.owner.ShowDropDown();
+            subMenu.item.ShowDropDown();
+        }
+        else
+        {
+            // The button is hidden (HiddenButtons) and so is its menu. Saying nothing here is how a
+            // keyboard shortcut ends up doing nothing at all.
+            Log.Info($"No toolbar menu for {menuType} to show; its button is hidden.");
+        }
+    }
+
+    /// <summary>
+    /// A toolbar button gets the command's own icon. A menu item gets the 16px variant: a command
+    /// that is a button elsewhere carries its 32px name (Print, OCR, Console in "More"), and drawn
+    /// at that size in a menu it makes its row twice as tall as the rest.
+    /// </summary>
+    private static Image? GetItemIcon(WF.ToolStripItem item, ActionCommand command, float scale)
+    {
+        if (item is WF.ToolStripMenuItem && command.IconName is { } name && !name.EndsWith("_small"))
+        {
+            return EtoPlatform.Current.IconProvider.GetIcon(name + "_small", scale)?.ToSD();
+        }
+        return command.GetIconImage(scale)?.ToSD();
     }
 
     private void SaveToolStripLocation()

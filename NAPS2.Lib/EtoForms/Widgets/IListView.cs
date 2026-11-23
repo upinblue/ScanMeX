@@ -34,4 +34,18 @@ public interface IListView<T> : Util.ISelectable<T> where T : notnull
     void ApplyDiffs(ListViewDiffs<T> diffs);
 
     void RegenerateImages();
+
+    /// <summary>
+    /// Where the section headings read their motion from: for a document id, the opacity of its arrive
+    /// marker and how much of the success colour its status icon still carries. A platform that draws
+    /// no headings of its own can ignore it.
+    /// </summary>
+    void SetSectionMotion(Func<Guid, (float ArriveBar, float Confirmation)>? motion)
+    {
+    }
+
+    /// <summary>Repaints the section headings, for a frame of their motion.</summary>
+    void InvalidateSections()
+    {
+    }
 }

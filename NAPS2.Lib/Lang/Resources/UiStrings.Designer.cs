@@ -3891,7 +3891,7 @@ namespace NAPS2.Lang.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to {0} page(s).
+        ///   Looks up a localized string similar to {0} pages.
         /// </summary>
         internal static string DocumentPageCount {
             get {
@@ -4170,7 +4170,7 @@ namespace NAPS2.Lang.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to {0} document(s).
+        ///   Looks up a localized string similar to {0} documents.
         /// </summary>
         internal static string DocumentSummaryTotal {
             get {
@@ -4533,7 +4533,7 @@ namespace NAPS2.Lang.Resources {
 
 
         /// <summary>
-        ///   Looks up a localized string similar to Document {0} · {1} page(s).
+        ///   Looks up a localized string similar to Document {0} · {1} pages.
         /// </summary>
         internal static string DocumentListRow {
             get {
@@ -4676,6 +4676,114 @@ namespace NAPS2.Lang.Resources {
         internal static string ProfileImportSecretsNeeded {
             get {
                 return ResourceManager.GetString("ProfileImportSecretsNeeded", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to More.
+        /// </summary>
+        internal static string ToolbarMore {
+            get {
+                return ResourceManager.GetString("ToolbarMore", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Document.
+        /// </summary>
+        internal static string ToolbarDocument {
+            get {
+                return ResourceManager.GetString("ToolbarDocument", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Manage profiles....
+        /// </summary>
+        internal static string ManageProfiles {
+            get {
+                return ResourceManager.GetString("ManageProfiles", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to No document is waiting for upload..
+        /// </summary>
+        internal static string UploadNothingPendingHint {
+            get {
+                return ResourceManager.GetString("UploadNothingPendingHint", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Documents are waiting for an identification. Enter it in the document list..
+        /// </summary>
+        internal static string UploadWaitingForIdentifierHint {
+            get {
+                return ResourceManager.GetString("UploadWaitingForIdentifierHint", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Language:.
+        /// </summary>
+        internal static string LanguageLabel {
+            get {
+                return ResourceManager.GetString("LanguageLabel", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to About {0}.
+        /// </summary>
+        internal static string AboutAppFormat {
+            get {
+                return ResourceManager.GetString("AboutAppFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to 1 page.
+        /// </summary>
+        internal static string DocumentPageCountOne {
+            get {
+                return ResourceManager.GetString("DocumentPageCountOne", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to 1 document.
+        /// </summary>
+        internal static string DocumentSummaryTotalOne {
+            get {
+                return ResourceManager.GetString("DocumentSummaryTotalOne", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Document {0} · 1 page.
+        /// </summary>
+        internal static string DocumentListRowOnePage {
+            get {
+                return ResourceManager.GetString("DocumentListRowOnePage", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Remove barcode {0}.
+        /// </summary>
+        internal static string RemoveBarcodeAccessibleName {
+            get {
+                return ResourceManager.GetString("RemoveBarcodeAccessibleName", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to New document: {0}.
+        /// </summary>
+        internal static string DocumentArrivedAnnouncement {
+            get {
+                return ResourceManager.GetString("DocumentArrivedAnnouncement", resourceCulture);
             }
         }
 

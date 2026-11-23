@@ -1,42 +1,29 @@
+using System.Windows.Forms;
 using Microsoft.Win32;
-using EtoColor = Eto.Drawing.Color;
 
 namespace NAPS2.EtoForms.WinForms;
 
 public class WinFormsDarkModeProvider : IDarkModeProvider
 {
-    private bool? _value;
-    private EtoColor? _accent;
-    private bool _accentRead;
+    private bool _darkMode;
+    private bool _highContrast;
 
     /// <remarks>
     /// Both values are read up front rather than on first use, because the change event compares the
-    /// system's values against them. With the accent still unread, the first preference change of any
-    /// kind -- an accessibility client attaching is one -- looked like the accent having changed, and
-    /// the window rebuilt itself for nothing.
+    /// system's values against them. With a value still unread, the first preference change of any
+    /// kind -- an accessibility client attaching is one -- looked like a theme change, and the window
+    /// rebuilt itself for nothing.
     /// </remarks>
     public WinFormsDarkModeProvider()
     {
-        _value = ReadDarkMode();
-        _accent = ReadAccentColor();
-        _accentRead = true;
+        _darkMode = ReadDarkMode();
+        _highContrast = SystemInformation.HighContrast;
         SystemEvents.UserPreferenceChanged += OnUserPreferenceChanged;
     }
 
-    public bool IsDarkModeEnabled => _value ??= ReadDarkMode();
+    public bool IsDarkModeEnabled => _darkMode;
 
-    public EtoColor? AccentColor
-    {
-        get
-        {
-            if (!_accentRead)
-            {
-                _accent = ReadAccentColor();
-                _accentRead = true;
-            }
-            return _accent;
-        }
-    }
+    public bool IsHighContrastEnabled => _highContrast;
 
     private bool ReadDarkMode()
     {
@@ -52,39 +39,17 @@ public class WinFormsDarkModeProvider : IDarkModeProvider
         }
     }
 
-    /// <summary>
-    /// Reads the accent colour the user picked in Settings > Personalization. DWM stores it as a
-    /// single DWORD in 0xAABBGGRR order, i.e. the byte order is reversed relative to the usual
-    /// ARGB, which is why the red and blue components are swapped back here.
-    /// </summary>
-    private EtoColor? ReadAccentColor()
-    {
-        try
-        {
-            using var key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\DWM");
-            if (key?.GetValue("AccentColor") is not int abgr)
-            {
-                return null;
-            }
-            return EtoColor.FromArgb(abgr & 0xFF, (abgr >> 8) & 0xFF, (abgr >> 16) & 0xFF);
-        }
-        catch (Exception)
-        {
-            return null;
-        }
-    }
-
     public event EventHandler? DarkModeChanged;
 
     private void OnUserPreferenceChanged(object sender, UserPreferenceChangedEventArgs e)
     {
-        var newValue = ReadDarkMode();
-        var newAccent = ReadAccentColor();
-        if (newValue != _value || newAccent != _accent)
+        var darkMode = ReadDarkMode();
+        var highContrast = SystemInformation.HighContrast;
+        if (darkMode != _darkMode || highContrast != _highContrast)
         {
-            _value = newValue;
-            _accent = newAccent;
-            _accentRead = true;
+            _darkMode = darkMode;
+            _highContrast = highContrast;
+            Log.Info($"Theme changed: dark mode {darkMode}, contrast theme {highContrast}.");
             DarkModeChanged?.Invoke(this, EventArgs.Empty);
         }
     }

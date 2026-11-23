@@ -14,10 +14,16 @@ namespace NAPS2.EtoForms.Widgets;
 /// </remarks>
 /// <param name="Title">The name of the document, or what stands in for it.</param>
 /// <param name="Meta">The second, quieter line: page count, status, where it is going.</param>
-/// <param name="Color">The status colour, drawn as a dot in front of the title.</param>
+/// <param name="Color">The status colour the icon is tinted in.</param>
 /// <param name="StartIndex">The index of the section's first item.</param>
 /// <param name="Count">How many items are in it.</param>
-public record ListViewSection(string Title, string Meta, Color Color, int StartIndex, int Count)
+/// <param name="IconName">
+/// The status icon drawn in front of the title, or null for none. A shape, not just a colour: done,
+/// failed and waiting must stay distinguishable without colour vision and in a contrast theme.
+/// </param>
+/// <param name="DocumentId">The document the section heads, for its motion; null for unassigned pages.</param>
+public record ListViewSection(string Title, string Meta, Color Color, int StartIndex, int Count,
+    string? IconName = null, Guid? DocumentId = null)
 {
     public int EndIndex => StartIndex + Count - 1;
 

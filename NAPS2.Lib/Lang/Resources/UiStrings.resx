@@ -1427,7 +1427,7 @@
     <value>Documents from the next scan appear here.</value>
   </data>
   <data name="DocumentPageCount" xml:space="preserve">
-    <value>{0} page(s)</value>
+    <value>{0} pages</value>
   </data>
   <data name="SectionUnassigned" xml:space="preserve">
     <value>Not part of a document</value>
@@ -1520,7 +1520,7 @@
     <value>Finished.</value>
   </data>
   <data name="DocumentSummaryTotal" xml:space="preserve">
-    <value>{0} document(s)</value>
+    <value>{0} documents</value>
   </data>
   <data name="DocumentSummaryDone" xml:space="preserve">
     <value>{0} finished</value>
@@ -1640,7 +1640,7 @@
     <value>{0} document(s) dropped because their pages were deleted.</value>
   </data>
   <data name="DocumentListRow" xml:space="preserve">
-    <value>Document {0} · {1} page(s)</value>
+    <value>Document {0} · {1} pages</value>
   </data>
   <data name="DocumentNameMissingShort" xml:space="preserve">
     <value>(no identification)</value>
@@ -1687,5 +1687,41 @@
   </data>
   <data name="ProfileImportSecretsNeeded" xml:space="preserve">
     <value>These profiles cannot upload until the SAP password or the SharePoint Client Secret has been entered: {0}</value>
+  </data>
+  <data name="ToolbarMore" xml:space="preserve">
+    <value>More</value>
+  </data>
+  <data name="ToolbarDocument" xml:space="preserve">
+    <value>Document</value>
+  </data>
+  <data name="ManageProfiles" xml:space="preserve">
+    <value>Manage profiles...</value>
+  </data>
+  <data name="UploadNothingPendingHint" xml:space="preserve">
+    <value>No document is waiting for upload.</value>
+  </data>
+  <data name="UploadWaitingForIdentifierHint" xml:space="preserve">
+    <value>Documents are waiting for an identification. Enter it in the document list.</value>
+  </data>
+  <data name="LanguageLabel" xml:space="preserve">
+    <value>Language:</value>
+  </data>
+  <data name="AboutAppFormat" xml:space="preserve">
+    <value>About {0}</value>
+  </data>
+  <data name="DocumentPageCountOne" xml:space="preserve">
+    <value>1 page</value>
+  </data>
+  <data name="DocumentSummaryTotalOne" xml:space="preserve">
+    <value>1 document</value>
+  </data>
+  <data name="DocumentListRowOnePage" xml:space="preserve">
+    <value>Document {0} · 1 page</value>
+  </data>
+  <data name="RemoveBarcodeAccessibleName" xml:space="preserve">
+    <value>Remove barcode {0}</value>
+  </data>
+  <data name="DocumentArrivedAnnouncement" xml:space="preserve">
+    <value>New document: {0}</value>
   </data>
 </root>

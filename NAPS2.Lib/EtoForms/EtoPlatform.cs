@@ -56,6 +56,38 @@ public abstract class EtoPlatform
 
     public abstract void ConfigureDonateButton(Button button);
 
+    /// <summary>
+    /// The name a screen reader announces for a control that shows no text of its own, e.g. an
+    /// icon-only button. Eto has no API for it, so each platform sets it natively; one that can't
+    /// leaves the tooltip as the only description.
+    /// </summary>
+    public virtual void SetAccessibleName(Control control, string name)
+    {
+    }
+
+    /// <summary>
+    /// Whether the OS wants animations (Windows: Settings > Accessibility > Visual effects > Animation
+    /// effects). When it doesn't, Leonardo motion becomes a short crossfade.
+    /// </summary>
+    public virtual bool AnimationsEnabled => true;
+
+    /// <summary>
+    /// Tells a screen reader about something that happened without the focus moving -- Leonardo's
+    /// Arrive is announced this way. A platform without such an API says nothing.
+    /// </summary>
+    public virtual void Announce(Control control, string message)
+    {
+    }
+
+    /// <summary>
+    /// Draws Leonardo's arrive marker -- a short bar in the accent colour at the start of a row -- over
+    /// the rows of a grid, at the opacity <paramref name="opacity"/> gives for each row index (0 for
+    /// none). Repaint the grid to move it. A platform that can't paint over its rows draws nothing.
+    /// </summary>
+    public virtual void SetRowMarker(GridView grid, Func<int, float> opacity)
+    {
+    }
+
     public virtual void InitializeForegroundApp()
     {
     }

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Linq.Expressions;
 using Eto.Drawing;
 using Eto.Forms;
@@ -26,14 +27,34 @@ internal class SettingsForm : EtoDialogBase
     private readonly ActionCommand _keyboardShortcutsCommand;
     private readonly Button _sapConnection = new() { Text = UiStrings.SapConnectionTitle };
     private readonly Button _restoreDefaults = new() { Text = UiStrings.RestoreDefaults };
+    // Language and About used to be toolbar buttons. Windows apps keep both on their settings page,
+    // and the toolbar is for what the operator does with the pages in front of them.
+    private readonly DropDown _language = C.DropDown(scale: false);
+    private readonly LinkButton _about;
+    private readonly List<(string code, string name)> _cultures;
+    private readonly bool _showLanguage;
+    private readonly bool _showAbout;
 
     public SettingsForm(Naps2Config config, DesktopSubFormController desktopSubFormController,
-        DesktopFormProvider desktopFormProvider, IIconProvider iconProvider) : base(config)
+        DesktopFormProvider desktopFormProvider, IIconProvider iconProvider, CultureHelper cultureHelper)
+        : base(config)
     {
         Title = UiStrings.SettingsFormTitle;
         IconName = "cog_small";
 
         _desktopFormProvider = desktopFormProvider;
+        var hiddenButtons = config.Get(c => c.HiddenButtons);
+        _showLanguage = !hiddenButtons.HasFlag(ToolbarButtons.Language);
+        _showAbout = !hiddenButtons.HasFlag(ToolbarButtons.About);
+        _cultures = cultureHelper.GetAvailableCultures().ToList();
+        foreach (var (_, name) in _cultures)
+        {
+            _language.Items.Add(name);
+        }
+        _language.SelectedIndex = IndexOfCurrentCulture();
+        _language.Enabled = !config.AppLocked.Has(c => c.Culture);
+        _about = C.Link(string.Format(UiStrings.AboutAppFormat, AppBranding.Name),
+            desktopSubFormController.ShowAboutForm);
         UpdateValues(Config);
         _restoreDefaults.Click += RestoreDefaults_Click;
 
@@ -69,11 +90,17 @@ internal class SettingsForm : EtoDialogBase
             L.GroupBox(
                 UiStrings.Interface,
                 L.Column(
+                    _showLanguage
+                        ? L.Row(
+                            C.Label(UiStrings.LanguageLabel).AlignCenter().Padding(right: 20),
+                            _language.MinWidth(160)
+                        ).Aligned()
+                        : C.None(),
                     PlatformCompat.System.SupportsTheme
                         ? L.Row(
-                            C.Label(UiStrings.ThemeLabel).AlignCenter().Padding(right: 10),
+                            C.Label(UiStrings.ThemeLabel).AlignCenter().Padding(right: 20),
                             _theme.AsControl().MinWidth(100)
-                        )
+                        ).Aligned()
                         : C.None(),
                     PlatformCompat.System.SupportsShowPageNumbers ? _showPageNumbers : C.None(),
                     PlatformCompat.System.SupportsProfilesToolbar ? _showProfilesToolbar : C.None(),
@@ -112,6 +139,7 @@ internal class SettingsForm : EtoDialogBase
             //     C.Button(_imageSettingsCommand, ButtonImagePosition.Left),
             //     C.Button(_emailSettingsCommand, ButtonImagePosition.Left)),
             C.Filler(),
+            _showAbout ? _about.AlignLeading() : C.None(),
             L.Row(
                 _restoreDefaults.MinWidth(140),
                 C.Filler(),
@@ -168,12 +196,40 @@ internal class SettingsForm : EtoDialogBase
         SetIfChanged(c => c.SingleInstance, _singleInstance.IsChecked());
         transact.Commit();
 
-        _desktopFormProvider.DesktopForm.Invalidate();
-        _desktopFormProvider.DesktopForm.PlaceProfilesToolbar();
+        var desktop = _desktopFormProvider.DesktopForm;
+        desktop.Invalidate();
+        desktop.PlaceProfilesToolbar();
         if (themeChanged)
         {
             EtoPlatform.Current.ColorScheme.UserThemeChanged();
         }
+
+        var index = _language.SelectedIndex;
+        if (_showLanguage && _language.Enabled && index >= 0 && index != IndexOfCurrentCulture())
+        {
+            var cultureId = _cultures[index].code;
+            // After this dialog has closed: switching rebuilds the main window, which takes its open
+            // modal children with it.
+            Application.Instance.AsyncInvoke(() => desktop.ChangeCulture(cultureId));
+        }
+    }
+
+    /// <summary>
+    /// The language the UI is in now: the one in the config, or -- when none was ever picked -- the
+    /// one Windows chose, matched by name and then by language alone (de-AT runs the German strings).
+    /// </summary>
+    private int IndexOfCurrentCulture()
+    {
+        var current = Config.Get(c => c.Culture);
+        if (string.IsNullOrWhiteSpace(current))
+        {
+            current = CultureInfo.CurrentUICulture.Name;
+        }
+        var exact = _cultures.FindIndex(x => string.Equals(x.code, current, StringComparison.OrdinalIgnoreCase));
+        if (exact >= 0) return exact;
+        var language = current.Split('-')[0];
+        var byLanguage = _cultures.FindIndex(x => string.Equals(x.code, language, StringComparison.OrdinalIgnoreCase));
+        return byLanguage >= 0 ? byLanguage : _cultures.FindIndex(x => x.code == "en");
     }
 
     private void RestoreDefaults_Click(object? sender, EventArgs e)

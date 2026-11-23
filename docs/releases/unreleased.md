@@ -1,15 +1,46 @@
-# Unreleased — scan throughput
+# Unreleased
 
-Material for the next release's notes. When that release is cut, fold the **Improved** section below into
-`docs/releases/<version>.md` and its summary into `CHANGELOG.md`, then delete this file.
+Material for the next release's notes. When that release is cut, fold the **Changed** and **Improved**
+sections below into `docs/releases/<version>.md` and their summary into `CHANGELOG.md`, then delete this
+file.
 
-Everything here was measured on the customer's own paperwork, from Release builds, on an Intel Core
+## Changed — the up in blue design language
+
+ScanMe now follows Leonardo, the design language of up in blue. Nothing about scanning, separation or
+archiving changed; what changed is how the window looks and where a few commands are.
+
+- **The toolbar is ordered by the work.** Scan and Import come first, then Upload documents and Save
+  PDF, then the commands that correct pages (Image, Rotate, Move, Reorder and the new **Document** menu
+  with "Split document here" and "Merge with previous document"), then Delete and Clear. Save images,
+  Email PDF, Print, OCR and the console are under **More** (…) at the end of the toolbar; Settings is the
+  gear next to it. Profiles is in the Scan menu ("Manage profiles..."). Language and About are in
+  Settings. Every keyboard shortcut works as before, and buttons an administrator has hidden stay hidden.
+- **A greyed-out Upload documents button says why** when you point at it: nothing is waiting, or
+  documents are still waiting for an identification.
+- **Colours are up in blue's**: brand blue for the primary action and for selection, and quieter,
+  slightly blue greys everywhere else. ScanMe no longer takes its accent from the Windows accent colour.
+- **Windows contrast themes are respected.** With a contrast theme switched on, ScanMe draws in the
+  theme's colours instead of its own.
+- **Finished documents are no longer green.** A filed document keeps its check mark in a neutral colour,
+  so a failed or held-back document is the one that stands out. Document headings over the pages show
+  the same status symbol as the document list instead of a coloured dot.
+- **Removing a barcode from a document** is a proper button now, large enough to hit, instead of a
+  small "×".
+- Panel headings are larger, spacing follows a consistent grid, and counts read "1 page" / "4 pages"
+  instead of "page(s)".
+- **The window shows what just happened.** A newly scanned document is marked with a short blue bar in
+  the document list and over its pages for two seconds; a document that has just been filed shows its
+  check mark in green for a moment before it turns neutral; removed documents fade out of the list
+  instead of disappearing. Screen readers announce each new document. With "Animation effects" switched
+  off in Windows the changes are a short fade, and a click in the document list ends them at once.
+
+## Improved — scan throughput
+
+The throughput figures below were measured on the customer's own paperwork, from Release builds, on an Intel Core
 i5-14400 (10 cores / 16 threads) under Windows 11. The measurement drives one page at a time through the
 real post-processing chain — the transforms, blank detection, writing the page to its backing file,
 barcode detection and the thumbnail — the way the scanner's own driver does, so the figures are what a
 feeder is actually waiting for.
-
-## Improved
 
 - **A scanned stack is filed three to four times faster.** The work each page goes through between the
   scanner and the window used to run on a single thread while the rest of the machine sat idle; it now

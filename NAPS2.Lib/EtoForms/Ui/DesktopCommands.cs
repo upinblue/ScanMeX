@@ -155,6 +155,33 @@ public class DesktopCommands
             Text = UiStrings.Print,
             IconName = "printer"
         };
+        // Headers only: they open a submenu and do nothing themselves. SaveImages and EmailPdf can't be
+        // used for this, because a submenu's header is clickable and would save or send straight away.
+        SaveImagesMenu = new ActionCommand
+        {
+            Text = UiStrings.SaveImages,
+            IconName = "pictures"
+        };
+        EmailPdfMenu = new ActionCommand
+        {
+            Text = UiStrings.EmailPdf,
+            IconName = "email_attach"
+        };
+        DocumentMenu = new ActionCommand
+        {
+            Text = UiStrings.ToolbarDocument,
+            IconName = "document"
+        };
+        MoreMenu = new ActionCommand
+        {
+            Text = UiStrings.ToolbarMore,
+            IconName = "more"
+        };
+        ManageProfiles = new ActionCommand(desktopSubFormController.ShowProfilesForm)
+        {
+            Text = UiStrings.ManageProfiles,
+            IconName = "blueprints"
+        };
         ImageMenu = new ActionCommand
         {
             Text = UiStrings.Image,
@@ -315,10 +342,12 @@ public class DesktopCommands
             Text = UiStrings.Console,
             IconName = "console"
         };
+        // An icon-only button at the trailing end of the toolbar now; Language and About moved into
+        // the settings dialog, which is where Windows apps keep them.
         Settings = new ActionCommand(desktopSubFormController.ShowSettingsForm)
         {
             Text = UiStrings.Settings,
-            IconName = hiddenButtons.HasFlag(ToolbarButtons.About) ? "cog" : "cog_small"
+            IconName = "cog"
         };
         About = new ActionCommand(desktopSubFormController.ShowAboutForm)
         {
@@ -416,6 +445,11 @@ public class DesktopCommands
     public ActionCommand EmailSelected { get; set; }
     public ActionCommand EmailSettings { get; set; }
     public ActionCommand Print { get; set; }
+    public ActionCommand SaveImagesMenu { get; set; }
+    public ActionCommand EmailPdfMenu { get; set; }
+    public ActionCommand DocumentMenu { get; set; }
+    public ActionCommand MoreMenu { get; set; }
+    public ActionCommand ManageProfiles { get; set; }
     public ActionCommand ImageMenu { get; set; }
     public ActionCommand ViewImage { get; set; }
     public ActionCommand Crop { get; set; }

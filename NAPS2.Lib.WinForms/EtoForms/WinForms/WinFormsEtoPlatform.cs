@@ -151,6 +151,79 @@ public class WinFormsEtoPlatform : EtoPlatform
         }
     }
 
+    public override void SetAccessibleName(Control control, string name)
+    {
+        control.ToNative().AccessibleName = name;
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool SystemParametersInfo(uint action, uint param, out bool value, uint winIni);
+
+    private const uint SPI_GETCLIENTAREAANIMATION = 0x1042;
+
+    /// <summary>
+    /// "Animation effects" in Windows Settings. Read each time rather than cached: it is a cheap call, and
+    /// the setting can change while the app runs.
+    /// </summary>
+    public override bool AnimationsEnabled =>
+        !SystemParametersInfo(SPI_GETCLIENTAREAANIMATION, 0, out var enabled, 0) || enabled;
+
+    public override void SetRowMarker(GridView grid, Func<int, float> opacity)
+    {
+        var native = (WF.DataGridView) grid.ToNative();
+        float scale = 1f;
+        // The bar gets a column of its own: the row header, narrowed to the bar plus a gap. The cell
+        // draws its image at the left edge whatever its padding says, so a bar painted over the row
+        // landed on the status icon.
+        native.RowHeadersVisible = true;
+        native.RowHeadersWidthSizeMode = WF.DataGridViewRowHeadersWidthSizeMode.DisableResizing;
+        native.RowHeadersBorderStyle = WF.DataGridViewHeaderBorderStyle.None;
+        AttachDpiDependency(grid, s =>
+        {
+            scale = s;
+            native.RowHeadersWidth = Math.Max(4, (int) Math.Round((3 + LeonardoTokens.Space.XS) * s));
+        });
+        // The header's own drawing (a raised cell with a selection triangle) is replaced by the surface.
+        native.CellPainting += (_, e) =>
+        {
+            if (e.ColumnIndex != -1 || e.RowIndex < 0 || e.Graphics == null) return;
+            using (var background = new SD.SolidBrush(native.BackgroundColor))
+            {
+                e.Graphics.FillRectangle(background, e.CellBounds);
+            }
+            e.Handled = true;
+        };
+        native.RowPostPaint += (_, e) =>
+        {
+            var value = opacity(e.RowIndex);
+            if (value <= 0) return;
+            int width = Math.Max(2, (int) Math.Round(3 * scale));
+            int inset = (int) Math.Round(LeonardoTokens.Space.XS * scale);
+            var bar = new SD.Rectangle(e.RowBounds.Left, e.RowBounds.Top + inset,
+                width, Math.Max(1, e.RowBounds.Height - 2 * inset));
+            var oldSmoothing = e.Graphics.SmoothingMode;
+            e.Graphics.SmoothingMode = SD.Drawing2D.SmoothingMode.AntiAlias;
+            using (var path = FluentShapes.RoundedRect(bar, width / 2f))
+            using (var brush = new SD.SolidBrush(SD.Color.FromArgb((int) (Math.Clamp(value, 0, 1) * 255),
+                       ColorScheme.AccentColor.ToSD())))
+            {
+                e.Graphics.FillPath(brush, path);
+            }
+            e.Graphics.SmoothingMode = oldSmoothing;
+        };
+    }
+
+    public override void Announce(Control control, string message)
+    {
+        var native = control.ToNative();
+        if (native.IsHandleCreated)
+        {
+            native.AccessibilityObject.RaiseAutomationNotification(
+                WF.Automation.AutomationNotificationKind.ItemAdded,
+                WF.Automation.AutomationNotificationProcessing.All, message);
+        }
+    }
+
     public override void ConfigureDonateButton(Button button)
     {
         var native = (WF.Button) button.ToNative();

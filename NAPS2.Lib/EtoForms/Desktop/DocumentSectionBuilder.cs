@@ -55,7 +55,7 @@ public class DocumentSectionBuilder
 
     private ListViewSection Describe(ScannedDocument? document, int startIndex, int count)
     {
-        var pageCount = string.Format(UiStrings.DocumentPageCount, count);
+        var pageCount = DocumentInspector.PageCount(count);
         if (document == null)
         {
             return new ListViewSection(UiStrings.SectionUnassigned, pageCount,
@@ -67,6 +67,7 @@ public class DocumentSectionBuilder
             : _colorScheme.GetSeverityColor(severity);
         var title = DocumentInspector.ResolveName(document) ?? UiStrings.DocumentNameMissingShort;
         var meta = $"{pageCount}  ·  {DocumentInspector.DescribeStatus(document)}";
-        return new ListViewSection(title, meta, color, startIndex, count);
+        return new ListViewSection(title, meta, color, startIndex, count, DocumentInspector.IconOf(document.Status),
+            document.Id);
     }
 }

@@ -354,6 +354,28 @@ public class WinFormsListView<T> : IListView<T> where T : notnull
     /// <summary>The height of a group's heading band, remembered so it can be drawn while scrolled.</summary>
     private int _headerBandHeight;
 
+    private Func<Guid, (float ArriveBar, float Confirmation)>? _sectionMotion;
+
+    public void SetSectionMotion(Func<Guid, (float ArriveBar, float Confirmation)>? motion)
+    {
+        _sectionMotion = motion;
+    }
+
+    /// <summary>
+    /// Repaints only the heading bands -- a frame of motion changes a 3 px bar and a 16 px icon, and the
+    /// thumbnails under them have no reason to be drawn again 60 times a second.
+    /// </summary>
+    public void InvalidateSections()
+    {
+        for (int i = 0; i < _sections.Count; i++)
+        {
+            if (HeaderBandFor(i) is { } band)
+            {
+                _view.Invalidate(band);
+            }
+        }
+    }
+
     public void SetSections(IReadOnlyList<ListViewSection> sections)
     {
         if (_sections.SequenceEqual(sections))
@@ -445,8 +467,8 @@ public class WinFormsListView<T> : IListView<T> where T : notnull
         var oldSmoothing = e.Graphics.SmoothingMode;
         e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
         using var titleFont = new Font(_view.Font, FontStyle.Bold);
-        int pad = (int) Math.Round(6 * _dpiScale);
-        int dotSize = (int) Math.Round(8 * _dpiScale);
+        int pad = (int) Math.Round(LeonardoTokens.Space.S * _dpiScale);
+        int iconSize = (int) Math.Round(LeonardoTokens.Size.Icon * _dpiScale);
         for (int i = 0; i < _sections.Count; i++)
         {
             var band = HeaderBandFor(i);
@@ -460,22 +482,72 @@ public class WinFormsListView<T> : IListView<T> where T : notnull
             {
                 e.Graphics.FillRectangle(background, rect);
             }
-            var dot = new Rectangle(rect.Left + pad, rect.Top + (rect.Height - dotSize) / 2, dotSize, dotSize);
-            using (var brush = new SolidBrush(section.Color.ToSD()))
+            // The status as a shape (check, cross, exclamation mark), the way the document list
+            // shows it, rather than a coloured dot: a dot says nothing without colour vision or in a
+            // contrast theme. The column is kept for a section without an icon, so titles line up.
+            var icon = new Rectangle(rect.Left + pad, rect.Top + (rect.Height - iconSize) / 2, iconSize, iconSize);
+            var (arrive, confirmation) = section.DocumentId is { } id && _sectionMotion != null
+                ? _sectionMotion(id)
+                : (0f, 0f);
+            if (arrive > 0)
             {
-                e.Graphics.FillEllipse(brush, dot);
+                // Leonardo's arrive marker: a short accent bar at the start of the heading, in the gap
+                // before the icon, fading out after the hold.
+                int barWidth = Math.Max(2, (int) Math.Round(3 * _dpiScale));
+                var bar = new Rectangle(icon.Left - pad / 2 - barWidth, icon.Top, barWidth, iconSize);
+                using var path = FluentShapes.RoundedRect(bar, barWidth / 2f);
+                using var brush = new SolidBrush(Color.FromArgb((int) (arrive * 255), scheme.AccentColor.ToSD()));
+                e.Graphics.FillPath(brush, path);
+            }
+            if (confirmation > 0 && section.IconName != null)
+            {
+                // Just filed: green for a moment, then the neutral the heading keeps. Not cached -- every
+                // frame is a different colour, and the cache would keep all of them.
+                var color = ColorScheme.Mix(section.Color,
+                    scheme.GetSeverityColor(Notifications.NotificationSeverity.Success), confirmation);
+                using var tinted = EtoPlatform.Current.IconProvider.GetIcon(section.IconName, _dpiScale)?.Tint(color);
+                if (tinted != null)
+                {
+                    using var image = tinted.ToSD();
+                    e.Graphics.DrawImage(image, icon);
+                }
+            }
+            else if (GetSectionIcon(section) is { } image)
+            {
+                e.Graphics.DrawImage(image, icon);
             }
             var titleSize = TextRenderer.MeasureText(section.Title, titleFont);
-            int x = dot.Right + pad;
+            int x = icon.Right + pad;
             int y = rect.Top + (rect.Height - titleSize.Height) / 2;
             TextRenderer.DrawText(e.Graphics, section.Title, titleFont, new Point(x, y),
                 scheme.ForegroundColor.ToSD());
+            // Leonardo's meta role. No rule under the heading: the band and the white space are the
+            // hierarchy, and a line per document drew a ledger across the canvas.
             TextRenderer.DrawText(e.Graphics, section.Meta, _view.Font,
-                new Point(x + titleSize.Width + pad * 2, y), scheme.SecondaryTextColor.ToSD());
-            using var rule = new Pen(Color.FromArgb(60, scheme.ForegroundColor.ToSD()));
-            e.Graphics.DrawLine(rule, rect.Left + pad, rect.Bottom - 1, rect.Right - pad, rect.Bottom - 1);
+                new Point(x + titleSize.Width + pad, y), scheme.TertiaryTextColor.ToSD());
         }
         e.Graphics.SmoothingMode = oldSmoothing;
+    }
+
+    private readonly Dictionary<(string name, Eto.Drawing.Color color, float scale), Image?> _sectionIcons = new();
+
+    /// <summary>
+    /// The tinted status icon for a section heading, cached because headings are painted on every
+    /// scroll step and tinting allocates a bitmap.
+    /// </summary>
+    private Image? GetSectionIcon(ListViewSection section)
+    {
+        if (section.IconName == null)
+        {
+            return null;
+        }
+        var key = (section.IconName, section.Color, _dpiScale);
+        if (!_sectionIcons.TryGetValue(key, out var image))
+        {
+            image = EtoPlatform.Current.IconProvider.GetIcon(section.IconName, _dpiScale)?.Tint(section.Color).ToSD();
+            _sectionIcons[key] = image;
+        }
+        return image;
     }
 
     /// <summary>

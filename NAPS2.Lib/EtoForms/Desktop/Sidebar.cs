@@ -147,14 +147,15 @@ public class Sidebar
         UpdateUiForProfile();
 
         return L.Column(
-            C.Filler().NaturalWidth(100),
+            C.Spacer().NaturalWidth(100),
             L.Column(
                 C.Button(NewProfileCommand, ButtonImagePosition.Left).Height(30).AlignCenter()
             ).Visible(_onboardingVis),
             L.Column(
-                // One Body Strong heading over the group, not bold field labels: Fluent uses the
-                // strong weight for section titles, and emphasising every label emphasises nothing.
-                C.BodyStrong(UiStrings.ScanConfig),
+                // One section heading over the panel, not bold field labels: emphasising every label
+                // emphasises nothing. Top-aligned like the document panel opposite, rather than
+                // floating in the middle of the window with empty space above it.
+                C.Section(UiStrings.ScanConfig).SpacingAfter(LeonardoTokens.Space.M),
                 L.Row(
                     C.Label(UiStrings.ProfileLabel).AlignTrailing(),
                     C.Filler(),
@@ -185,7 +186,8 @@ public class Sidebar
                 C.Button(ScanCommand, ButtonImagePosition.Left, ButtonFlags.Accent).AlignCenter().Height(32)
             ).Visible(!_onboardingVis),
             C.Filler()
-        ).Padding(left: parentWindow.LayoutController.DefaultSpacing + 10, right: 10).Visible(_sidebarVis);
+        ).Padding(left: LeonardoTokens.Space.L, right: LeonardoTokens.Space.L, top: LeonardoTokens.Space.M,
+            bottom: LeonardoTokens.Space.M).Visible(_sidebarVis);
     }
 
     private void UpdateUiForProfile()

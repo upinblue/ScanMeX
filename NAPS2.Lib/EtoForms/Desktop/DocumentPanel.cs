@@ -34,12 +34,13 @@ public class DocumentPanel : IDisposable
     private readonly ObservableCollection<DocumentRow> _rows = [];
     private readonly DocumentInspector _inspector;
     // Wrapping, unlike C.Secondary: four counts joined with separators do not fit one line at panel width.
-    private readonly Label _summary = C.Label("");
+    private readonly Label _summary = C.Meta("");
     private readonly Button _removeFinished;
     private readonly LayoutVisibility _panelVis = new(true);
     private readonly LayoutVisibility _emptyVis = new(true);
     private readonly LayoutVisibility _removeFinishedVis = new(false);
     private readonly LayoutVisibility _listVis = new(false);
+    private readonly DocumentMotion _motion = new(() => EtoPlatform.Current.AnimationsEnabled);
 
     /// <summary>
     /// How much of the panel the list may take before it starts scrolling. About six rows -- enough to
@@ -85,10 +86,28 @@ public class DocumentPanel : IDisposable
             Expand = true
         });
         _list.SelectionChanged += ListSelectionChanged;
+        // A row on its way out is drawn fading into the background. Its icon is faded in DocumentRow;
+        // the text colour can only be set here, per cell, as it is painted.
+        _list.CellFormatting += (_, e) =>
+        {
+            if (e.Item is DocumentRow row && _motion.Leaving(row.Id) is { } opacity)
+            {
+                e.ForegroundColor = ColorScheme.Mix(_colorScheme.ForegroundColor, _colorScheme.BackgroundColor,
+                    1 - opacity);
+            }
+        };
+        _motion.Frame += MotionFrame;
+        // Leonardo's arrive marker: a short accent bar at the start of a new document's row. Drawn by
+        // the platform over the row, because a grid cell draws its image into a fixed square and a
+        // bar composed into the icon came out squeezed to half its size.
+        EtoPlatform.Current.SetRowMarker(_list, rowIndex =>
+            rowIndex >= 0 && rowIndex < _rows.Count ? _motion.ArriveBar(_rows[rowIndex].Id) : 0);
+        _motion.Arrived += (_, document) =>
+            EtoPlatform.Current.Announce(_list, string.Format(UiStrings.DocumentArrivedAnnouncement,
+                DocumentInspector.ResolveName(document) ?? UiStrings.DocumentNameMissingShort));
         // The grid does not inherit the theme, and its unpainted area comes out black on the Fluent
         // surface. Both the control and the area below the last row have to be told what colour they are.
         _list.BackgroundColor = _colorScheme.BackgroundColor;
-        _summary.TextColor = _colorScheme.SecondaryTextColor;
         // Row icons are bitmaps, so they need the real scale; picked once here rather than per row,
         // because the rows are rebuilt on every change.
         EtoPlatform.Current.AttachDpiDependency(_list, scale =>
@@ -107,13 +126,16 @@ public class DocumentPanel : IDisposable
 
     public bool IsVisible => _panelVis.IsVisible;
 
+    /// <summary>The window's document motion, which the canvas headings play along with this list.</summary>
+    public DocumentMotion Motion => _motion;
+
     public LayoutElement CreateView(LayoutController layoutController)
     {
         _layoutController = layoutController;
         _panelVis.IsVisible = _config.Get(c => c.DocumentPanelVisible);
         UpdateRows();
         return L.Column(
-            C.BodyStrong(UiStrings.DocumentPanelTitle),
+            C.Section(UiStrings.DocumentPanelTitle),
             _summary.DynamicWrap(PANEL_WRAP_WIDTH),
             L.Column(
                 C.Spacer(),
@@ -126,7 +148,8 @@ public class DocumentPanel : IDisposable
             L.Row(_removeFinished, C.Filler()).Visible(_removeFinishedVis),
             C.Spacer(),
             L.Column(L.Scrollable(_inspector.Content)).Scale()
-        ).Padding(left: 10, right: 10, top: 8, bottom: 8).Spacing(6).Visible(_panelVis);
+        ).Padding(left: LeonardoTokens.Space.L, right: LeonardoTokens.Space.L,
+            top: LeonardoTokens.Space.M, bottom: LeonardoTokens.Space.M).Visible(_panelVis);
     }
 
     public void ToggleVisibility()
@@ -157,6 +180,7 @@ public class DocumentPanel : IDisposable
     private void UpdateRows()
     {
         var documents = _queue.Documents;
+        _motion.Observe(documents);
         if (_inspector.IsEditingIdentifier)
         {
             // An upload finishing in the background must not yank the caret out of the box either. The
@@ -168,23 +192,33 @@ public class DocumentPanel : IDisposable
         _suppressSelectionEvent = true;
         try
         {
+            var oldRows = _rows.ToList();
             _rows.Clear();
             foreach (var document in documents)
             {
-                _rows.Add(new DocumentRow(document, _colorScheme, _iconScale));
+                _rows.Add(new DocumentRow(document, _colorScheme, _iconScale, _motion));
             }
-            var index = _selectedId == null
-                ? -1
-                : documents.ToList().FindIndex(x => x.Id == _selectedId);
-            if (index < 0 && documents.Count > 0)
+            // A document that was just removed keeps its row where it was until it has faded out
+            // (Leave). Never selectable: the selection is placed by document id below, and a ghost
+            // has no document in the queue to be selected.
+            for (int i = 0; i < oldRows.Count; i++)
+            {
+                var ghost = oldRows[i];
+                if (_motion.IsLeaving(ghost.Id) && documents.All(x => x.Id != ghost.Id))
+                {
+                    ghost.Describe(ghost.Document, _colorScheme, _iconScale, _motion);
+                    _rows.Insert(Math.Min(i, _rows.Count), ghost);
+                }
+            }
+            var selected = _selectedId == null ? null : documents.FirstOrDefault(x => x.Id == _selectedId);
+            if (selected == null && documents.Count > 0)
             {
                 // Nothing selected, or the selected document is gone: fall back to the first one that
                 // still needs attention, which is what the operator is going to open anyway.
-                index = documents.ToList().FindIndex(x => x.Status != DocumentStatus.Done);
-                if (index < 0) index = 0;
+                selected = documents.FirstOrDefault(x => x.Status != DocumentStatus.Done) ?? documents[0];
             }
-            _list.SelectedRow = index;
-            _selectedId = index >= 0 ? documents[index].Id : null;
+            _list.SelectedRow = selected == null ? -1 : RowIndexOf(selected.Id);
+            _selectedId = selected?.Id;
         }
         finally
         {
@@ -192,8 +226,9 @@ public class DocumentPanel : IDisposable
         }
 
         _inspector.Show(_selectedId == null ? null : documents.FirstOrDefault(x => x.Id == _selectedId));
-        _emptyVis.IsVisible = documents.Count == 0;
-        _listVis.IsVisible = documents.Count > 0;
+        // By rows, not documents: the last document fading out keeps the list up until it has gone.
+        _emptyVis.IsVisible = _rows.Count == 0;
+        _listVis.IsVisible = _rows.Count > 0;
         var finished = documents.Count(x => x.Status == DocumentStatus.Done);
         _removeFinished.Text = string.Format(UiStrings.RemoveFinishedDocuments, finished);
         _removeFinishedVis.IsVisible = finished > 0;
@@ -207,10 +242,18 @@ public class DocumentPanel : IDisposable
         {
             return;
         }
-        var documents = _queue.Documents;
         var index = _list.SelectedRow;
-        var document = index >= 0 && index < documents.Count ? documents[index] : null;
+        var rowId = index >= 0 && index < _rows.Count ? _rows[index].Id : (Guid?) null;
+        var document = rowId == null ? null : _queue.Documents.FirstOrDefault(x => x.Id == rowId);
+        if (rowId != null && document == null)
+        {
+            // A row fading out after its document was removed. Nothing to inspect.
+            return;
+        }
         _selectedId = document?.Id;
+        // A click ends whatever is still moving; motion never stands between the operator and the next
+        // thing they do.
+        _motion.SkipToEnd();
         _inspector.Show(document);
         if (document != null)
         {
@@ -228,7 +271,12 @@ public class DocumentPanel : IDisposable
         var done = documents.Count(x => x.Status == DocumentStatus.Done);
         var failed = documents.Count(x => x.Status == DocumentStatus.Failed);
         var waiting = documents.Count(x => x.Status == DocumentStatus.NeedsIdentifier);
-        var parts = new List<string> { string.Format(UiStrings.DocumentSummaryTotal, documents.Count) };
+        var parts = new List<string>
+        {
+            documents.Count == 1
+                ? UiStrings.DocumentSummaryTotalOne
+                : string.Format(UiStrings.DocumentSummaryTotal, documents.Count)
+        };
         if (done > 0) parts.Add(string.Format(UiStrings.DocumentSummaryDone, done));
         if (failed > 0) parts.Add(string.Format(UiStrings.DocumentSummaryFailed, failed));
         if (waiting > 0) parts.Add(string.Format(UiStrings.DocumentSummaryNeedsIdentifier, waiting));
@@ -254,7 +302,7 @@ public class DocumentPanel : IDisposable
         var row = _rows.FirstOrDefault(x => x.Id == _selectedId);
         if (document != null && row != null)
         {
-            row.Describe(document, _colorScheme, _iconScale);
+            row.Describe(document, _colorScheme, _iconScale, _motion);
             _list.Invalidate();
         }
         if (!_inspector.IsEditingIdentifier)
@@ -338,7 +386,7 @@ public class DocumentPanel : IDisposable
             }
             var document = documents[0]!;
             _selectedId = document.Id;
-            var index = _queue.Documents.ToList().FindIndex(x => x.Id == document.Id);
+            var index = RowIndexOf(document.Id);
             _suppressSelectionEvent = true;
             try
             {
@@ -353,8 +401,39 @@ public class DocumentPanel : IDisposable
         });
     }
 
+    private int RowIndexOf(Guid id)
+    {
+        for (int i = 0; i < _rows.Count; i++)
+        {
+            if (_rows[i].Id == id) return i;
+        }
+        return -1;
+    }
+
+    /// <summary>
+    /// A frame of document motion: the rows that are animating are described again -- in place, which
+    /// leaves the selection and the focus alone (see <see cref="DocumentRow"/>) -- and the grid repainted.
+    /// Once a removed document has faded out the list is rebuilt without it, unless the operator is
+    /// typing an identification, in which case that waits for the box to lose focus like every rebuild.
+    /// </summary>
+    private void MotionFrame(object? sender, EventArgs e)
+    {
+        if (!_inspector.IsEditingIdentifier && _rows.Any(x => x.IsGhost && !_motion.IsLeaving(x.Id)))
+        {
+            UpdateRows();
+            return;
+        }
+        foreach (var row in _rows.Where(x => x.IsAnimated || x.IsGhost))
+        {
+            row.Describe(row.Document, _colorScheme, _iconScale, _motion);
+        }
+        _list.Invalidate();
+    }
+
     public void Dispose()
     {
+        _motion.Frame -= MotionFrame;
+        _motion.Dispose();
         _queue.Changed -= QueueChanged;
         _imageList.SelectionChanged -= SelectionChanged;
     }
@@ -374,10 +453,21 @@ public class DocumentPanel : IDisposable
     /// </remarks>
     private class DocumentRow
     {
-        public DocumentRow(ScannedDocument document, ColorScheme colorScheme, float iconScale)
+        public DocumentRow(ScannedDocument document, ColorScheme colorScheme, float iconScale,
+            DocumentMotion motion)
         {
-            Describe(document, colorScheme, iconScale);
+            Document = document;
+            Describe(document, colorScheme, iconScale, motion);
         }
+
+        /// <summary>The document as it was last described; what a row fading out goes on showing.</summary>
+        public ScannedDocument Document { get; private set; }
+
+        /// <summary>Whether the last description carried motion, so the next frame describes it again.</summary>
+        public bool IsAnimated { get; private set; }
+
+        /// <summary>Whether the row stands for a document that has left the queue and is fading out.</summary>
+        public bool IsGhost { get; private set; }
 
         public Image? Icon { get; private set; }
 
@@ -390,17 +480,35 @@ public class DocumentPanel : IDisposable
         /// </summary>
         public Guid Id { get; private set; }
 
-        public void Describe(ScannedDocument document, ColorScheme colorScheme, float iconScale)
+        public void Describe(ScannedDocument document, ColorScheme colorScheme, float iconScale,
+            DocumentMotion motion)
         {
             Id = document.Id;
+            Document = document;
             var severity = DocumentInspector.SeverityOf(document.Status);
             var color = severity == Notifications.NotificationSeverity.Neutral
                 ? colorScheme.SecondaryTextColor
                 : colorScheme.GetSeverityColor(severity);
+            // Just filed: the check mark is green for a moment, then the neutral it stays.
+            var confirmation = motion.Confirmation(document.Id);
+            if (confirmation > 0)
+            {
+                color = ColorScheme.Mix(color,
+                    colorScheme.GetSeverityColor(Notifications.NotificationSeverity.Success), confirmation);
+            }
+            var leaving = motion.Leaving(document.Id);
+            IsGhost = leaving != null;
+            if (leaving is { } opacity)
+            {
+                color = ColorScheme.Mix(color, colorScheme.BackgroundColor, 1 - opacity);
+            }
+            IsAnimated = confirmation > 0 || motion.ArriveBar(document.Id) > 0 || leaving != null;
+            var old = Icon;
             Icon = EtoPlatform.Current.IconProvider
                 .GetIcon(DocumentInspector.IconOf(document.Status), iconScale)?.Tint(color);
+            old?.Dispose();
             Text = $"{DocumentInspector.ResolveName(document) ?? UiStrings.DocumentNameMissingShort}  ·  " +
-                   string.Format(UiStrings.DocumentPageCount, document.PageCount);
+                   DocumentInspector.PageCount(document.PageCount);
         }
     }
 }

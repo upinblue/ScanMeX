@@ -33,9 +33,11 @@ public class LayoutController
 
     public Control Container => _layout;
 
-    public int RootPadding { get; set; } = 10;
-    public int DefaultLabelSpacing { get; set; } = 2;
-    public int DefaultSpacing { get; set; } = 6;
+    // Leonardo's grid: a window's content sits at the page margin (space.l), controls within a group
+    // are space.s apart, and a label is space.xs above the control it names.
+    public int RootPadding { get; set; } = LeonardoTokens.Space.L;
+    public int DefaultLabelSpacing { get; set; } = LeonardoTokens.Space.XS;
+    public int DefaultSpacing { get; set; } = LeonardoTokens.Space.S;
 
     public void Bind(Window window)
     {

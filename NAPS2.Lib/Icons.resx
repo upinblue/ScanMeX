@@ -229,6 +229,9 @@
   <data name="email_attach" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\email_attach.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
+  <data name="email_attach_small" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\email_attach-small.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
   <data name="email_attach_hires" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\email_attach-hires.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
@@ -448,6 +451,9 @@
   <data name="console" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\console.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
+  <data name="console_small" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\console-small.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
   <data name="console_hires" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\console-hires.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
@@ -499,6 +505,9 @@
   <data name="pictures" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\pictures.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
+  <data name="pictures_small" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\pictures-small.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
   <data name="pictures_hires" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\pictures-hires.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
@@ -510,6 +519,9 @@
   </data>
   <data name="printer" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\printer.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="printer_small" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\printer-small.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
   <data name="printer_hires" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\printer-hires.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
@@ -525,6 +537,9 @@
   </data>
   <data name="close" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\close.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="close_small" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\close-small.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
   <data name="close_hires" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\close-hires.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
@@ -645,6 +660,12 @@
   </data>
   <data name="cog_hires" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\cog-hires.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="more" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\more.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="more_hires" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\more-hires.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
   <data name="cog_small" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\cog-small.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>

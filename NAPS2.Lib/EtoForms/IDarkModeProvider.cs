@@ -1,5 +1,3 @@
-using Eto.Drawing;
-
 namespace NAPS2.EtoForms;
 
 public interface IDarkModeProvider
@@ -7,11 +5,13 @@ public interface IDarkModeProvider
     bool IsDarkModeEnabled { get; }
 
     /// <summary>
-    /// The accent colour the user picked in their OS settings, or null if the platform doesn't
-    /// expose one. ColorScheme adjusts it for contrast and falls back to the Fluent default blue,
-    /// so a platform that has nothing to report can leave this alone.
+    /// True while the OS runs a contrast theme (Windows: Settings > Accessibility > Contrast themes).
+    /// ColorScheme then hands out the system colours instead of its own, because a contrast theme is
+    /// an accessibility setting the user chose and the app's palette must not override it. A
+    /// platform that has no such mode can leave this alone.
     /// </summary>
-    Color? AccentColor => null;
+    bool IsHighContrastEnabled => false;
 
+    /// <summary>Raised when dark mode or the contrast theme changes.</summary>
     event EventHandler? DarkModeChanged;
 }

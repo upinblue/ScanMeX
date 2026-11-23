@@ -112,6 +112,11 @@ public abstract class DesktopForm : EtoFormBase
         _listView.ItemClicked += ListViewItemClicked;
         _listView.Drop += ListViewDrop;
         _listView.SectionClicked += ListViewSectionClicked;
+        // The headings over the pages play the same motion as the document list: one clock, so a new
+        // document's marker fades on both at the same moment.
+        var motion = _documentPanel.Motion;
+        _listView.SetSectionMotion(id => (motion.ArriveBar(id), motion.Confirmation(id)));
+        motion.Frame += (_, _) => _listView.InvalidateSections();
         _listView.SelectionChanged += ListViewSelectionChanged;
         _listView.ImageSize = new Size(_thumbnailController.VisibleSize, _thumbnailController.VisibleSize);
         _listView.ContextMenu = _contextMenu;
@@ -156,7 +161,7 @@ public abstract class DesktopForm : EtoFormBase
                     GetControlButtons(),
                     C.Filler(),
                     _notificationArea.Content)
-            ).Padding(8)
+            ).Padding(LeonardoTokens.Space.S)
         ).Scale();
 
         // Pages on the left, documents on the right. The two answer different questions -- what came off
@@ -179,7 +184,7 @@ public abstract class DesktopForm : EtoFormBase
         ).SizeConfig(
             () => Config.Get(c => c.SidebarWidth),
             width => Config.User.Set(c => c.SidebarWidth, width),
-            200);
+            240);
     }
 
     private void OpeningContextMenu(object? sender, EventArgs e)
@@ -373,6 +378,18 @@ public abstract class DesktopForm : EtoFormBase
         _imageListSyncer?.Dispose();
     }
 
+    /// <summary>
+    /// Builds the main toolbar in the order of the work it serves: get pages in (scan, import), file
+    /// them (upload, save), correct them (image, rotate, move, reorder, document), throw them away.
+    /// </summary>
+    /// <remarks>
+    /// Everything an operator does several times a day is a labelled button; the rest sits behind
+    /// "More" (Fluent's CommandBar "See more") so that the row answers "what can I do here" at a
+    /// glance and still fits a German label set on a laptop. Nothing was removed: every command keeps
+    /// its keyboard shortcut and its HiddenButtons flag, and a command hidden by an administrator is
+    /// left out of the menu as well. Language and About moved into the settings dialog, Profiles into
+    /// the Scan menu next to the profiles it lists.
+    /// </remarks>
     protected virtual void CreateToolbarsAndMenus()
     {
         if (ToolBar == null)
@@ -386,46 +403,35 @@ public abstract class DesktopForm : EtoFormBase
         }
 
         var hiddenButtons = Config.Get(c => c.HiddenButtons);
+        bool Shown(ToolbarButtons button) => !hiddenButtons.HasFlag(button);
 
-        if (!hiddenButtons.HasFlag(ToolbarButtons.Scan))
+        // Get pages in
+        if (Shown(ToolbarButtons.Scan))
             CreateToolbarButtonWithMenu(Commands.Scan, DesktopToolbarMenuType.Scan, new MenuProvider()
                 .Dynamic(_scanMenuCommands)
                 .Separator()
                 .Append(Commands.NewProfile)
+                .Append(Shown(ToolbarButtons.Profiles) ? Commands.ManageProfiles : null)
+                .Separator()
                 .Append(Commands.BatchScan)
                 .Append(Config.Get(c => c.DisableScannerSharing) ? null : Commands.ScannerSharing));
-        if (!hiddenButtons.HasFlag(ToolbarButtons.Profiles))
-            CreateToolbarButton(Commands.Profiles);
-        if (!hiddenButtons.HasFlag(ToolbarButtons.Ocr))
-            CreateToolbarButton(Commands.Ocr);
-        if (!hiddenButtons.HasFlag(ToolbarButtons.Import))
+        if (Shown(ToolbarButtons.Import))
             CreateToolbarButton(Commands.Import);
         CreateToolbarSeparator();
-        if (!hiddenButtons.HasFlag(ToolbarButtons.SavePdf))
+
+        // File them. Upload first: it is the step ScanMe exists for.
+        if (Shown(ToolbarButtons.UploadSharePoint))
+            CreateToolbarButton(Commands.UploadDocuments);
+        if (Shown(ToolbarButtons.SavePdf))
             CreateToolbarButtonWithMenu(Commands.SavePdf, DesktopToolbarMenuType.SavePdf, new MenuProvider()
                 .Append(Commands.SaveAllPdf)
                 .Append(Commands.SaveSelectedPdf)
                 .Separator()
                 .Append(Commands.PdfSettings));
-        if (!hiddenButtons.HasFlag(ToolbarButtons.SaveImages))
-            CreateToolbarButtonWithMenu(Commands.SaveImages, DesktopToolbarMenuType.SaveImages, new MenuProvider()
-                .Append(Commands.SaveAllImages)
-                .Append(Commands.SaveSelectedImages)
-                .Separator()
-                .Append(Commands.ImageSettings));
-        if (!hiddenButtons.HasFlag(ToolbarButtons.EmailPdf) && PlatformCompat.System.CanEmail)
-            CreateToolbarButtonWithMenu(Commands.EmailPdf, DesktopToolbarMenuType.EmailPdf, new MenuProvider()
-                .Append(Commands.EmailAll)
-                .Append(Commands.EmailSelected)
-                .Separator()
-                .Append(Commands.EmailSettings)
-                .Append(Commands.PdfSettings));
-        if (!hiddenButtons.HasFlag(ToolbarButtons.Print) && PlatformCompat.System.CanPrint)
-            CreateToolbarButton(Commands.Print);
-        if (!hiddenButtons.HasFlag(ToolbarButtons.UploadSharePoint))
-            CreateToolbarButton(Commands.UploadDocuments);
         CreateToolbarSeparator();
-        if (!hiddenButtons.HasFlag(ToolbarButtons.Image))
+
+        // Correct them
+        if (Shown(ToolbarButtons.Image))
             CreateToolbarMenu(Commands.ImageMenu, new MenuProvider()
                 .Append(Commands.ViewImage)
                 .Separator()
@@ -443,11 +449,11 @@ public abstract class DesktopForm : EtoFormBase
                 .Append(Commands.EditWithPick)
                 .Separator()
                 .Append(Commands.ResetImage));
-        if (!hiddenButtons.HasFlag(ToolbarButtons.Rotate))
+        if (Shown(ToolbarButtons.Rotate))
             CreateToolbarMenu(Commands.RotateMenu, GetRotateMenuProvider());
-        if (!hiddenButtons.HasFlag(ToolbarButtons.Move))
+        if (Shown(ToolbarButtons.Move))
             CreateToolbarStackedButtons(Commands.MoveUp, Commands.MoveDown);
-        if (!hiddenButtons.HasFlag(ToolbarButtons.Reorder))
+        if (Shown(ToolbarButtons.Reorder))
             CreateToolbarMenu(Commands.ReorderMenu, new MenuProvider()
                 .Append(Commands.Interleave)
                 .Append(Commands.Deinterleave)
@@ -458,36 +464,59 @@ public abstract class DesktopForm : EtoFormBase
                 .SubMenu(Commands.ReverseMenu, new MenuProvider()
                     .Append(Commands.ReverseAll)
                     .Append(Commands.ReverseSelected)));
+        // Splitting and merging used to live only in the canvas context menu and on two shortcuts,
+        // which is where nobody finds the repair for a missed separator sheet.
+        if (Shown(ToolbarButtons.DocumentPanel))
+            CreateToolbarMenu(Commands.DocumentMenu, new MenuProvider()
+                .Append(Commands.SplitDocument)
+                .Append(Commands.MergeDocument));
         CreateToolbarSeparator();
-        if (!hiddenButtons.HasFlag(ToolbarButtons.Delete))
+
+        // Throw them away
+        if (Shown(ToolbarButtons.Delete))
             CreateToolbarButton(Commands.Delete);
-        if (!hiddenButtons.HasFlag(ToolbarButtons.Clear))
+        if (Shown(ToolbarButtons.Clear))
             CreateToolbarButton(Commands.ClearAll);
+
         BeginToolbarUtilityGroup();
-        if (!hiddenButtons.HasFlag(ToolbarButtons.Console))
-            CreateToolbarButton(Commands.Console);
-        if (!hiddenButtons.HasFlag(ToolbarButtons.Language))
-            CreateToolbarMenu(Commands.LanguageMenu, GetLanguageMenuProvider());
-        MaybeCreateToolbarStackedButtons(
-            Commands.Settings, !hiddenButtons.HasFlag(ToolbarButtons.Settings),
-            Commands.About, !hiddenButtons.HasFlag(ToolbarButtons.About));
+        var more = new MenuProvider();
+        var moreCount = 0;
+        void AddMore(bool shown, Action add)
+        {
+            if (!shown) return;
+            add();
+            moreCount++;
+        }
+        AddMore(Shown(ToolbarButtons.SaveImages), () => more.SubMenu(Commands.SaveImagesMenu, new MenuProvider()
+            .Append(Commands.SaveAllImages)
+            .Append(Commands.SaveSelectedImages)
+            .Separator()
+            .Append(Commands.ImageSettings)));
+        AddMore(Shown(ToolbarButtons.EmailPdf) && PlatformCompat.System.CanEmail, () => more.SubMenu(
+            Commands.EmailPdfMenu, new MenuProvider()
+                .Append(Commands.EmailAll)
+                .Append(Commands.EmailSelected)
+                .Separator()
+                .Append(Commands.EmailSettings)
+                .Append(Commands.PdfSettings)));
+        AddMore(Shown(ToolbarButtons.Print) && PlatformCompat.System.CanPrint, () => more.Append(Commands.Print));
+        AddMore(Shown(ToolbarButtons.Ocr), () => more.Append(Commands.Ocr));
+        AddMore(Shown(ToolbarButtons.Console), () => more.Separator().Append(Commands.Console));
+        if (moreCount > 0)
+            CreateToolbarIconMenu(Commands.MoreMenu, more);
+        if (Shown(ToolbarButtons.Settings))
+            CreateToolbarIconButton(Commands.Settings);
     }
 
-    private void MaybeCreateToolbarStackedButtons(Command command1, bool show1, Command command2, bool show2)
-    {
-        if (show1 && show2)
-        {
-            CreateToolbarStackedButtons(command1, command2);
-        }
-        else if (show1)
-        {
-            CreateToolbarButton(command1);
-        }
-        else if (show2)
-        {
-            CreateToolbarButton(command2);
-        }
-    }
+    /// <summary>
+    /// Which toolbar menu a submenu of "More" stands in for. SavePdf/SaveImages/EmailPdf can be set to
+    /// open their menu instead of acting (SaveButtonDefaultAction), and with Save images and Email PDF
+    /// now living in "More", <see cref="ShowToolbarMenu"/> has to open the submenu there instead.
+    /// </summary>
+    protected DesktopToolbarMenuType? GetSubMenuType(Command command) =>
+        command == Commands.SaveImagesMenu ? DesktopToolbarMenuType.SaveImages
+        : command == Commands.EmailPdfMenu ? DesktopToolbarMenuType.EmailPdf
+        : null;
 
     public virtual void ShowToolbarMenu(DesktopToolbarMenuType menuType)
     {
@@ -501,10 +530,18 @@ public abstract class DesktopForm : EtoFormBase
             .Append(Commands.Deskew)
             .Append(Commands.CustomRotate);
 
+    /// <summary>The language list for platforms with a menu bar (Mac); Windows offers it in Settings.</summary>
     protected MenuProvider GetLanguageMenuProvider()
     {
         return new MenuProvider().Dynamic(_languageMenuCommands);
     }
+
+    /// <summary>
+    /// Switches the UI language by rebuilding this window, as the language menu always did. The
+    /// settings dialog calls this once it has closed: the rebuild closes this window, and a modal
+    /// child still open on it would go with it.
+    /// </summary>
+    public void ChangeCulture(string cultureId) => SetCulture(cultureId);
 
     protected virtual void ConfigureToolbars()
     {
@@ -531,6 +568,16 @@ public abstract class DesktopForm : EtoFormBase
         throw new InvalidOperationException();
 
     protected virtual void CreateToolbarSeparator() => throw new InvalidOperationException();
+
+    /// <summary>
+    /// A button showing only its icon, with the command's text as tooltip and accessible name: for the
+    /// trailing Settings button, which Fluent's CommandBar draws the same way.
+    /// </summary>
+    protected virtual void CreateToolbarIconButton(Command command) => CreateToolbarButton(command);
+
+    /// <summary>The icon-only counterpart of <see cref="CreateToolbarMenu"/>, for "More".</summary>
+    protected virtual void CreateToolbarIconMenu(Command command, MenuProvider menu) =>
+        CreateToolbarMenu(command, menu);
 
     /// <summary>
     /// Marks where the document commands end and the ones about the app itself begin (console,
@@ -651,10 +698,16 @@ public abstract class DesktopForm : EtoFormBase
         // Driven by the upload queue rather than the image list: documents stay uploadable even after
         // their pages were cleared from the window.
         Commands.UploadDocuments.Enabled = _documentUploadController.HasPendingDocuments;
+        // A disabled upload button has to say why, or "nothing to upload" and "upload is broken" look
+        // the same -- and documents held back for a missing identification look like neither.
+        Commands.UploadDocuments.Hint = _documentUploadController.HasPendingDocuments ? null
+            : _documentUploadController.HasOutstandingDocuments ? UiStrings.UploadWaitingForIdentifierHint
+            : UiStrings.UploadNothingPendingHint;
         // Both are about the document the selection sits in, so they are off for a page that is in
         // none, for the first page of a document, and for anything already archived.
         Commands.SplitDocument.Enabled = _documentEditor.CanSplitAt(ImageList.Selection);
         Commands.MergeDocument.Enabled = _documentEditor.CanMergeWithPrevious(ImageList.Selection);
+        Commands.DocumentMenu.Enabled = Commands.SplitDocument.Enabled || Commands.MergeDocument.Enabled;
 
         // "All" dropdown items
         Commands.SaveAllPdf.Text = Commands.SaveAllImages.Text = Commands.EmailAll.Text =

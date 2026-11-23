@@ -1,0 +1,719 @@
+{
+  "$description": "Leonardo design tokens. Single source of truth for all values of the Leonardo design language by up in blue, used by Windows (WinUI 3, WPF), iOS and macOS (SwiftUI), standalone web and presentations. Web interfaces inside a Microsoft host use the host's theme instead of these colors and type sizes. Format follows the Design Tokens Community Group conventions ($value, $type, $description). A token with $extensions.platforms appears only in the outputs it names: windows (WinUI 3, WPF and their C# values), apple (asset catalog and Swift), web (CSS) and presentation; the skill copy always carries every token. A token without it appears everywhere. Tokens marked with $extensions.status = \"proposal\" are first values that must be confirmed before they are considered final.",
+  "palette": {
+    "$description": "The blue scale follows aerial perspective: near is dark and dense, far is light and airy. Blues MUST only come from this scale.",
+    "depth": {
+      "$type": "color",
+      "$value": "#0A1A33",
+      "$description": "Dark surfaces, text. 17.4:1 on white."
+    },
+    "near": {
+      "$type": "color",
+      "$value": "#0B4A99",
+      "$description": "Links and blue text. 8.6:1 on white."
+    },
+    "brand": {
+      "$type": "color",
+      "$value": "#1B6CE0",
+      "$description": "Logo, accent, buttons. 4.9:1 on white; white text on brand is 4.9:1."
+    },
+    "far": {
+      "$type": "color",
+      "$value": "#7FB2F0",
+      "$description": "Lines, charts, accent on dark ground. 7.9:1 on depth."
+    },
+    "haze": {
+      "$type": "color",
+      "$value": "#DCEAFB",
+      "$description": "Selection, surfaces. Surface only, NEVER text."
+    },
+    "sky": {
+      "$type": "color",
+      "$value": "#F3F7FC",
+      "$description": "Background. Surface only, NEVER text."
+    },
+    "white": {
+      "$type": "color",
+      "$value": "#FFFFFF"
+    }
+  },
+  "theme": {
+    "$description": "Semantic colors for the content layer. Ground and tools (window backdrop, command bars, menus) come from the platform and are NOT defined here. In high contrast mode only system colors are used; no tokens apply.",
+    "light": {
+      "accent": {
+        "$type": "color",
+        "$value": "{palette.brand}"
+      },
+      "onAccent": {
+        "$type": "color",
+        "$value": "{palette.white}"
+      },
+      "link": {
+        "$type": "color",
+        "$value": "{palette.near}"
+      },
+      "selection": {
+        "$type": "color",
+        "$value": "{palette.haze}",
+        "$description": "Selected rows and items. Text on selection stays textPrimary; the accent is only used as a non-text indicator here (4.0:1)."
+      },
+      "surface": {
+        "$type": "color",
+        "$value": "#FAFBFD",
+        "$description": "Opaque content surface, cool neutral."
+      },
+      "surfaceAlt": {
+        "$type": "color",
+        "$value": "{palette.sky}"
+      },
+      "textPrimary": {
+        "$type": "color",
+        "$value": "#141B2B",
+        "$description": "16.6:1 on surface."
+      },
+      "textSecondary": {
+        "$type": "color",
+        "$value": "#4A5568",
+        "$description": "7.3:1 on surface."
+      },
+      "textTertiary": {
+        "$type": "color",
+        "$value": "#5E6878",
+        "$description": "Metadata. 5.4:1 on surface, 4.6:1 on selection."
+      },
+      "strokeSubtle": {
+        "$type": "color",
+        "$value": "#DFE5EE",
+        "$description": "Decorative separators only. Not for boundaries that carry meaning."
+      },
+      "strokeStrong": {
+        "$type": "color",
+        "$value": "#78849A",
+        "$description": "Boundaries of interactive elements. 3.6:1 on surface."
+      },
+      "chart": {
+        "$type": "color",
+        "$value": "{palette.near}",
+        "$description": "Data series in charts, the one blue of a single-series chart. 8.3:1 on surface. In contrast themes, the system highlight color."
+      },
+      "statusCritical": {
+        "$type": "color",
+        "$value": "#C42B1C",
+        "$description": "Mirrors the Windows Fluent status color. Native apps use their platform's status colors; only standalone web and presentations use this token.",
+        "$extensions": {
+          "platforms": [
+            "web",
+            "presentation"
+          ]
+        }
+      },
+      "statusCaution": {
+        "$type": "color",
+        "$value": "#9D5D00",
+        "$description": "Mirrors the Windows Fluent status color. Native apps use their platform's status colors; only standalone web and presentations use this token.",
+        "$extensions": {
+          "platforms": [
+            "web",
+            "presentation"
+          ]
+        }
+      },
+      "statusSuccess": {
+        "$type": "color",
+        "$value": "#0F7B0F",
+        "$description": "Mirrors the Windows Fluent status color. Native apps use their platform's status colors; only standalone web and presentations use this token.",
+        "$extensions": {
+          "platforms": [
+            "web",
+            "presentation"
+          ]
+        }
+      },
+      "focus": {
+        "$type": "color",
+        "$value": "{palette.near}",
+        "$description": "Standalone web only: the focus outline where the browser default fails 3:1. 8.3:1 on surface, 8.0:1 on surfaceAlt.",
+        "$extensions": {
+          "platforms": [
+            "web"
+          ]
+        }
+      },
+      "accentHover": {
+        "$type": "color",
+        "$value": "#1969D9",
+        "$description": "Standalone web only: accent fill on hover. Derived like WinUI's AccentFillColorSecondaryBrush, which is SystemAccentColorDark1 (brand) at 90 % opacity (Microsoft.UI.Xaml generic.xaml, Light theme dictionary). Over the light surface that would drop white text to 4.2:1, so the 90 % brand is composited over SystemAccentColorDark2 (near) instead. White text 5.2:1.",
+        "$extensions": {
+          "platforms": [
+            "web"
+          ]
+        }
+      },
+      "accentPressed": {
+        "$type": "color",
+        "$value": "#1865D2",
+        "$description": "Standalone web only: accent fill while pressed. Derived like WinUI's AccentFillColorTertiaryBrush, which is SystemAccentColorDark1 (brand) at 80 % opacity (Microsoft.UI.Xaml generic.xaml, Light theme dictionary). Over the light surface that would drop white text to 3.5:1, so the 80 % brand is composited over SystemAccentColorDark2 (near) instead. White text 5.5:1.",
+        "$extensions": {
+          "platforms": [
+            "web"
+          ]
+        }
+      }
+    },
+    "dark": {
+      "accent": {
+        "$type": "color",
+        "$value": "{palette.far}"
+      },
+      "onAccent": {
+        "$type": "color",
+        "$value": "{palette.depth}"
+      },
+      "link": {
+        "$type": "color",
+        "$value": "#A9CCF6",
+        "$description": "9.8:1 on surface."
+      },
+      "selection": {
+        "$type": "color",
+        "$value": "#1E3A66"
+      },
+      "surface": {
+        "$type": "color",
+        "$value": "#1A2030"
+      },
+      "surfaceAlt": {
+        "$type": "color",
+        "$value": "#141926"
+      },
+      "textPrimary": {
+        "$type": "color",
+        "$value": "#EEF2F8",
+        "$description": "14.5:1 on surface."
+      },
+      "textSecondary": {
+        "$type": "color",
+        "$value": "#B3BDCC",
+        "$description": "8.6:1 on surface."
+      },
+      "textTertiary": {
+        "$type": "color",
+        "$value": "#A3AEC0",
+        "$description": "7.2:1 on surface, 5.1:1 on selection."
+      },
+      "strokeSubtle": {
+        "$type": "color",
+        "$value": "#2C3547"
+      },
+      "strokeStrong": {
+        "$type": "color",
+        "$value": "#6E7A8F",
+        "$description": "3.7:1 on surface."
+      },
+      "chart": {
+        "$type": "color",
+        "$value": "{palette.far}",
+        "$description": "Data series in charts, the one blue of a single-series chart. 7.4:1 on surface. In contrast themes, the system highlight color."
+      },
+      "statusCritical": {
+        "$type": "color",
+        "$value": "#FF99A4",
+        "$description": "Mirrors the Windows Fluent status color. Native apps use their platform's status colors; only standalone web and presentations use this token.",
+        "$extensions": {
+          "platforms": [
+            "web",
+            "presentation"
+          ]
+        }
+      },
+      "statusCaution": {
+        "$type": "color",
+        "$value": "#FCE100",
+        "$description": "Mirrors the Windows Fluent status color. Native apps use their platform's status colors; only standalone web and presentations use this token.",
+        "$extensions": {
+          "platforms": [
+            "web",
+            "presentation"
+          ]
+        }
+      },
+      "statusSuccess": {
+        "$type": "color",
+        "$value": "#6CCB5F",
+        "$description": "Mirrors the Windows Fluent status color. Native apps use their platform's status colors; only standalone web and presentations use this token.",
+        "$extensions": {
+          "platforms": [
+            "web",
+            "presentation"
+          ]
+        }
+      },
+      "focus": {
+        "$type": "color",
+        "$value": "{palette.far}",
+        "$description": "Standalone web only: the focus outline where the browser default fails 3:1. 7.4:1 on surface, 8.0:1 on surfaceAlt.",
+        "$extensions": {
+          "platforms": [
+            "web"
+          ]
+        }
+      },
+      "accentHover": {
+        "$type": "color",
+        "$value": "#75A3DD",
+        "$description": "Standalone web only: accent fill on hover. Derived like WinUI's AccentFillColorSecondaryBrush, which is SystemAccentColorLight2 (far) at 90 % opacity (Microsoft.UI.Xaml generic.xaml, Default/Dark theme dictionary), composited over the dark surface. Depth text 6.7:1.",
+        "$extensions": {
+          "platforms": [
+            "web"
+          ]
+        }
+      },
+      "accentPressed": {
+        "$type": "color",
+        "$value": "#6B95CA",
+        "$description": "Standalone web only: accent fill while pressed. Derived like WinUI's AccentFillColorTertiaryBrush, which is SystemAccentColorLight2 (far) at 80 % opacity (Microsoft.UI.Xaml generic.xaml, Default/Dark theme dictionary), composited over the dark surface. Depth text 5.6:1.",
+        "$extensions": {
+          "platforms": [
+            "web"
+          ]
+        }
+      }
+    }
+  },
+  "space": {
+    "$description": "Base grid 4, layout steps of 8. Values are epx on Windows and pt on iOS. Spacing MUST only come from this table.",
+    "xs": {
+      "$type": "dimension",
+      "$value": {
+        "value": 4,
+        "unit": "px"
+      },
+      "$description": "Icon to label."
+    },
+    "s": {
+      "$type": "dimension",
+      "$value": {
+        "value": 8,
+        "unit": "px"
+      },
+      "$description": "Within a group."
+    },
+    "m": {
+      "$type": "dimension",
+      "$value": {
+        "value": 16,
+        "unit": "px"
+      },
+      "$description": "Between groups."
+    },
+    "l": {
+      "$type": "dimension",
+      "$value": {
+        "value": 24,
+        "unit": "px"
+      },
+      "$description": "Page margins, details pane."
+    },
+    "xl": {
+      "$type": "dimension",
+      "$value": {
+        "value": 40,
+        "unit": "px"
+      },
+      "$description": "Between place name and content."
+    }
+  },
+  "radius": {
+    "$description": "Concentric rule: inner radius = outer radius - padding. Example: a card with radius l and padding s contains elements with radius m.",
+    "s": {
+      "$type": "dimension",
+      "$value": {
+        "value": 4,
+        "unit": "px"
+      }
+    },
+    "m": {
+      "$type": "dimension",
+      "$value": {
+        "value": 8,
+        "unit": "px"
+      }
+    },
+    "l": {
+      "$type": "dimension",
+      "$value": {
+        "value": 16,
+        "unit": "px"
+      }
+    }
+  },
+  "density": {
+    "$description": "Row heights for lists. Standard is the default; the user's choice is stored per user.",
+    "compact": {
+      "$type": "dimension",
+      "$value": {
+        "value": 32,
+        "unit": "px"
+      }
+    },
+    "standard": {
+      "$type": "dimension",
+      "$value": {
+        "value": 40,
+        "unit": "px"
+      }
+    },
+    "comfortable": {
+      "$type": "dimension",
+      "$value": {
+        "value": 48,
+        "unit": "px"
+      }
+    }
+  },
+  "size": {
+    "$description": "Small elements with a fixed size, such as icons and status dots.",
+    "icon": {
+      "$type": "dimension",
+      "$value": {
+        "value": 16,
+        "unit": "px"
+      },
+      "$description": "Icons in list rows and next to labels."
+    },
+    "statusDot": {
+      "$type": "dimension",
+      "$value": {
+        "value": 12,
+        "unit": "px"
+      },
+      "$description": "The diameter of the status dot."
+    },
+    "focusStroke": {
+      "$type": "dimension",
+      "$value": {
+        "value": 2,
+        "unit": "px"
+      },
+      "$description": "Standalone web only: the width of the focus outline drawn with theme.*.focus.",
+      "$extensions": {
+        "platforms": [
+          "web"
+        ]
+      }
+    }
+  },
+  "typography": {
+    "$description": "Leonardo defines the roles, the platform provides the typeface. Native apps MUST use the system typeface; presentations, documents and standalone web MUST use Inter; web inside a host uses the host's type ramp. Emphasis is the body role in semibold, never a separate size.",
+    "placeName": {
+      "windows": {
+        "fontFamily": "Segoe UI Variable Display",
+        "fontSize": 40,
+        "lineHeight": 52,
+        "fontWeight": 300
+      },
+      "ios": {
+        "textStyle": "largeTitle"
+      },
+      "macos": {
+        "textStyle": "windowTitle",
+        "$description": "The window title in the toolbar. No second large title."
+      },
+      "presentation": {
+        "fontFamily": "Inter Display",
+        "fontSizePt": 40,
+        "fontWeight": 300
+      },
+      "web": {
+        "fontFamily": "Inter Display",
+        "fontSizeRem": 2.5,
+        "lineHeight": 1.2,
+        "fontWeight": 300
+      }
+    },
+    "view": {
+      "windows": {
+        "fontFamily": "Segoe UI Variable Display",
+        "fontSize": 28,
+        "lineHeight": 36,
+        "fontWeight": 350
+      },
+      "ios": {
+        "textStyle": "title2"
+      },
+      "macos": {
+        "textStyle": "title2"
+      },
+      "presentation": null,
+      "web": {
+        "fontFamily": "Inter Display",
+        "fontSizeRem": 1.75,
+        "lineHeight": 1.25,
+        "fontWeight": 300
+      }
+    },
+    "section": {
+      "windows": {
+        "fontFamily": "Segoe UI Variable Text",
+        "fontSize": 20,
+        "lineHeight": 28,
+        "fontWeight": 600
+      },
+      "ios": {
+        "textStyle": "headline"
+      },
+      "macos": {
+        "textStyle": "headline"
+      },
+      "presentation": {
+        "fontFamily": "Inter",
+        "fontSizePt": 24,
+        "fontWeight": 600
+      },
+      "web": {
+        "fontFamily": "Inter",
+        "fontSizeRem": 1.25,
+        "lineHeight": 1.4,
+        "fontWeight": 600
+      }
+    },
+    "body": {
+      "windows": {
+        "fontFamily": "Segoe UI Variable Text",
+        "fontSize": 14,
+        "lineHeight": 20,
+        "fontWeight": 400
+      },
+      "ios": {
+        "textStyle": "body"
+      },
+      "macos": {
+        "textStyle": "body"
+      },
+      "presentation": {
+        "fontFamily": "Inter",
+        "fontSizePt": 18,
+        "fontWeight": 400
+      },
+      "web": {
+        "fontFamily": "Inter",
+        "fontSizeRem": 1,
+        "lineHeight": 1.5,
+        "fontWeight": 400
+      }
+    },
+    "meta": {
+      "windows": {
+        "fontFamily": "Segoe UI Variable Small",
+        "fontSize": 12,
+        "lineHeight": 16,
+        "fontWeight": 400,
+        "color": "textTertiary"
+      },
+      "ios": {
+        "textStyle": "footnote"
+      },
+      "macos": {
+        "textStyle": "caption"
+      },
+      "presentation": {
+        "fontFamily": "Inter",
+        "fontSizePt": 12,
+        "fontWeight": 400
+      },
+      "web": {
+        "fontFamily": "Inter",
+        "fontSizeRem": 0.8125,
+        "lineHeight": 1.4,
+        "fontWeight": 400,
+        "color": "textTertiary"
+      }
+    }
+  },
+  "motion": {
+    "$description": "Arriving decelerates strongly, leaving accelerates. Movement is never linear; only opacity is linear. Leaving is shorter than arriving. Opacity is faster than movement. Standalone web uses the same curves and durations as Windows. iOS and macOS use springs without bounce.",
+    "easing": {
+      "enter": {
+        "$type": "cubicBezier",
+        "$value": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "$description": "Arrive, dive in. Windows Fluent 'fast out, slow in'."
+      },
+      "exit": {
+        "$type": "cubicBezier",
+        "$value": [
+          1,
+          0,
+          1,
+          1
+        ],
+        "$description": "Leave. Always combined with fade out."
+      },
+      "move": {
+        "$type": "cubicBezier",
+        "$value": [
+          0.55,
+          0.55,
+          0,
+          1
+        ],
+        "$description": "Transform, reflow: elements already on screen."
+      },
+      "fade": {
+        "$type": "cubicBezier",
+        "$value": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "$description": "Linear. Opacity only."
+      }
+    },
+    "duration": {
+      "fade": {
+        "$type": "duration",
+        "$value": {
+          "value": 83,
+          "unit": "ms"
+        }
+      },
+      "short": {
+        "$type": "duration",
+        "$value": {
+          "value": 167,
+          "unit": "ms"
+        },
+        "$description": "Exits only. Entrances start at motion.duration.normal."
+      },
+      "normal": {
+        "$type": "duration",
+        "$value": {
+          "value": 250,
+          "unit": "ms"
+        }
+      },
+      "long": {
+        "$type": "duration",
+        "$value": {
+          "value": 333,
+          "unit": "ms"
+        },
+        "$description": "Long distances, navigation."
+      }
+    },
+    "stagger": {
+      "step": {
+        "$type": "duration",
+        "$value": {
+          "value": 50,
+          "unit": "ms"
+        }
+      },
+      "maxGroups": {
+        "$type": "number",
+        "$value": 4
+      }
+    },
+    "distance": {
+      "enterMin": {
+        "$type": "dimension",
+        "$value": {
+          "value": 24,
+          "unit": "px"
+        }
+      },
+      "enterMax": {
+        "$type": "dimension",
+        "$value": {
+          "value": 40,
+          "unit": "px"
+        }
+      }
+    },
+    "parallax": {
+      "placeNameFactor": {
+        "$type": "number",
+        "$value": 0.7,
+        "$description": "The only allowed parallax: the place name scrolls at 70 % of the content speed before it shrinks."
+      }
+    },
+    "arrive": {
+      "hold": {
+        "$type": "duration",
+        "$value": {
+          "value": 2000,
+          "unit": "ms"
+        },
+        "$description": "How long the accent marker of Arrive stays fully visible before it fades away."
+      }
+    },
+    "ios": {
+      "spring": {
+        "bounce": {
+          "$type": "number",
+          "$value": 0,
+          "$description": "Springs without bounce. NEVER bounce in content."
+        },
+        "durationMin": {
+          "$type": "duration",
+          "$value": {
+            "value": 300,
+            "unit": "ms"
+          }
+        },
+        "durationMax": {
+          "$type": "duration",
+          "$value": {
+            "value": 500,
+            "unit": "ms"
+          }
+        }
+      }
+    },
+    "presentation": {
+      "$description": "PowerPoint values. To be verified on a projector.",
+      "enter": {
+        "$type": "duration",
+        "$value": {
+          "value": 300,
+          "unit": "ms"
+        },
+        "$description": "Smooth end fully applied."
+      },
+      "exit": {
+        "$type": "duration",
+        "$value": {
+          "value": 200,
+          "unit": "ms"
+        },
+        "$description": "Smooth start fully applied, with fade."
+      },
+      "morph": {
+        "$type": "duration",
+        "$value": {
+          "value": 500,
+          "unit": "ms"
+        }
+      },
+      "fade": {
+        "$type": "duration",
+        "$value": {
+          "value": 100,
+          "unit": "ms"
+        }
+      },
+      "staggerStep": {
+        "$type": "duration",
+        "$value": {
+          "value": 50,
+          "unit": "ms"
+        }
+      }
+    }
+  }
+}
